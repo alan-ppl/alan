@@ -2,7 +2,7 @@ import torch as t
 import torch.distributions as td
 from functorch.dim import Dim
 
-from alan_simplified import TorchDimDist
+from alan_simplified.TorchDimDist import TorchDimDist
 
 d3 = Dim('d3', 3)
 d4 = Dim('d4', 4)

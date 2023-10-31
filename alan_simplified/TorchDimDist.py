@@ -62,7 +62,7 @@ class TorchDimDist():
 
 
 
-    def sample(self, reparam: bool, sample_dims: list[dim], sample_shape):
+    def sample(self, reparam: bool, sample_dims: list[Dim], sample_shape):
         r"""
         Samples, making sure the resulting sample has all the dims in sample_dims, 
         and has the unnamed shape from self.sample_shape.
