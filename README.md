@@ -46,10 +46,12 @@ Some observations here:
 * samples are represented as dictionaries (we will allow for e.g. timeseries or GPs, but they should be interchangeable: i.e. you can have a timeseries in the generative model, but a plate in the approximate posterior).
 * backend uses named tensors (so we don't have to worry about named dimensions).
 
-TODOs:
+TODOs (immanent):
 * Implement and test SamplingType.
-* Tests for LP.
 * Tests for TorchDimDist.
+  - note that sample_dims is supposed to be all the samples in the output, not just the extra ones.
+
+TODOs (pending):
 * Do subtracting logK in logP.
 
 

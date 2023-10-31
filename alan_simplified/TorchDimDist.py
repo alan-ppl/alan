@@ -62,13 +62,16 @@ class TorchDimDist():
 
 
 
-    def sample(self, reparam, sample_dims, sample_shape):
+    def sample(self, reparam: bool, sample_dims: list[dim], sample_shape):
         r"""
         Samples, making sure the resulting sample has all the dims in sample_dims, 
         and has the unnamed shape from self.sample_shape.
 
         Args:
             reparam (bool): *True* for reparameterised sampling (Not supported by all dists)
+            sample_dims: _all_ dimensions in the resulting samples (not just the extra dims)
+                         should include all the dims in the input.
+            sample_shape: unnamed/integer extra samples.
 
         Returns:
             sample (torchdim Tensor): sample with correct dimensions
