@@ -15,15 +15,15 @@ Specifying a program will look something like:
 ```
 prog = Plate(
     ab = Group(
-        a = alan.Normal(0, 1),
-        b = alan.Normal('a', 1),
+        a = alan.Normal(loc=0, scale=1),
+        b = alan.Normal(loc='a', scale=1),
     )
     plate1 = Plate(
-        c = alan.Normal('b', 1),
-        d = alan.Normal('c', lambda tr: tr['c'].exp()),
+        c = alan.Normal(loc='b', scale=1),
+        d = alan.Normal(loc='c', scale=lambda tr: tr['c'].exp()),
         plate2 = Plate(
-            e = alan.Normal('c', 1),
-            f = alan.Normal('e', 1),
+            e = alan.Normal(loc='c', scale=1),
+            f = alan.Normal(loc='e', scale=1),
         ),
     ),
 )
