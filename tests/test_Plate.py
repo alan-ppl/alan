@@ -13,13 +13,12 @@ plate = Plate(
     )
 )
 
-Kdim = Dim('K', 3)
 sample = plate.sample(
     scope={},
-    active_platedims={'p1': Dim('p1', 3)},
-    all_platedims={},
+    active_platedims=[],
+    all_platedims={'p1': Dim('p1', 3)},
     sampling_type=SingleSample,
-    Kdim=Kdim,
+    Kdim=Dim('K', 3),
     reparam=False,
 )
 
