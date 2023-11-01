@@ -18,30 +18,38 @@ class LP_Plate:
         All error checknig is assumed to be done inside Plate.log_prob, as more information
         is available there.
         """
+
+        #every Kdim should be associated with a log-prob
+        #but not vice-versa (data has a log-prob but not a Kdim)
+        for name in Kdims:
+            assert name in lps
+
         self.active_platedims = active_platedims
         self.Kdims = Kdims
         self.lps = lps
 
-        assert self.lps.keys() == self.Kdims.keys()
-
-    def minus_logq(self, logq):
+    def minus_logQ(self, logQ):
         #Assumes self represents logp
 
         #Check the active_platedims are the same
-        assert self.platedim == logq.platedim
+        assert self.active_platedims == logQ.active_platedims
+
         #Check the K_dims are the same
-        assert set(self.K_dims.keys()) == set(logq.K_dims.keys())
-        for name in self.logq:
-            #Check everything in Q is also in P (vice-versa isn't necessarily true).
+        assert set(self.Kdims.keys()) == set(logQ.Kdims.keys())
+        for name in self.Kdims:
+            assert self.Kdims[name] is logQ.Kdims[name]
+
+        #Check all log-probs in Q are also in P (vice-versa isn't necessarily true).
+        for name in logQ.lps:
             assert name in self.lps
             #Plates must be associated with plates; tensors with tensors.
-            assert type(self.lps[name]) == type(logq.lps[name])
+            assert type(self.lps[name]) == type(logQ.lps[name])
 
 
         lps = {}
-        for name, lp in self.lps:
-            if name in self.logq.lps:
-                lq = self.logq.lps[name]
+        for name, lp in self.lps.items():
+            if name in logQ.lps:
+                lq = logQ.lps[name]
 
                 if isinstance(lp, Tensor):
                     lp = lp - lq
@@ -50,14 +58,14 @@ class LP_Plate:
 
             lps[name] = lp
 
-        return LP_Plate(self.platedim, self.K_dims, lps)
+        return LP_Plate(lps, self.active_platedims, self.Kdims)
 
     def minus_logK(self):
         """
         Subtracts logK from all the log-prob tensors in log Q.
         """
         result = {}
-        for name, lp in self.lps:
+        for name, lp in self.lps.items():
             Kdim = self.Kdims[name]
 
             #This is for logQ, so there should only be a single K-dimension for each
@@ -69,7 +77,7 @@ class LP_Plate:
 
             result[name] = lp - math.log(Kdim.size)
 
-        return LP_Plate(result, active_platedims, Kdims)
+        return LP_Plate(result, self.active_platedims, self.Kdims)
 
 
 
@@ -78,10 +86,22 @@ class LP_Plate:
         """
         * Calls sum on all the subplates
         * Reduces over the K-dimensions (we know the K-dimensions, because there's one
-          K-dimension associated with each variable).
+          K-dimension associated with each latent variable).
         * Then sums over the plate.
         """
-        return reduce_Ks(self.lps, self.Kdims).sum(self.platedim)
+        lps = {}
+        for name, lp in self.lps.items():
+            if isinstance(lp, Tensor):
+                lps[name] = lp
+            else:
+                assert isinstance(lp, LP_Plate)
+                lps[name] = lp.sum()
+
+        lp = reduce_Ks([*lps.values()], [*self.Kdims.values()])
+        if 0<len(self.active_platedims):
+            lp = lp.sum(self.active_platedims[-1])
+            
+        return lp
 
 import opt_einsum
 def einsum_args(lps, sum_dims):
@@ -108,7 +128,7 @@ def einsum_args(lps, sum_dims):
         arg_idxs.append([dim_to_idx[dim] for dim in dims])
         undim_lps.append(generic_order(lp, dims))
 
-    assert all(not is_dimlp(lp) for lp in undim_lps)
+    assert all(not is_dimtensor(lp) for lp in undim_lps)
 
     return [val for pair in zip(undim_lps, arg_idxs) for val in pair] + [out_idxs], out_dims
 

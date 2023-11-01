@@ -7,7 +7,7 @@ from .utils import *
 Tensor = (t.Tensor, functorch.dim.Tensor)
 
 def generic_tdd_order(a, dims: list[Dim], event_ndim: int):
-    if isinstance(a, Tensor):
+    if isinstance(a, functorch.dim.Tensor):
         return tdd_order(a, dims, event_ndim)
     else:
         return a

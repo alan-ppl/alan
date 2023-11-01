@@ -87,7 +87,9 @@ class Plate(PlateTimeseries):
         Kdims = {}
         for name, dgpt in self.prog.items():
             s = sample[name]
-            if isinstance(s, (Tensor, GroupSample)):
+
+            if isinstance(s, (Tensor, GroupSample)) and (name in groupvarname2Kdim):
+                #Data appears in sample, but data won't have an associated K-dimension.
                 Kdims[name] = groupvarname2Kdim[name]
 
             lps[name] = dgpt.log_prob(

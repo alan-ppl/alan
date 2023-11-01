@@ -1,17 +1,21 @@
 import torch as t
 from typing import Union
-from Plate import Plate
-from BoundPlate import BoundPlate
+from .Plate import Plate
+from .BoundPlate import BoundPlate
+from .SamplingType import SingleSample
+from .global2local_Kdims import global2local_Kdims
 
-PlateBoundPlate = Union(Plate, BoundPlate)
+from .utils import *
 
-def elbo(P: PlateBoundPlate, Q: PlateBoundPlate, all_platesizes: dict[str, int], data: dict[str, t.Tensor], K: int, reparam:Bool):
+PlateBoundPlate = Union[Plate, BoundPlate]
+
+def elbo(P: PlateBoundPlate, Q: PlateBoundPlate, all_platesizes: dict[str, int], data: dict[str, t.Tensor], K: int, reparam:bool):
     #Error checking that P and Q make sense.
     #  data appears in P but not Q.
     #  all_platesizes is complete.
 
     all_platedims = {name: Dim(name, size) for name, size in all_platesizes.items()}
-    data = named2dim_dict(all_platedims, data)
+    data = named2dim_tensordict(all_platedims, data)
 
     Q_scope = {}
     all_platedims = {platename: Dim(platename, size) for platename, size in all_platesizes.items()}
@@ -33,8 +37,8 @@ def elbo(P: PlateBoundPlate, Q: PlateBoundPlate, all_platesizes: dict[str, int],
     #Compute logQ
     logQ = Q.log_prob(
         sample=localK_sample,
-        scope=scope,
-        active_platedims=active_platedims,
+        scope={},
+        active_platedims=[],
         all_platedims=all_platedims,
         sampling_type=SingleSample,
         groupvarname2Kdim=groupvarname2Kdim,
@@ -45,9 +49,9 @@ def elbo(P: PlateBoundPlate, Q: PlateBoundPlate, all_platesizes: dict[str, int],
 
     #Compute logP
     logP = P.log_prob(
-        sample=localK_sample,
-        scope=data,
-        active_platedims=active_platedims,
+        sample={**localK_sample, **data},
+        scope={},
+        active_platedims=[],
         all_platedims=all_platedims,
         sampling_type=SingleSample,
         groupvarname2Kdim=groupvarname2Kdim,
