@@ -6,6 +6,12 @@ from functorch.dim import Dim
 from .utils import *
 Tensor = (t.Tensor, functorch.dim.Tensor)
 
+def generic_tdd_order(a, dims: list[Dim], event_ndim: int):
+    if isinstance(a, Tensor):
+        return tdd_order(a, dims, event_ndim)
+    else:
+        return a
+
 def tdd_order(a: Tensor, dims: list[Dim], event_ndim: int):
     """
     Rearranges tensor as:
@@ -95,7 +101,7 @@ class TorchDimDist():
         for name, arg_torchdim in self.kwargs_torchdim.items():
             #Rearrange tensors as 
             #[unnamed batch dimensions, torchdim batch dimensions, event dimensions]
-            kwargs_tensor[name] = tdd_order(arg_torchdim, arg_dims, self.arg_event_dim[name])
+            kwargs_tensor[name] = generic_tdd_order(arg_torchdim, arg_dims, self.arg_event_dim[name])
 
         if reparam and not self.dist.has_rsample:
             raise Exception(f'Trying to do reparameterised sampling of {type(self.dist)}, which is not implemented by PyTorch (likely because {type(self.dist)} is a distribution over discrete random variables).')
@@ -119,13 +125,13 @@ class TorchDimDist():
 
         dims = unify_dims([x, *self.kwargs_torchdim.values()])
 
-        x_tensor = tdd_order(arg_torchdim, dims, self.result_event_dim)
+        x_tensor = tdd_order(x, dims, self.result_event_dim)
 
         kwargs_torchdim = {}
         for name, arg_torchdim in kwargs_torchdim.items():
             #Rearrange tensors as 
             #[unnamed batch dimensions, torchdim batch dimensions, event dimensions]
-            kwargs_tensor[name] = tdd_order(arg_torchdim, dims, self.arg_event_dim[name])
+            kwargs_tensor[name] = generic_tdd_order(arg_torchdim, dims, self.arg_event_dim[name])
         dist = self.dist(**kwargs_tensor)
         lp_tensor = dist.log_prob(x_tensor)
 

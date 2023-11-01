@@ -1,3 +1,5 @@
+from .utils import *
+
 class SamplingType:
     """
     In non-factorised approximate posteriors, there are several different approaches to which 
@@ -35,12 +37,12 @@ class SingleSample(SamplingType):
     As there are no K-dimensions, there's no need to modify the scope, or the log_probs.
     """
     @staticmethod
-    def resample_scope(scope: Dict[str, Tensor], Kdim: None):
+    def resample_scope(scope: dict[str, Tensor], Kdim: None):
         assert Kdim is None
         return scope
 
     @staticmethod
-    def reduce_log_prob(lp: Tensor, name: str, varname2Kdim: Dict[str, Dim], active_platedims: List[Dim]):
+    def reduce_log_prob(lp: Tensor, name: str, varname2Kdim: dict[str, Dim], active_platedims: list[Dim]):
         return lp
 
 
@@ -52,7 +54,7 @@ class Parallel(MultipleSamples):
     Draw K independent samples from the full joint.
     """
     @staticmethod
-    def resample_scope(scope: Dict[str, Tensor], Kdim: Dim):
+    def resample_scope(scope: dict[str, Tensor], Kdim: Dim):
         """
         Doesn't permute/resample previous variables.
         scope: dict of all previously sampled variables in scope.
@@ -60,7 +62,7 @@ class Parallel(MultipleSamples):
         return scope
 
     @staticmethod
-    def reduce_log_prob(lp: Tensor, name: str, varname2Kdim: Dict[str, Dim], active_platedims: List[Dim]):
+    def reduce_log_prob(lp: Tensor, name: str, varname2Kdim: dict[str, Dim], active_platedims: list[Dim]):
         """
         lp: log_prob tensor [*active_platedims, *parent_Kdims, var_Kdim]
         Here, we take the "diagonal" of the parent_Kdims
@@ -69,8 +71,8 @@ class Parallel(MultipleSamples):
         #Check that every dim in lp is either in active_platedims, or is a Kdim.
         all_dims = set([*varname2Kdim.values(), *active_platedims])
         lp_dims = generic_dims(lp)
-        for dim in lp_dims
-            dim in all_dims
+        for dim in lp_dims:
+            assert dim in all_dims
 
         var_Kdim = varname2Kdim[name]
         parent_Kdims = set(lp_dims).difference([var_Kdim, *active_platedims])
@@ -85,7 +87,7 @@ class Mixture(MultipleSamples):
     sampling.
     """
     @staticmethod
-    def reduce_log_prob(lp: Tensor, name: str, varname2Kdim: Dict[str, Dim], active_platedims: List[Dim]):
+    def reduce_log_prob(lp: Tensor, name: str, varname2Kdim: dict[str, Dim], active_platedims: list[Dim]):
         """
         lp: log_prob tensor [*active_platedims, *parent_Kdim, var_Kdim]
         Here, we take the "average" over parent_Kdim
@@ -94,8 +96,8 @@ class Mixture(MultipleSamples):
         #Check that every dim in lp is either in active_platedims, or is a Kdim.
         all_dims = set([*varname2Kdim.values(), *active_platedims])
         lp_dims = generic_dims(lp)
-        for dim in lp_dims
-            dim in all_dims
+        for dim in lp_dims:
+            assert dim in all_dims
 
         var_Kdim = varname2Kdim[name]
         parent_Kdims = set(lp_dims).difference([var_Kdim, *active_platedims])
@@ -108,7 +110,7 @@ class MixturePermutation(Mixture):
     A mixture proposal, where we permute the particles on all the parents.
     """
     @staticmethod
-    def resample_scope(scope: Dict[str, Tensor], Kdim: Dim):
+    def resample_scope(scope: dict[str, Tensor], Kdim: Dim):
         """
         This is called as we sample Q, and permutes the particles on the parents
         As such, there is only a single K-dimension.
@@ -121,7 +123,7 @@ class MixtureCategorical(Mixture):
     A mixture proposal, where we resample the particles on the parents using a uniform Categorical.
     """
     @staticmethod
-    def resample_scope(scope: Dict[str, Tensor], Kdim: Dim):
+    def resample_scope(scope: dict[str, Tensor], Kdim: Dim):
         """
         This is called as we sample Q, and permutes the particles on the parents
         As such, there is only a single K-dimension.

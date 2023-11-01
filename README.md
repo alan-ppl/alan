@@ -15,15 +15,15 @@ Specifying a program will look something like:
 ```
 prog = Plate(
     ab = Group(
-        a = alan.Normal(loc=0, scale=1),
-        b = alan.Normal(loc='a', scale=1),
+        a = alan.Normal(0,   1),
+        b = alan.Normal('a', 1),
     )
     plate1 = Plate(
-        c = alan.Normal(loc='b', scale=1),
-        d = alan.Normal(loc='c', scale=lambda tr: tr['c'].exp()),
+        c = alan.Normal('b', 1),
+        d = alan.Normal('c', lambda c: c.exp())
         plate2 = Plate(
-            e = alan.Normal(loc='c', scale=1),
-            f = alan.Normal(loc='e', scale=1),
+            e = alan.Normal('c', scale=1),
+            f = alan.Normal('e', scale=1),
         ),
     ),
 )
@@ -35,7 +35,7 @@ Some observations here:
 * Distributions have three types of input args:
   - specific values (e.g. scalars).
   - names of previous values.
-  - a lambda `lambda tr: tr['a'].exp()`, which takes `tr`, a dict containing all variables that are "in scope".
+  - a lambda `lambda a: a.exp()`.  Note that the identity of the input variable is determined by the argument name.
 * Variables that are in scope are: 
   - those previously generated in the current plate
   - those previously generated in higher-level plates
@@ -53,6 +53,8 @@ TODOs (immanent):
 
 TODOs (pending):
 * Do subtracting logK in logP.
+* use sig = inspect.signature(fun); bound_sig = sig.bind(*args, **kwargs) ; bound_sig.arguments to extract uniformly formatted kwargs.
+* use sig = inspect.signature(fun); sig.parameters.keys() to 
 
 
 

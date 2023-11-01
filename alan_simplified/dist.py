@@ -1,55 +1,148 @@
-def valid_input(x, active_platedims):
+import types
+import inspect
+
+import torch
+
+from .utils import *
+from .TorchDimDist import TorchDimDist
+
+def in_plate(x, active_platedims: list[Dim], all_platedims: dict[str, Dim]):
     """
     It only makes sense to use some inputs (specifically, we can't use inputs which have plates
     which aren't currently active).
     """
-    return all((dim in active_platedims) for dim in generic_dims(x))
+    non_active_platedims = set(all_platedims.values()).difference(active_platedims)
+    print("in_plate")
+    print(x.dims)
+    print(non_active_platedims)
+    return all((dim not in non_active_platedims) for dim in generic_dims(x))
 
-def filtered_inputs(inputs, active_platedims):
-    return {name: inp for name, inp in inputs.items() if valid_input(inp, active_platedims)}
+def function_arguments(f):
+    """
+    Extracts the arguments of f as a list of strings.
+
+    Does lots of error checking to ensure the function signature is very simple
+    (e.g. no *args, no **kwargs, no default args, no kw-only args, no type annotations)
+    """
+    argspec = inspect.getfullargspec(f)
+
+    #no *args
+    if argspec.varargs is not None:
+        raise Exception("In Alan, functions may not have *args")
+    #no **kwargs
+    if argspec.varkw is not None:
+        raise Exception("In Alan, functions may not have **kwargs")
+    #no defaults (positional or keyword only)
+    if (argspec.defaults is not None) or (argspec.kwonlydefaults is not None):
+        raise Exception("In Alan, functions may not have defaults")
+    #no keyword only arguments
+    if argspec.kwonlyargs:
+        #kwonlyargs is a list, and lists evaluate to False if empty
+        raise Exception("In Alan, functions may not have keyword only arguments")
+    #no type annotations
+    if argspec.annotations:
+        #Annotations is a dict, and dicts evaluate to False if empty
+        raise Exception("In Alan, functions may not have type annotations")
+
+    return argspec.args
+
+def func_args(something):
+    """
+    Takes an argument to the dist (either string, lambda or literal like `0`)
+    """
+    if isinstance(something, str):
+        args = (something,)
+        func = lambda scope: scope[something]
+    elif isinstance(something, types.FunctionType):
+        #The arguments to the function `something`.
+        args = function_arguments(something)
+        func = lambda scope: something(*[scope[arg] for arg in args])
+    else:
+        #something is e.g. 1 or 0.
+        args = ()
+        func = lambda scope: something
+    return (args, func)
 
 
 class AlanDist():
     """
-    Distribution class that is actually exposed to users.
+    Abstract base class for distributions that are actually exposed to users.
 
-    Takes only kwargs.
+    All the actual distributions (e.g. Alan.Normal are subclasses of this distribution (the only difference 
+    between e.g. alan.Normal and alan.Gamma is that the PyTorch distribution is stored on `self.dist`).
 
-    kwargs can be two things: a string, or a lambda.
+    These distributions are called by the user e.g. `alan.Normal(0, "a")` or `alan.Normal(0, lambda a: a.exp())`.
 
-    Called as Distribution(Normal, loc="a", scale=lambda tr: tr["b"].exp(), shape=t.Size([]))
+    There are three different types of argument we can give an AlanDist:
+    A value (such as an integer/float).
+    A string representing a name of a variable in-scope.
+    A function representing a transformation of the scope.
+
+    Critically, we extract the argument name from e.g. `lambda a: a.exp()` and use it to extract the right 
+    variable from the scope.
     """
-    def __init__(self, *, sample_shape=t.Size([]), **kwargs):
-        self.sample_shape = shape
+    def __init__(self, *args, sample_shape=t.Size([]), **kwargs):
+        self.sample_shape = sample_shape
 
-        #Sugar, converting Distribution(Normal, loc="a", scale="b")
-        #to loc=lambda tr: tr["a"] , scale=lambda tr["b"]
-        for name, arg in kwargs.items():
-            if isinstance(arg, str):
-                kwargs[arg] = lambda tr: tr[arg]
+        #Converts args + kwargs to a unified dictionary mapping paramname2something,
+        #following distributions initialization signature.
+        paramname2something = inspect.signature(self.dist).bind(*args, **kwargs).arguments
 
-        #A dict of lambdas that take tr as input.
-        self.kwargs_func = kwargs
+        all_args = set()
+        #A dict[str, function], where the functions map from a scope to a value.
+        self.paramname2func = {}
+        for paramname, something in paramname2something.items():
+            args, func = func_args(something)
+            self.paramname2func[paramname] = func
+            all_args.update(args)
 
-    def torchdimdist(self, parent_trace, current_trace, inputs, active_platedims):
-        inputs = filtered_inputs(inputs, active_platedims)
+        self.all_args = list(all_args)
 
-        #Construct unified trace.
-        tr = {**parent_trace, **current_trace, **inputs}
-        #Check that there are no overlapping keys in any of the dicts
-        assert len(tr) == len(parent_trace) + len(current_trace) + len(inputs)
+    def filter_scope(self, scope, active_platedims, all_platedims):
+        """
+        Filters down to only the variables in scope that are actually used.
 
-        kwargs = {name: func(tr) for (name, func) in self.kwargs_func}
+        Two criteria:
+        1 Filter out the variables that aren't actually used in this distribution.  
+          That's so that when we do e.g. permutations, we're only permuting the variables we need to.
+        2 Filter out "input" variables from lower-level plates.
+        """
+        result = {}
+        for (varname, tensor) in scope.items():
+            if (varname in self.all_args) and in_plate(tensor, active_platedims, all_platedims):
+                result[varname] = tensor
+        return result
 
-        return TorchDimDist(self.dist, **kwargs)
+    def sample(self, 
+               scope: dict[str, Tensor], 
+               active_platedims: list[str], 
+               all_platedims: dict[str, Dim], 
+               sampling_type,
+               Kdim=None, 
+               reparam=True):
 
-    def sample(self, name, inputs, active_platedims: List[str], all_platedims: Dict[str, Dim], K=None, reparam=True):
+        scope = self.filter_scope(scope, active_platedims, all_platedims)
 
-        tdd = self.torchdimdist(parent_trace, current_trace, inputs, active_platedims)
+        paramname2val = {paramname: func(scope) for (paramname, func) in self.paramname2func.items()}
+        tdd = TorchDimDist(self.dist, **paramname2val)
 
-        return tdd.sample(reparam, sample_dims, sample_shape)
+        sample_dims = [Kdim, *active_platedims]
+        return tdd.sample(reparam, sample_dims, self.sample_shape)
 
     def log_prob(self, 
+               x: Tensor,
+               scope: dict[str, Tensor], 
+               active_platedims: list[str], 
+               all_platedims: dict[str, Dim], 
+               sampling_type,
+               Kdim=None, 
+               reparam=True):
+
+        scope = self.filter_scope(scope, active_platedims, all_platedims)
+
+        paramname2val = {paramname: func(inputs) for (paramname, func) in self.paramname2func.items()}
+        tdd = self.torchdimdist(self.dist, **paramname2val)
+        return tdd.log_prob(x)
 
 
 
@@ -98,7 +191,7 @@ def new_dist(name, dist):
     """
     AD = type(name, (AlanDist,), {'dist': dist})
     globals()[name] = AD
-    setattr(alan, name, AD)
+    #setattr(alan, name, AD)
 
 for dist in distributions:
     new_dist(dist, getattr(torch.distributions, dist))

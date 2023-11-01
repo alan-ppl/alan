@@ -1,18 +1,18 @@
 import torch
 from functorch.dim import Dim
 
-from LPs import LP_Plate
-from SamplingType import *
-from utils import *
+from .SamplingType import *
+from .dist import AlanDist
+from .utils import *
 
-def update_scope(scope: Dict[str, Tensor], dgpt, name:str, sample):
+def update_scope(scope: dict[str, Tensor], dgpt, name:str, sample):
     """
     Scope is a flat dict mapping variable names to Tensors.
 
     This function updates the scope after sampling a new thing (either a dist, group or plate).
     """
-    if   isinstance(dgpt, Dist):
-        # sampling from a Dist. We get back a tensor and add it to the scope.
+    if   isinstance(dgpt, AlanDist):
+        # sampling from a AlanDist. We get back a tensor and add it to the scope.
         assert isinstance(sample, Tensor)
         scope = {**scope, name: sample}
     elif isinstance(dgpt, Group):
@@ -31,15 +31,23 @@ def update_scope(scope: Dict[str, Tensor], dgpt, name:str, sample):
 
     return scope
 
-class PlateGroup():
+def update_active_platedims(name, dgpt, active_platedims: list[Dim], all_platedims: dict[str, Dim]):
+    """
+    active_platedims is from the perspective of the _caller_ plate, not this plate, so we need
+    to rearrange things a bit so they make sense from the perspective of this plate,
+    """
+    if isinstance(dgpt, Plate):
+        active_platedims = [all_platedims[name], *active_platedims]
+    return active_platedims
+
+class AbstractPlateGroup():
     def __init__(self, **kwargs):
         self.prog = kwargs
 
     def sample(self, 
-               name:str, 
-               scope:Dict[str, Tensor], 
-               active_platedims: List[str], 
-               all_platedims: Dict[str, Dim], 
+               scope:dict[str, Tensor], 
+               active_platedims: list[str], 
+               all_platedims: dict[str, Dim], 
                sampling_type:SamplingType, 
                Kdim: Dim, 
                reparam):
@@ -47,35 +55,26 @@ class PlateGroup():
         Called when sampling from the prior, or when sampling from the approximate posterior.
         We always have a single global Kdim.
         """
-        active_platedims = self.update_active_platedims(name, active_platedims, all_platedims)
 
         result = {}
 
         for name, dgpt in self.prog.items():
             sample = dgpt.sample(
-                name, 
-                scope,
-                active_platedims, 
-                all_platedims, 
-                sampling_type,
-                Kdim, 
-                reparam
+                scope=scope,
+                active_platedims=update_active_platedims(name, dgpt, active_platedims, all_platedims),
+                all_platedims=all_platedims, 
+                sampling_type=sampling_type,
+                Kdim=Kdim, 
+                reparam=reparam
             )
+            result[name] = sample
 
             scope = update_scope(scope, dgpt, name, sample)
 
-        return current_trace
-
+        return result
 
 class Plate(AbstractPlateGroup):
-    def update_active_platedims(name, active_platedims, all_platedims):
-        """
-        active_platedims is from the perspective of the _caller_ plate, not this plate, so we need
-        to rearrange things a bit so they make sense from the perspective of this plate,
-        """
-        return [all_platedims[name], *active_platedims]
-
-    def log_prob(self, samples, name, scope, active_platedims: List[str], all_platedims: Dict[str, Dim], sampling_type):
+    def log_prob(self, samples, scope, active_platedims: list[str], all_platedims: dict[str, Dim], sampling_type):
         """
         Builds a tree of log-probs as a dict, mirroring the structure of a tr.
         
@@ -85,18 +84,15 @@ class Plate(AbstractPlateGroup):
         """
         assert isinstance(samples, dict)
 
-        active_platedims = update_active_platedims(name, active_platedims, all_platedims)
-
         lps = {}
-
         for name, dgpt in self.prog.items():
             sample = samples[name]
+
             lps[name] = dgpt.log_prob(
                 sample,
                 Kdim,
-                name,
                 scope,
-                active_platedims, 
+                update_active_platedims(name, dgpt, active_platedims, all_platedims),
                 all_platedims, 
                 sampling_type
             )
@@ -113,7 +109,7 @@ class Plate(AbstractPlateGroup):
 
         result = {}
         for name, dpt in self.prog.items():
-            if isinstance(dpt, Dist):
+            if isinstance(dpt, AlanDist):
                 result[name] = Dim(vargroupname2Kname(name), K)
             elif isinstance(dpt, (Plate, Group)):
                 result = {**result, **dpt.varname2Kdim(dpt, K, name)}
@@ -128,7 +124,7 @@ class Group(AbstractPlateGroup):
     def __init__(self, **kwargs):
         #Groups can only contain variables, not Plates/Timeseries/other Groups.
         for dist in kwargs.values():
-            assert isinstance(dist, Dist)
+            assert isinstance(dist, AlanDist)
 
         self.prog = kwargs
 
@@ -142,7 +138,7 @@ class Group(AbstractPlateGroup):
         Kdim = Dim(vargroupname2Kname(groupname), K)
         return {varname: Kdim for varname in self.prog}
 
-def convert_sample_global2local_K(sample, Kdim: Dim, varname2Kdim: Dict[str, Dim]):
+def convert_sample_global2local_K(sample, Kdim: Dim, varname2Kdim: dict[str, Dim]):
     """
     Converts a sample (represented as a nested dict) with local Kdim to global Kdim.
     """
