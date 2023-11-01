@@ -4,6 +4,7 @@ from functorch.dim import Dim
 from .SamplingType import *
 from .dist import AlanDist
 from .utils import *
+from .GroupSample import GroupSample
 
 def update_scope(scope: dict[str, Tensor], name:str, sample):
     """
@@ -13,6 +14,8 @@ def update_scope(scope: dict[str, Tensor], name:str, sample):
     """
     if isinstance(sample, dict):
         return {**scope, **sample}
+    elif isinstance(sample, GroupSample):
+        return {**scope, **sample.sample}
     else:
         assert isinstance(sample, Tensor)
         return {name: sample, **scope}
@@ -90,22 +93,6 @@ class Plate(PlateTimeseries):
 
         return PlateLPs(active_platedims, K_dims, lps)
 
-    def varname2Kdim(self, K, platename):
-        """
-        Returns a dict mapping variable names to their Kdims, taking into account groups.
-        """
-        del platename #Don't need platename.
-
-        result = {}
-        for name, dpt in self.prog.items():
-            if isinstance(dpt, AlanDist):
-                result[name] = Dim(vargroupname2Kname(name), K)
-            elif isinstance(dpt, (Plate, Group)):
-                result = {**result, **dpt.varname2Kdim(dpt, K, name)}
-            else:
-                error()
-        return result
-
 def vargroupname2Kname(name):
     return f"K_{name}"
 
@@ -139,4 +126,3 @@ def convert_sample_global2local_K(sample, Kdim: Dim, varname2Kdim: dict[str, Dim
             assert isinstance(v, dict)
             result[k] = convert_sample_global2local_K(v, Kdim, varname2Kdim)
     return result
-
