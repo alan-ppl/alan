@@ -105,9 +105,13 @@ class AlanDist():
         2 Filter out "input" variables from lower-level plates.
         """
         result = {}
-        for (varname, tensor) in scope.items():
-            if (varname in self.all_args) and in_plate(tensor, active_platedims, all_platedims):
-                result[varname] = tensor
+        for varname in self.all_args:
+            if varname not in scope:
+                raise Exception(f"Can't find {varname} in scope")
+            tensor = scope[varname]
+            if not in_plate(tensor, active_platedims, all_platedims):
+                raise Exception(f"{varname} is at a lower plate-level: it has dimensions {tensor.dims}, while at the moment, we're in the plate with dims {active_platedims}")
+            result[varname] = tensor
         return result
 
     def sample(self, 

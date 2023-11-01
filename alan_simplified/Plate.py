@@ -5,31 +5,17 @@ from .SamplingType import *
 from .dist import AlanDist
 from .utils import *
 
-def update_scope(scope: dict[str, Tensor], dgpt, name:str, sample):
+def update_scope(scope: dict[str, Tensor], name:str, sample):
     """
     Scope is a flat dict mapping variable names to Tensors.
 
-    This function updates the scope after sampling a new thing (either a dist, group or plate).
+    sample could be a tensor or a dict.
     """
-    if   isinstance(dgpt, AlanDist):
-        # sampling from a AlanDist. We get back a tensor and add it to the scope.
-        assert isinstance(sample, Tensor)
-        scope = {**scope, name: sample}
-    elif isinstance(dgpt, Group):
-        # sampling from a Group. We get back a flat dict of Tensors, and add all of them to scope.
-
-        #check the sample is a flat dict of tensors.
-        assert isinstance(sample, dict)
-        for tensor in sample.values():
-            assert isinstance(tensor, Tensor)
-
-        scope = {**scope, **sample}
+    if isinstance(sample, dict):
+        return {**scope, **sample}
     else:
-        #If sampling from a sub-plate, then we don't add those variables to the scope.
-        assert isinstance(dgpt, Plate)
-        assert isinstance(sample, dict)
-
-    return scope
+        assert isinstance(sample, Tensor)
+        return {name: sample, **scope}
 
 def update_active_platedims(name, dgpt, active_platedims: list[Dim], all_platedims: dict[str, Dim]):
     """
@@ -69,7 +55,7 @@ class PlateTimeseriesGroup():
             )
             result[name] = sample
 
-            scope = update_scope(scope, dgpt, name, sample)
+            scope = update_scope(scope, name, sample)
 
         return result
 
@@ -100,7 +86,7 @@ class Plate(PlateTimeseries):
                 sampling_type
             )
 
-            scope = update_scope(scope, dgpt, name, sample)
+            scope = update_scope(scope, name, sample)
 
         return PlateLPs(active_platedims, K_dims, lps)
 
