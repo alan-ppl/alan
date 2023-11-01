@@ -40,7 +40,7 @@ def update_active_platedims(name, dgpt, active_platedims: list[Dim], all_platedi
         active_platedims = [all_platedims[name], *active_platedims]
     return active_platedims
 
-class AbstractPlateGroup():
+class PlateTimeseriesGroup():
     def __init__(self, **kwargs):
         self.prog = kwargs
 
@@ -73,7 +73,10 @@ class AbstractPlateGroup():
 
         return result
 
-class Plate(AbstractPlateGroup):
+class PlateTimeseries(PlateTimeseriesGroup):
+    pass
+
+class Plate(PlateTimeseries):
     def log_prob(self, samples, scope, active_platedims: list[str], all_platedims: dict[str, Dim], sampling_type):
         """
         Builds a tree of log-probs as a dict, mirroring the structure of a tr.
@@ -120,7 +123,7 @@ class Plate(AbstractPlateGroup):
 def vargroupname2Kname(name):
     return f"K_{name}"
 
-class Group(AbstractPlateGroup):
+class Group(PlateTimeseriesGroup):
     def __init__(self, **kwargs):
         #Groups can only contain variables, not Plates/Timeseries/other Groups.
         for dist in kwargs.values():

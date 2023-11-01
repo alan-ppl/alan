@@ -12,9 +12,6 @@ def in_plate(x, active_platedims: list[Dim], all_platedims: dict[str, Dim]):
     which aren't currently active).
     """
     non_active_platedims = set(all_platedims.values()).difference(active_platedims)
-    print("in_plate")
-    print(x.dims)
-    print(non_active_platedims)
     return all((dim not in non_active_platedims) for dim in generic_dims(x))
 
 def function_arguments(f):
