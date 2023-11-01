@@ -50,11 +50,14 @@ TODOs (B/T):
 * Implement and test SamplingType.
 * Tests for TorchDimDist.
   - note that sample_dims is supposed to be all the samples in the output, not just the extra ones.
+* Tests for LP_Plate (explicitly construct some LP_Plates, and sum out.  Do we get what we expect?)
 
 TODOs (L):
 * Check that all names are unique as you construct plate.
-* Convert single Kdim to multiple Kdim
-* Implement a method for subtracting log K in `LP_Plate`.  Note that we should be subtracting log K in Q but not P to account for e.g. enumerated discrete variables
+* Source term tricks
+* Groups
+* Enumerating discrete variables
+* Syntax for Timeseries
 
 
 
