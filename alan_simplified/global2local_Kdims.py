@@ -7,14 +7,14 @@ from .GroupSample import GroupSample
 def varname2Kname(varname: str):
     return f"K_{varname}"
 
-def sample2varname2Kdim(sample: dict, global_Kdim: Dim):
+def sample2groupvarname2Kdim(sample: dict, global_Kdim: Dim):
     """
     Takes a sample, and returns a dict mapping variable names to the corresponding local Kdim.
     """
     result = {}
     for k, v in sample.items():
         if isinstance(v, dict):
-            result = {**sample2varname2Kdim(v, global_Kdim), **result}
+            result = {**sample2groupvarname2Kdim(v, global_Kdim), **result}
         else:
             assert isinstance(v, (Tensor, GroupSample))
             local_Kdim = Dim(varname2Kname(k), global_Kdim.size)
@@ -34,13 +34,13 @@ def _global2local_Kdims(globalK_sample: dict, global_Kdim: Dim, local_Kdims: dic
         if isinstance(v, dict):
             localK_sample[k] = _global2local_Kdims(v, global_Kdim, local_Kdims)
         elif isinstance(v, GroupSample):
-            localK_sample[k] = GroupSample({gk: switch_Kdim(gv, global_Kdim, local_Kdims[gk]) for gk, gv in v.samples.items()})
+            localK_sample[k] = GroupSample({gk: switch_Kdim(gv, global_Kdim, local_Kdims[k]) for gk, gv in v.samples.items()})
         else:
             assert isinstance(v, Tensor)
             localK_sample[k] = switch_Kdim(v, global_Kdim, local_Kdims[k])
     return localK_sample
 
 def global2local_Kdims(globalK_sample: dict, global_Kdim: Dim):
-    varname2Kdim = sample2varname2Kdim(globalK_sample, global_Kdim)
-    localK_sample = _global2local_Kdims(globalK_sample, global_Kdim, varname2Kdim)
-    return localK_sample, varname2Kdim
+    groupvarname2Kdim = sample2groupvarname2Kdim(globalK_sample, global_Kdim)
+    localK_sample = _global2local_Kdims(globalK_sample, global_Kdim, groupvarname2Kdim)
+    return localK_sample, groupvarname2Kdim

@@ -5,6 +5,7 @@ from .SamplingType import *
 from .dist import AlanDist
 from .utils import *
 from .GroupSample import GroupSample
+from .LP import LP_Plate
 
 def update_scope(scope: dict[str, Tensor], name:str, sample):
     """
@@ -26,7 +27,7 @@ def update_active_platedims(name, dgpt, active_platedims: list[Dim], all_platedi
     to rearrange things a bit so they make sense from the perspective of this plate,
     """
     if isinstance(dgpt, Plate):
-        active_platedims = [all_platedims[name], *active_platedims]
+        active_platedims = [*active_platedims, all_platedims[name]]
     return active_platedims
 
 class PlateTimeseriesGroup():
@@ -66,7 +67,13 @@ class PlateTimeseries(PlateTimeseriesGroup):
     pass
 
 class Plate(PlateTimeseries):
-    def log_prob(self, samples, scope, active_platedims: list[str], all_platedims: dict[str, Dim], sampling_type):
+    def log_prob(self, 
+                 sample, 
+                 scope: dict[any, Tensor], 
+                 active_platedims: list[str], 
+                 all_platedims: dict[str, Dim], 
+                 sampling_type,
+                 groupvarname2Kdim:dict[str, Dim]):
         """
         Builds a tree of log-probs as a dict, mirroring the structure of a tr.
         
@@ -74,24 +81,27 @@ class Plate(PlateTimeseries):
 
         Most of the error checking is inside dist.log_prob.
         """
-        assert isinstance(samples, dict)
+        assert isinstance(sample, dict)
 
         lps = {}
+        Kdims = {}
         for name, dgpt in self.prog.items():
-            sample = samples[name]
+            s = sample[name]
+            if isinstance(s, (Tensor, GroupSample)):
+                Kdims[name] = groupvarname2Kdim[name]
 
             lps[name] = dgpt.log_prob(
-                sample,
-                Kdim,
-                scope,
-                update_active_platedims(name, dgpt, active_platedims, all_platedims),
-                all_platedims, 
-                sampling_type
+                sample=s,
+                scope=scope,
+                active_platedims=update_active_platedims(name, dgpt, active_platedims, all_platedims),
+                all_platedims=all_platedims, 
+                sampling_type=sampling_type,
+                groupvarname2Kdim=groupvarname2Kdim
             )
 
-            scope = update_scope(scope, name, sample)
+            scope = update_scope(scope, name, s)
 
-        return PlateLPs(active_platedims, K_dims, lps)
+        return LP_Plate(lps, active_platedims, Kdims)
 
 def vargroupname2Kname(name):
     return f"K_{name}"

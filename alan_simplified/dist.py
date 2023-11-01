@@ -131,19 +131,21 @@ class AlanDist():
         return tdd.sample(reparam, sample_dims, self.sample_shape)
 
     def log_prob(self, 
-               x: Tensor,
-               scope: dict[str, Tensor], 
-               active_platedims: list[str], 
-               all_platedims: dict[str, Dim], 
-               sampling_type,
-               Kdim=None, 
-               reparam=True):
+                 sample: Tensor, 
+                 scope: dict[any, Tensor], 
+                 active_platedims: list[str], 
+                 all_platedims: dict[str, Dim], 
+                 sampling_type,
+                 groupvarname2Kdim:dict[str, Dim]):
+        """
+        Not enough information here to apply sampling_type summing over dimensions!!!
+        """
 
         scope = self.filter_scope(scope, active_platedims, all_platedims)
 
-        paramname2val = {paramname: func(inputs) for (paramname, func) in self.paramname2func.items()}
-        tdd = self.torchdimdist(self.dist, **paramname2val)
-        return tdd.log_prob(x)
+        paramname2val = {paramname: func(scope) for (paramname, func) in self.paramname2func.items()}
+        tdd = TorchDimDist(self.dist, **paramname2val)
+        return tdd.log_prob(sample)
 
 
 

@@ -1,30 +1,30 @@
 import torch as t
 from functorch.dim import Dim
-from utils import *
+from .utils import *
 
-#log-probs can either be tensors (for a variable/group), or classes representing a plate/timeseries.
-LP = Union(Tensor, LP_Plate)
+from typing import Any
+
 
 class LP_Plate:
-    def __init__(self, platedim: Dim, K_dims: List[Dim], lps: Dict[str, LP]):
+    def __init__(self, lps:dict[str, Any], active_platedims: list[Dim], Kdims: dict[str, Dim]):
         """
         Converts everything to named tensors (so that we don't need consistent dimension names 
         when sampling variables).
 
         plate_dim: the plate dimension.
-        K_dims: all the K_dims to sum over at this plate
+        Kdims: all the Kdims to sum over at this plate
             lps: Dict mapping string to LP
 
         All error checknig is assumed to be done inside Plate.log_prob, as more information
         is available there.
         """
-        self.platedim = platedim
-        self.K_dims = K_dims
+        self.active_platedims = active_platedims
+        self.Kdims = Kdims
         self.lps = lps
 
-        
+        assert self.lps.keys() == self.Kdims.keys()
 
-    def subtract_logq(self, logq):
+    def minus_logq(self, logq):
         #Assumes self represents logp
 
         #Check the active_platedims are the same
@@ -51,6 +51,27 @@ class LP_Plate:
             lps[name] = lp
 
         return LP_Plate(self.platedim, self.K_dims, lps)
+
+    def minus_logK(self):
+        """
+        Subtracts logK from all the log-prob tensors in log Q.
+        """
+        result = {}
+        for name, lp in self.lps:
+            Kdim = self.Kdims[name]
+
+            #This is for logQ, so there should only be a single K-dimension for each
+            #log-prob tensor.
+            other_Kdims = set(self.Kdims.values())
+            other_Kdims.remove(Kdim)
+            for dim in generic_dims(lp):
+                assert dim not in other_Kdims
+
+            result[name] = lp - math.log(Kdim.size)
+
+        return LP_Plate(result, active_platedims, Kdims)
+
+
 
 
     def sum(self):

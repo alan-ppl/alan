@@ -54,7 +54,7 @@ TODOs (B/T):
 TODOs (L):
 * Check that all names are unique as you construct plate.
 * Convert single Kdim to multiple Kdim
-* Do subtracting log K in logQ (which is the right place if you've got enumerate discrete variables, which don't have a logQ and for which we don't subtract log K.
+* Implement a method for subtracting log K in `LP_Plate`.  Note that we should be subtracting log K in Q but not P to account for e.g. enumerated discrete variables
 
 
 
@@ -75,17 +75,36 @@ Algorithm:
 * Reduce
 
 Groups:
-  - groups are denoted in programs using ab = Group(a=alan.Normal(0,1), b=alan.Normal('a', 2))
-  - groups must match across P and Q (otherwise e.g. doing logP-logQ becomes painful).
-  - groups can't have inner plates/timeseries.
-  - samples from groups are just dicts (like plate samples).
-  - but log_prob from groups are aggregated across all variables within the group.
+  * groups are denoted in programs using ab = Group(a=alan.Normal(0,1), b=alan.Normal('a', 2))
+  * groups only appear in Q (as they're all about sampling the approximate posterior, they don't make sense in P).
+  * groups can't have inner plates/timeseries.
+  * the sample from the group are GroupSample (which are just a thin wrapper over a dict).
+  * but log_prob from groups are aggregated across all variables within the group (log_prob for P knows it needs to aggregate because it sees the GroupSample).
+
+Efficiency:
+  * except for very, very large models, it should always be possible to store the samples in (video) RAM.
+  * for some models, it may be possible to represent the underlying log-prob tensors in (video) RAM.
+  * what is hard is to represent the log-prob tensors that arise as we're summing out K's.
+  * the solution is to split this sum over a plate.
+
+Combining prog with inputs/learned parameters/data.
+  * inputs / learned parameters are just dumped in scope.
+  * data is added to a sample before we compute log P.
+  * Assumptions:
+    - Q just has learned parameters (no inputs or data).
+    - P just has inputs in scope (no data or learned parameters).
+    - data is only added to the sample from Q
+  * Solution: a Bind(plate, inputs=None, parameters=None) method.
+    - inputs are fixed and not learned (used for fixing inputs for P)
+    - parameters are learned (used for fixing inputs for Q)
+    - inputs and parameters are named tensors, not torchdim yet (as we haven't associated P with Q, we can't have a unified list of Dims).
+  
 
 Datastructures:
   * Program is represented as a nested series of objects (mainly Plate)
-  * samples are represented as a nested dict of torchdim tensors
-    - nesting for groups/plates/timeseries.
-    - means that it isn't possible to tell the difference between group/plate/timeseries based only on sample.
+  * samples are represented as a nested dict of:
+    - torchdim tensors.
+    - GroupSample (for groups) which acts as a thin wrapper.
   * log-probs are represented as a nested series of objects (mainly LP_Plate).  This is for a few reasons:
     - we can use methods on these objects to compute the ELBO, without needing the original program.
     - but those methods need to know e.g. Timeseries vs Plate.

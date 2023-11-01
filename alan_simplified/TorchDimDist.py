@@ -125,10 +125,10 @@ class TorchDimDist():
 
         dims = unify_dims([x, *self.kwargs_torchdim.values()])
 
-        x_tensor = tdd_order(x, dims, self.result_event_dim)
+        x_tensor = tdd_order(x, dims, self.sample_event_dim)
 
-        kwargs_torchdim = {}
-        for name, arg_torchdim in kwargs_torchdim.items():
+        kwargs_tensor = {}
+        for name, arg_torchdim in self.kwargs_torchdim.items():
             #Rearrange tensors as 
             #[unnamed batch dimensions, torchdim batch dimensions, event dimensions]
             kwargs_tensor[name] = generic_tdd_order(arg_torchdim, dims, self.arg_event_dim[name])
