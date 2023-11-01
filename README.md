@@ -46,15 +46,15 @@ Some observations here:
 * samples are represented as dictionaries (we will allow for e.g. timeseries or GPs, but they should be interchangeable: i.e. you can have a timeseries in the generative model, but a plate in the approximate posterior).
 * backend uses named tensors (so we don't have to worry about named dimensions).
 
-TODOs (immanent):
+TODOs (B/T):
 * Implement and test SamplingType.
 * Tests for TorchDimDist.
   - note that sample_dims is supposed to be all the samples in the output, not just the extra ones.
 
-TODOs (pending):
-* Do subtracting logK in logP.
-* use sig = inspect.signature(fun); bound_sig = sig.bind(*args, **kwargs) ; bound_sig.arguments to extract uniformly formatted kwargs.
-* use sig = inspect.signature(fun); sig.parameters.keys() to 
+TODOs (L):
+* Check that all names are unique as you construct plate.
+* Convert single Kdim to multiple Kdim
+* Do subtracting log K in logQ (which is the right place if you've got enumerate discrete variables, which don't have a logQ and for which we don't subtract log K.
 
 
 
