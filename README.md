@@ -60,23 +60,6 @@ TODOs (L):
 * Syntax for Timeseries
 
 
-
-Components:
-*TorchDimDist
-
-Algorithm:
-* Sample from Q with a single K-dimension:
-  - Needs to know K-dimension.
-  - May permute/resample the input variables, depending on the scheme.
-  - Don't sample enumerate variables.
-* Convert single K-dimension to multiple K-dimensions.
-* Compute logQ.
-  - Need to know the K-dimension associated with each variable.
-  - Needs to know the resampling scheme.
-* Compute logP (log_prob doesn't need to know K-dimensions).
-* Take difference logP - logQ
-* Reduce
-
 Groups:
   * groups are denoted in programs using ab = Group(a=alan.Normal(0,1), b=alan.Normal('a', 2))
   * groups only appear in Q (as they're all about sampling the approximate posterior, they don't make sense in P).
@@ -86,9 +69,13 @@ Groups:
 
 Efficiency:
   * except for very, very large models, it should always be possible to store the samples in (video) RAM.
-  * for some models, it may be possible to represent the underlying log-prob tensors in (video) RAM.
   * what is hard is to represent the log-prob tensors that arise as we're summing out K's.
   * the solution is to split this sum over a plate.
+  * specifically, write down a function that takes:
+    - full Q_sample
+    - Q_part, P_part (i.e. part of the Q and P models, perhaps corresponding to the lowest-level plate).
+    - now we can split the sum along the plate into parts, and do each part in turn.
+  * this function is "checkpointed" for the purposes of the backward pass (but might have to manually checkpoint).
 
 Combining prog with inputs/learned parameters/data.
   * inputs / learned parameters are just dumped in scope.
