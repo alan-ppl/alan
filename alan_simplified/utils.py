@@ -2,6 +2,7 @@ import inspect
 import math
 
 import torch as t
+import torch.distributions as td
 import functorch
 from functorch.dim import Dim
 from torch.utils.checkpoint import checkpoint
