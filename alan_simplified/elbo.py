@@ -9,11 +9,12 @@ from .utils import *
 
 PlateBoundPlate = Union[Plate, BoundPlate]
 
-def elbo(P: PlateBoundPlate, Q: PlateBoundPlate, all_platesizes: dict[str, int], data: dict[str, t.Tensor], K: int, reparam:bool):
-    #Error checking that P and Q make sense.
-    #  data appears in P but not Q.
-    #  all_platesizes is complete.
-
+def sample_logPQ(P: PlateBoundPlate, Q: PlateBoundPlate, all_platesizes: dict[str, int], data: dict[str, t.Tensor], K: int, reparam:bool):
+    """
+    Returns: 
+        globalK_sample: sample with different K-dimension for each variable.
+        logPQ: log-prob.
+    """
     all_platedims = {name: Dim(name, size) for name, size in all_platesizes.items()}
     data = named2dim_tensordict(all_platedims, data)
 
@@ -60,7 +61,15 @@ def elbo(P: PlateBoundPlate, Q: PlateBoundPlate, all_platesizes: dict[str, int],
     #Take the difference of logP and logQ
     logPQ = logP.minus_logQ(logQ)
 
-    #Sum out Ks and plates
+    return globalK_sample, logPQ
+
+
+def elbo(P: PlateBoundPlate, Q: PlateBoundPlate, all_platesizes: dict[str, int], data: dict[str, t.Tensor], K: int, reparam:bool):
+    #Error checking that P and Q make sense.
+    #  data appears in P but not Q.
+    #  all_platesizes is complete.
+
+    _, logPQ = sample_logPQ(P=P, Q=Q, all_platesizes=all_platesizes, data=data, K=K, reparam=reparam)
     return logPQ.sum()
 
 

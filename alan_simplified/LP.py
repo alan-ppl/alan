@@ -79,9 +79,6 @@ class LP_Plate:
 
         return LP_Plate(result, self.active_platedims, self.Kdims)
 
-
-
-
     def sum(self):
         """
         * Calls sum on all the subplates
@@ -102,6 +99,16 @@ class LP_Plate:
             lp = lp.sum(self.active_platedims[-1])
             
         return lp
+
+    def extra_log_factors(self, factors:dict[str, Tensor]):
+        result = {}
+        for name, lp in self.lps.items():
+            if name in factors:
+                lp = lp + factors[name]
+            result[name] = lp
+        return LP_Plate(result, self.active_platedims, self.Kdims)
+
+
 
 import opt_einsum
 def einsum_args(lps, sum_dims):
