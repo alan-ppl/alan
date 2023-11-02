@@ -264,34 +264,37 @@ class TestTorchDimDist_log_prob(unittest.TestCase):
         self.assertTrue((lp_td == lp_no_dims).all())
 
     def test_log_prob_from_sample_with_event_dims(self):
-        # self.mvn_loc = t.randn((3,4,5))[self.d3, self.d4]
-        # self.mvn_cov_matrix = t.randn((3,4,5,5))[self.d3, self.d4].exp()
+        # set up a multivariate normal
+        mvn_loc = t.randn((3,4,5))[self.d3, self.d4]
 
-        # self.tdd_with_event_dims = TorchDimDist(td.MultivariateNormal, loc=self.mvn_loc, covariance_matrix=self.mvn_cov_matrix)
+        cov_sqrt_matrix = t.randn((3,4,5,5))[self.d3, self.d4].exp()
+        mvn_cov_matrix = cov_sqrt_matrix.t() @ cov_sqrt_matrix
 
-        # sample_shape = [3,4]
+        self.tdd_with_event_dims = TorchDimDist(td.MultivariateNormal, loc=mvn_loc, covariance_matrix=mvn_cov_matrix)
 
-        # t.manual_seed(1)
-        # sample_tdd = self.tdd.sample(True, [self.d3, self.d4], sample_shape)
-        # lp = self.tdd.log_prob(sample_tdd)
+        sample_shape = [3,4]
 
-        # lp_no_dims = lp.order(self.d3, self.d4)
+        # sample from the TorchDimDist
+        t.manual_seed(1)
+        sample_tdd = self.tdd_with_event_dims.sample(True, [self.d3, self.d4], sample_shape)
+        lp = self.tdd_with_event_dims.log_prob(sample_tdd)
 
-        # t.manual_seed(1)
-        # sample_shape = [3,4,3,4]
-        # td_obj = td.MultivariateNormal(self.mvn_loc.order(*self.dims), self.mvn_cov_matrix.order(*self.dims))
-        # sample_td = td_obj.sample(sample_shape)
-        # lp_td = td_obj.log_prob(sample_td)
+        lp_no_dims = lp.order(self.d3, self.d4)
 
-        # unnamed_dims = range(len(sample_shape))
-        # torchdim_dims = range(len(sample_shape), len(sample_shape)+len(self.dims))
+        # sample from the underlying PyTorch distribution
+        t.manual_seed(1)
+        td_obj = td.MultivariateNormal(mvn_loc.order(self.d3, self.d4), mvn_cov_matrix.order(self.d3, self.d4))
+        sample_td = td_obj.sample(sample_shape)
+        lp_td = td_obj.log_prob(sample_td)
 
-        # lp_td = lp_td.permute(*torchdim_dims, *unnamed_dims)
+        unnamed_dims = range(len(sample_shape))
+        torchdim_dims = range(len(sample_shape), len(sample_shape)+len(self.dims)-1)
 
-        # self.assertEqual(lp.shape, t.Size(sample_shape))
-        # self.assertTrue((lp_td == lp_no_dims).all())
+        lp_td = lp_td.permute(*torchdim_dims, *unnamed_dims)
 
-        pass
+        # check that the log probs are the same
+        self.assertEqual(lp.shape, t.Size(sample_shape))
+        self.assertTrue((lp_td == lp_no_dims).all())
 
 
 if __name__ == '__main__':
