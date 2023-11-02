@@ -2,7 +2,7 @@ import torch as t
 import torch.distributions as td
 from functorch.dim import Dim
 
-from alan_simplified import Normal, Plate, BoundPlate, SingleSample, elbo
+from alan_simplified import Normal, Plate, BoundPlate, SingleSample, Problem
 
 P = Plate(
     a = Normal(0, 1),
@@ -20,4 +20,6 @@ Q = BoundPlate(Q, parameters={
     "log_b_scale" : t.zeros(())
 })
 
-L = elbo(P, Q, all_platesizes={}, data={'c': 5*t.ones(())}, K=10, reparam=True)
+problem = Problem(P, Q, all_platesizes={}, data={'c': 5*t.ones(())})
+sample = problem.sample(K=10, reparam=True)
+L = sample.elbo()

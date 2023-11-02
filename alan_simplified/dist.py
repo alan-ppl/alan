@@ -14,35 +14,6 @@ def in_plate(x, active_platedims: list[Dim], all_platedims: dict[str, Dim]):
     non_active_platedims = set(all_platedims.values()).difference(active_platedims)
     return all((dim not in non_active_platedims) for dim in generic_dims(x))
 
-def function_arguments(f):
-    """
-    Extracts the arguments of f as a list of strings.
-
-    Does lots of error checking to ensure the function signature is very simple
-    (e.g. no *args, no **kwargs, no default args, no kw-only args, no type annotations)
-    """
-    argspec = inspect.getfullargspec(f)
-
-    #no *args
-    if argspec.varargs is not None:
-        raise Exception("In Alan, functions may not have *args")
-    #no **kwargs
-    if argspec.varkw is not None:
-        raise Exception("In Alan, functions may not have **kwargs")
-    #no defaults (positional or keyword only)
-    if (argspec.defaults is not None) or (argspec.kwonlydefaults is not None):
-        raise Exception("In Alan, functions may not have defaults")
-    #no keyword only arguments
-    if argspec.kwonlyargs:
-        #kwonlyargs is a list, and lists evaluate to False if empty
-        raise Exception("In Alan, functions may not have keyword only arguments")
-    #no type annotations
-    if argspec.annotations:
-        #Annotations is a dict, and dicts evaluate to False if empty
-        raise Exception("In Alan, functions may not have type annotations")
-
-    return argspec.args
-
 def func_args(something):
     """
     Takes an argument to the dist (either string, lambda or literal like `0`)
