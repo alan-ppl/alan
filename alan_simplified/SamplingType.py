@@ -77,7 +77,11 @@ class Parallel(MultipleSamples):
         var_Kdim = varname2Kdim[name]
         parent_Kdims = set(lp_dims).difference([var_Kdim, *active_platedims])
         
-        #Continue...
+        if len(parent_Kdims) > 0:
+            idxs = [t.arange(Kdim.size)[Kdim] for K in parent_Kdims]
+            lp = lp.order(*parent_Kdims)[idxs]
+        
+        return lp
 
 class Mixture(MultipleSamples):
     """
@@ -102,7 +106,7 @@ class Mixture(MultipleSamples):
         var_Kdim = varname2Kdim[name]
         parent_Kdims = set(lp_dims).difference([var_Kdim, *active_platedims])
 
-        #Continue...
+        return logmeanexp_dims(lp, dims=parent_Kdims)
 
 
 class MixturePermutation(Mixture):
