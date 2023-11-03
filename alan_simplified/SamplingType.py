@@ -30,26 +30,7 @@ class SamplingType:
     """
     pass
 
-class SingleSample(SamplingType):
-    """
-    Draw a single sample, with no K-dimension.
-
-    As there are no K-dimensions, there's no need to modify the scope, or the log_probs.
-    """
-    @staticmethod
-    def resample_scope(scope: dict[str, Tensor], active_platedims: list[Dim], Kdim: None):
-        assert Kdim is None
-        return scope
-
-    @staticmethod
-    def reduce_logQ(self, lp: Tensor, active_platedims: list[Dim], Kdim: Dim):
-        return lp
-
-
-class MultipleSamples(SamplingType):
-    pass
-
-class Parallel(MultipleSamples):
+class IndependentSample(SamplingType):
     """
     Draw K independent samples from the full joint.
     """
@@ -114,7 +95,7 @@ def Kdim2varname2tensors(scope: dict[str, Tensor], active_platedims: list[Dim]):
             Kdim2tensors[Kdim][varname] = tensor
     return Kdim2tensors
 
-class Mixture(MultipleSamples):
+class MixtureSample(SamplingType):
     """
     A mixture proposal over all combinations of all particles of parent latent variables.
 
@@ -164,7 +145,7 @@ class Mixture(MultipleSamples):
 
 
 
-class MixturePermutation(Mixture):
+class PermutationMixtureSample(Mixture):
     """
     A mixture proposal, where we permute the particles on all the parents.
     """
@@ -173,7 +154,7 @@ class MixturePermutation(Mixture):
         tdd = TorchDimDist(td.uniform.Uniform, low=0, high=1)
         return tdd.sample(False, sample_dims=dims, sample_shape=[]).argsort(Kdim)
     
-class MixtureCategorical(Mixture):
+class CategoricalMixtureSample(Mixture):
     """
     A mixture proposal, where we resample the particles on the parents using a uniform Categorical.
     """

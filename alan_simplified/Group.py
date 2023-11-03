@@ -1,8 +1,7 @@
 from typing import Optional
 from dist import Dist, filter_resample_scope
 
-class Group():
-    def __init__(self, **kwargs):
+class Group(): def __init__(self, **kwargs):
         #Groups can only contain Dist, not Plates/Timeseries/other Groups.
         for dist in kwargs.values():
             assert isinstance(dist, Dist)

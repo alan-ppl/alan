@@ -1,12 +1,16 @@
 from typing import Optional
 
+from functorch.dim import Dim
+
 from .utils import *
 from .SamplingType import SamplingType
+from .dist import Dist
+from .group import Group
+
 
 class PlateTimeseries():
     def __init__(self, **kwargs):
         self.prog = kwargs
-
 
 class Plate(PlateTimeseries):
 
@@ -40,6 +44,17 @@ class Plate(PlateTimeseries):
             sample[childname] = childsample
 
         return sample, parent_scope
+
+    def groupvarname2Kdim(self, K):
+        result = {}
+        for childname, childP in self.prog.items():
+            if isinstance(childP, (Dist, Group)):
+                result[childname] = Dim(f"K_{childname}", K)
+            else:
+                assert isinstance(childP, Plate)
+                result = {**result, **childP.groupvarname2Kdim(K)}
+        return result
+                
 
 
         

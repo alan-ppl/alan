@@ -53,8 +53,11 @@ TODOs (B/T):
 * Tests for LP_Plate (explicitly construct some LP_Plates, and sum out.  Do we get what we expect?)
 
 TODOs (L):
-* Check that all names are unique as you construct plate.
-* Consistent Group + Dist implementation, esp. wrt SamplingType.
+* Problem:
+  - Check that all names are unique.
+  - Check that the structure of P matches the structure of Q.
+  - write problem.groupvarname2Kdim(K)
+* Check reduce_logQ for IndependentSample
 * Source term tricks
 * Enumerating discrete variables
 * Syntax for Timeseries
