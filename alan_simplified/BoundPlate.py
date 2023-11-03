@@ -41,36 +41,3 @@ class BoundPlate(nn.Module):
 
     def update_scope(self, scope:dict[str, Tensor], all_platedims:dict[str, Dim]):
         return {**scope, **self.inputs(all_platedims), **self.parameters(all_platedims)}
-
-    def sample(self, 
-               scope:dict[str, Tensor], 
-               active_platedims: list[str], 
-               all_platedims: dict[str, Dim], 
-               sampling_type:SamplingType, 
-               Kdim: Dim, 
-               reparam):
-        return self.plate.sample(
-            scope=self.update_scope(scope, all_platedims),
-            active_platedims=active_platedims,
-            all_platedims=all_platedims,
-            sampling_type=sampling_type,
-            Kdim=Kdim,
-            reparam=reparam
-        )
-
-    def log_prob(self, 
-                 sample, 
-                 scope: dict[any, Tensor], 
-                 active_platedims: list[str], 
-                 all_platedims: dict[str, Dim], 
-                 sampling_type,
-                 groupvarname2Kdim:dict[str, Dim]):
-
-        return self.plate.log_prob(
-            sample=sample,
-            scope=self.update_scope(scope, all_platedims),
-            active_platedims=active_platedims,
-            all_platedims=all_platedims,
-            sampling_type=sampling_type,
-            groupvarname2Kdim=groupvarname2Kdim
-        )
