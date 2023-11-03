@@ -59,19 +59,19 @@ TODOs (L):
 * Enumerating discrete variables
 * Syntax for Timeseries
 
+logPQ:
+  * The "magic" happens in here.
+  * Note that this is structured the way it is for efficiency:
+    - logPQ_plate takes P, Q, samples etc for a sub-plate of the program, and returns a single tensor (summing out K and the platedim).
+    - this function can easily be split across the plate and checkpointed.
+  * P, Q are nested dicts containing the prior and approximate posterior.  Structure must match exactly.
+  * sample_data has the same structure as P.
+  * inputs_params is a nested dict, with the same "Plating" structure as P, Q or sample_data.
+  * extra_log_factors is a nested dict, with the same "Plating" structure as P, Q or sample_data.
+  * Using the source-term trick to compute moments or importance weights is easy enough.  Computing the conditionals for sampling is much more painful:
+    - Use standard parallelisation tricks to sample from the unsplit latents at the top.
+    - Then recompute the split log-prob, fixing the split latents at the top.
 
-
-Efficiency:
-  * except for very, very large models, it should always be possible to store the samples in (video) RAM.
-  * what is hard is to represent the log-prob tensors that arise as we're summing out K's.
-  * the solution is to split this sum over a plate.
-  * specifically, write down a function that takes:
-    - upper level variables as part of scope.
-    - Q_part, P_part, extra_log_factors (i.e. part of the Q and P models, perhaps corresponding to the lowest-level plate).
-    - now we can split the sum along the plate into parts, and do each part in turn.
-    - J_torchdim * 
-  * and returns the factor at that layer, with all the lower-K's summed out.
-  * this function is "checkpointed" for the purposes of the backward pass (but might have to manually checkpoint).
 
 Principles:
   * P has exactly the same structure as Q, except that Q lacks data.

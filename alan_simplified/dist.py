@@ -66,57 +66,25 @@ class AlanDist():
 
         self.all_args = list(all_args)
 
-    def filter_scope(self, scope, active_platedims, all_platedims):
-        """
-        Filters down to only the variables in scope that are actually used.
-
-        Two criteria:
-        1 Filter out the variables that aren't actually used in this distribution.  
-          That's so that when we do e.g. permutations, we're only permuting the variables we need to.
-        2 Filter out "input" variables from lower-level plates.
-        """
-        result = {}
-        for varname in self.all_args:
-            if varname not in scope:
-                raise Exception(f"Can't find {varname} in scope")
-            tensor = scope[varname]
-            if not in_plate(tensor, active_platedims, all_platedims):
-                raise Exception(f"{varname} is at a lower plate-level: it has dimensions {tensor.dims}, while at the moment, we're in the plate with dims {active_platedims}")
-            result[varname] = tensor
-        return result
+    def tdd(self, scope: dict[str, Tensor]):
+        paramname2val = {paramname: func(scope) for (paramname, func) in self.paramname2func.items()}
+        return TorchDimDist(self.dist, **self.paramname2val(scope))
 
     def sample(self, 
                scope: dict[str, Tensor], 
                active_platedims: list[str], 
-               all_platedims: dict[str, Dim], 
-               sampling_type,
                Kdim=None, 
                reparam=True):
 
-        scope = self.filter_scope(scope, active_platedims, all_platedims)
-
-        paramname2val = {paramname: func(scope) for (paramname, func) in self.paramname2func.items()}
-        tdd = TorchDimDist(self.dist, **paramname2val)
-
         sample_dims = [Kdim, *active_platedims]
-        return tdd.sample(reparam, sample_dims, self.sample_shape)
+        return self.tdd(scope).sample(reparam, sample_dims, self.sample_shape)
 
     def log_prob(self, 
                  sample: Tensor, 
                  scope: dict[any, Tensor], 
                  active_platedims: list[str], 
-                 all_platedims: dict[str, Dim], 
-                 sampling_type,
-                 groupvarname2Kdim:dict[str, Dim]):
-        """
-        Not enough information here to apply sampling_type summing over dimensions!!!
-        """
-
-        scope = self.filter_scope(scope, active_platedims, all_platedims)
-
-        paramname2val = {paramname: func(scope) for (paramname, func) in self.paramname2func.items()}
-        tdd = TorchDimDist(self.dist, **paramname2val)
-        return tdd.log_prob(sample)
+                 Kdim: Dim):
+        return self.tdd(scope).log_prob(sample)
 
 
 
