@@ -11,7 +11,7 @@ plate = Plate(
     p1 = Plate(
         d = Normal("a", 1),
         p2 = Plate(
-            e = Normal("d", lambda c: c.exp()),
+            e = Normal("d", "inp"),
         ),
     ),
 )
