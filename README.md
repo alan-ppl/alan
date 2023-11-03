@@ -60,22 +60,31 @@ TODOs (L):
 * Syntax for Timeseries
 
 
-Groups:
-  * groups are denoted in programs using ab = Group(a=alan.Normal(0,1), b=alan.Normal('a', 2))
-  * groups only appear in Q (as they're all about sampling the approximate posterior, they don't make sense in P).
-  * groups can't have inner plates/timeseries.
-  * the sample from the group are GroupSample (which are just a thin wrapper over a dict).
-  * but log_prob from groups are aggregated across all variables within the group (log_prob for P knows it needs to aggregate because it sees the GroupSample).
 
 Efficiency:
   * except for very, very large models, it should always be possible to store the samples in (video) RAM.
   * what is hard is to represent the log-prob tensors that arise as we're summing out K's.
   * the solution is to split this sum over a plate.
   * specifically, write down a function that takes:
-    - full Q_sample
-    - Q_part, P_part (i.e. part of the Q and P models, perhaps corresponding to the lowest-level plate).
+    - upper level variables as part of scope.
+    - Q_part, P_part, extra_log_factors (i.e. part of the Q and P models, perhaps corresponding to the lowest-level plate).
     - now we can split the sum along the plate into parts, and do each part in turn.
+    - J_torchdim * 
+  * and returns the factor at that layer, with all the lower-K's summed out.
   * this function is "checkpointed" for the purposes of the backward pass (but might have to manually checkpoint).
+
+Principles:
+  * P has exactly the same structure as Q, except that Q lacks data.
+  * so Q.sample + data has the same structure as P.sample.
+  * Groups:
+    - groups are denoted in programs using ab = Group(a=alan.Normal(0,1), b=alan.Normal('a', 2))
+    - matching groups must appear in both P and Q
+    - groups can't have inner plates/timeseries
+    - groups can't have data.
+  * Enumerate:
+    - to sum over a discrete latent variable, we include a "fake distribution", alan.Enumerate in Q.
+    - the sample from this distribution just enumerates all possible settings.
+    - the log-prob is logQ = - log(K) (so that it cancels when we do logP-logQ-log(K))
 
 Combining prog with inputs/learned parameters/data.
   * inputs / learned parameters are just dumped in scope.
@@ -88,6 +97,9 @@ Combining prog with inputs/learned parameters/data.
     - inputs are fixed and not learned (used for fixing inputs for P)
     - parameters are learned (used for fixing inputs for Q)
     - inputs and parameters are named tensors, not torchdim yet (as we haven't associated P with Q, we can't have a unified list of Dims).
+
+Enumeration:
+  * Enumerate type in Q.
   
 
 Datastructures:

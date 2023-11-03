@@ -42,7 +42,7 @@ class SingleSample(SamplingType):
         return scope
 
     @staticmethod
-    def reduce_log_prob(lp: Tensor, name: str, varname2Kdim: dict[str, Dim], active_platedims: list[Dim]):
+    def reduce_log_prob(lp: Tensor, Kdim: Dim, all_Kdims: list[Dim], active_platedims: list[Dim]):
         return lp
 
 
@@ -62,7 +62,7 @@ class Parallel(MultipleSamples):
         return scope
 
     @staticmethod
-    def reduce_log_prob(lp: Tensor, name: str, varname2Kdim: dict[str, Dim], active_platedims: list[Dim]):
+    def reduce_log_prob(lp: Tensor, Kdim: Dim, all_Kdims: list[Dim], active_platedims: list[Dim]):
         """
         lp: log_prob tensor [*active_platedims, *parent_Kdims, var_Kdim]
         Here, we take the "diagonal" of the parent_Kdims
