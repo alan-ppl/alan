@@ -77,7 +77,11 @@ class Parallel(MultipleSamples):
         var_Kdim = varname2Kdim[name]
         parent_Kdims = set(lp_dims).difference([var_Kdim, *active_platedims])
         
-        #Continue...
+        if len(parent_Kdims) > 0:
+            idxs = [t.arange(Kdim.size)[Kdim] for K in parent_Kdims]
+            lp = lp.order(*parent_Kdims)[idxs]
+        
+        return lp
 
 class Mixture(MultipleSamples):
     """
@@ -102,7 +106,7 @@ class Mixture(MultipleSamples):
         var_Kdim = varname2Kdim[name]
         parent_Kdims = set(lp_dims).difference([var_Kdim, *active_platedims])
 
-        #Continue...
+        return logmeanexp_dims(lp, dims=parent_Kdims)
 
 
 class MixturePermutation(Mixture):
@@ -117,7 +121,16 @@ class MixturePermutation(Mixture):
         
         scope: dict of all previously sampled variables in scope.
         """
+        new_scope = {}
+        for k,v in scope.items():
+            ordered_tensor = v.order(Kdim)
+            tdd = TorchDimDist(td.uniform.Uniform, low=0, high=1)
+            perm = tdd.sample(False, sample_dims=[Kdim], sample_shape=[]).argsort(Kdim)
+            permuted_tensor = ordered_tensor[perm,...]
+            new_scope[k] = permuted_tensor
 
+        return new_scope
+    
 class MixtureCategorical(Mixture):
     """
     A mixture proposal, where we resample the particles on the parents using a uniform Categorical.
@@ -130,3 +143,12 @@ class MixtureCategorical(Mixture):
 
         scope: dict of all previously sampled variables in scope.
         """
+        new_scope = {}
+        for k,v in scope.items():
+            ordered_tensor = v.order(Kdim)
+            tdd = TorchDimDist(td.categorical.Categorical, probs=t.ones(Kdim.size)/Kdim.size)
+            perm = tdd.sample(False, sample_dims=[Kdim], sample_shape=[]).argsort(Kdim)
+            permuted_tensor = ordered_tensor[perm,...]
+            new_scope[k] = permuted_tensor
+            
+        return new_scope
