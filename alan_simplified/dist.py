@@ -1,18 +1,11 @@
-import types
+from typing import Optional
 import inspect
 
 import torch
 
 from .utils import *
 from .TorchDimDist import TorchDimDist
-
-def in_plate(x, active_platedims: list[Dim], all_platedims: dict[str, Dim]):
-    """
-    It only makes sense to use some inputs (specifically, we can't use inputs which have plates
-    which aren't currently active).
-    """
-    non_active_platedims = set(all_platedims.values()).difference(active_platedims)
-    return all((dim not in non_active_platedims) for dim in generic_dims(x))
+from .SamplingType import SamplingType
 
 def func_args(something):
     """
@@ -30,6 +23,16 @@ def func_args(something):
         args = ()
         func = lambda scope: something
     return (args, func)
+
+def filter_resample_scope(
+        all_args: list[str],
+        scope:dict[str, Tensor], 
+        active_platedims:list[Dim], 
+        Kdim:Dim, 
+        sampling_type:SamplingType):
+
+    filtered_scope = {k:v for (k, v) in scope.items() if k in all_args}
+    return sampling_type.resample_scope(filtered_scope, active_platedims, Kdim)
 
 
 class AlanDist():
@@ -71,20 +74,38 @@ class AlanDist():
         return TorchDimDist(self.dist, **self.paramname2val(scope))
 
     def sample(self, 
+               name:str,
                scope: dict[str, Tensor], 
                active_platedims: list[str], 
-               Kdim=None, 
+               groupvarname2Kdim: Optional[Dim],
+               sampling_type:SamplingType,
                reparam=True):
 
+        Kdim = groupvarname2Kdim[name]
         sample_dims = [Kdim, *active_platedims]
-        return self.tdd(scope).sample(reparam, sample_dims, self.sample_shape)
+
+        resampled_scope = filter_resample_scope(
+            all_args=self.all_args,
+            scope=scope,
+            active_platedims=active_platedims,
+            Kdim=Kdim,
+            sampling_type=sampling_type
+        )
+
+        sample_dims = [Kdim, *active_platedims]
+        return self.tdd(resampled_scope).sample(reparam, sample_dims, self.sample_shape)
 
     def log_prob(self, 
                  sample: Tensor, 
                  scope: dict[any, Tensor], 
                  active_platedims: list[str], 
-                 Kdim: Dim):
-        return self.tdd(scope).log_prob(sample)
+                 Kdim: Optional[Dim],
+                 sampling_type:SamplingType):
+        lp = self.tdd(scope).log_prob(sample)
+
+        #!!!!!!!1
+
+        return sampling_type
 
 
 

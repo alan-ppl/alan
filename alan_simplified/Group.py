@@ -1,5 +1,5 @@
 from typing import Optional
-from dist import Dist
+from dist import Dist, filter_resample_scope
 
 class Group():
     def __init__(self, **kwargs):
@@ -10,29 +10,20 @@ class Group():
         self.prog = kwargs
         self.all_args = list(set([dist.all_args for dist in self.kwargs.values()]))
 
-    def resampled_scope(
-            self, 
-            scope:dict[str, Tensor], 
-            active_platedims:list[Dim], 
-            Kdim:Dim, 
-            sampling_type:SamplingType):
+    def sample(
+            self,
+            name:Optional[str],
+            scope: dict[str, Tensor], 
+            active_platedims:list[Dim],
+            groupvarname2Kdim:dict[str, Dim],
+            sampling_type:SamplingType,
+            reparam:bool):
 
-        resampled_scope = {}
-        for (name, tensor) in scope.items():
-            if name in self.all_args:
-                resampled_scope[name] = sampling_type.resample(tensor, Kdim, active_platedims)
-        return resampled_scope
-
-    def sample(self, 
-               scope: dict[str, Tensor], 
-               active_platedims: list[Dim], 
-               Kdim:Optional[Dim],
-               sampling_type:SamplingType,
-               reparam=True):
-
+        Kdim = groupvarname2Kdim[name]
         sample_dims = [Kdim, *active_platedims]
 
-        scope = self.resampled_scope(
+        resampled_scope = filter_resample_scope(
+            all_args=self.all_args
             scope=scope,
             active_platedims=active_platedims,
             Kdim=Kdim,
@@ -41,7 +32,7 @@ class Group():
 
         result = {}
         for name, dist in self.prog.items():
-            tdd = dist.tdd(scope)
+            tdd = dist.tdd(resampled_scope)
             sample = tdd.sample(reparam, sample_dims, dist.sample_shape)
 
             scope[name] = scope

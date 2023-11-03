@@ -37,12 +37,12 @@ class SingleSample(SamplingType):
     As there are no K-dimensions, there's no need to modify the scope, or the log_probs.
     """
     @staticmethod
-    def resample_scope(scope: dict[str, Tensor], Kdim: None):
+    def resample_scope(scope: dict[str, Tensor], Kdim: None, active_platedims: list[Dim]):
         assert Kdim is None
         return scope
 
     @staticmethod
-    def reduce_log_prob(lp: Tensor, Kdim: Dim, all_Kdims: list[Dim], active_platedims: list[Dim]):
+    def reduce_log_prob(self, lp: Tensor, Kdim: Dim, all_Kdims: list[Dim], active_platedims: list[Dim]):
         return lp
 
 
@@ -54,7 +54,7 @@ class Parallel(MultipleSamples):
     Draw K independent samples from the full joint.
     """
     @staticmethod
-    def resample_scope(scope: dict[str, Tensor], Kdim: Dim):
+    def resample_scope(self, scope: dict[str, Tensor], Kdim: None, active_platedims: list[Dim]):
         """
         Doesn't permute/resample previous variables.
         scope: dict of all previously sampled variables in scope.
@@ -83,6 +83,37 @@ class Parallel(MultipleSamples):
         
         return lp
 
+def Kdim2varname2tensors(scope: dict[str, Tensor], Kdim:Dim, active_platedims: list[Dim]):
+    """
+    Must permute K-dimensions _not_ just tensors.
+    But because of groups there could be several tensors with the same K-dimension.
+    We therefore put together a dictionary mapping Kdims to all tensors with that K-dimension.
+
+    Everything in scope is either:
+      Sample (one  K-dimension)
+      Input  (zero K-dimensions)
+      Param  (zero K-dimensions)
+
+    Therefore, each tensor should only ever have zero or one K-dimension
+    """
+    #dict[Dim, dict[str, Tensor]]
+    Kdim2varname2tensor = {}
+    for varname, tensor in scope.items():
+        dims = generic_dims(tensor)
+        Kdims = set(dims).difference(active_platedims)
+        assert len(Kdims) in [0, 1]
+        if len(Kdims) == 1:
+            Kdim = Kdims[0]
+            if Kdim not in Kdim2tensors:
+                Kdim2tensors[Kdim] = {}
+            else:
+                #If two tensors have the same K-dimension and thus are part of the
+                #same group, then they should have exactly the same K/plate dims
+                dims_prev = generic_dims(next(iter(Kdim2tensors.values())))
+                assert set(generic_dims(tensor)) == set(dims_prev)
+            Kdim2tensors[Kdim][varname] = tensor
+    return Kdim2tensors
+
 class Mixture(MultipleSamples):
     """
     A mixture proposal over all combinations of all particles of parent latent variables.
@@ -91,7 +122,29 @@ class Mixture(MultipleSamples):
     sampling.
     """
     @staticmethod
-    def reduce_log_prob(lp: Tensor, name: str, varname2Kdim: dict[str, Dim], active_platedims: list[Dim]):
+    def resample_scope(scope: dict[str, Tensor], Kdim: Dim, active_platedims: list[Dim]):
+        """
+        This is called as we sample Q, and permutes the particles on the parents
+
+        Kdim is the desired Kdim of the new sample.  That isn't the
+        same as the K-dimensions appearing in tensors in scope.  That's because 
+        all the variables in scope have their own K-dimensions
+        """
+
+        scope = {**scope}
+        for var_Kdim,varname2tensor in Kdim2varname2tensors(scope, Kdim, active_platedims).items():
+            tensor0 = next(iter(varname2tensor.values()))
+
+            dims = set(generic_dims(tensor0))
+            perm = self.perm(dims=dims, Kdim=var_Kdim)
+
+            for varname, tensor in varname2tensor.items():
+                new_scope[varname] = tensor.order(var_Kdim)[perm,...][Kdim]
+
+        return new_scope
+
+    @staticmethod
+    def reduce_log_prob(lp: Tensor, Kdim: Dim, active_platedims: list[Dim]):
         """
         lp: log_prob tensor [*active_platedims, *parent_Kdim, var_Kdim]
         Here, we take the "average" over parent_Kdim
@@ -109,46 +162,24 @@ class Mixture(MultipleSamples):
         return logmeanexp_dims(lp, dims=parent_Kdims)
 
 
+
+
 class MixturePermutation(Mixture):
     """
     A mixture proposal, where we permute the particles on all the parents.
     """
     @staticmethod
-    def resample_scope(scope: dict[str, Tensor], Kdim: Dim):
-        """
-        This is called as we sample Q, and permutes the particles on the parents
-        As such, there is only a single K-dimension.
-        
-        scope: dict of all previously sampled variables in scope.
-        """
-        new_scope = {}
-        for k,v in scope.items():
-            ordered_tensor = v.order(Kdim)
-            tdd = TorchDimDist(td.uniform.Uniform, low=0, high=1)
-            perm = tdd.sample(False, sample_dims=[Kdim], sample_shape=[]).argsort(Kdim)
-            permuted_tensor = ordered_tensor[perm,...]
-            new_scope[k] = permuted_tensor
-
-        return new_scope
+    def perm(self, dims:list[Dim], Kdim:Dim):
+        tdd = TorchDimDist(td.uniform.Uniform, low=0, high=1)
+        return tdd.sample(False, sample_dims=dims, sample_shape=[]).argsort(Kdim)
     
 class MixtureCategorical(Mixture):
     """
     A mixture proposal, where we resample the particles on the parents using a uniform Categorical.
     """
     @staticmethod
-    def resample_scope(scope: dict[str, Tensor], Kdim: Dim):
-        """
-        This is called as we sample Q, and permutes the particles on the parents
-        As such, there is only a single K-dimension.
-
-        scope: dict of all previously sampled variables in scope.
-        """
-        new_scope = {}
-        for k,v in scope.items():
-            ordered_tensor = v.order(Kdim)
-            tdd = TorchDimDist(td.categorical.Categorical, probs=t.ones(Kdim.size)/Kdim.size)
-            perm = tdd.sample(False, sample_dims=[Kdim], sample_shape=[]).argsort(Kdim)
-            permuted_tensor = ordered_tensor[perm,...]
-            new_scope[k] = permuted_tensor
-            
-        return new_scope
+    def perm(self, dims:list[Dim], Kdim:Dim):
+        tdd = TorchDimDist(td.categorical.Categorical, probs=t.ones(Kdim.size)/Kdim.size)
+        platedims = set(dims)
+        platedims.remove(Kdim)
+        return tdd.sample(False, sample_dims=platedims, sample_shape=[])[Kdim,...]

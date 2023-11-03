@@ -2,7 +2,6 @@ import torch as t
 from functorch.dim import Dim
 
 from .utils import *
-from .GroupSample import GroupSample
 
 def varname2Kname(varname: str):
     return f"K_{varname}"

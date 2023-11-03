@@ -54,8 +54,8 @@ TODOs (B/T):
 
 TODOs (L):
 * Check that all names are unique as you construct plate.
+* Consistent Group + Dist implementation, esp. wrt SamplingType.
 * Source term tricks
-* Groups
 * Enumerating discrete variables
 * Syntax for Timeseries
 

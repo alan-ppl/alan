@@ -86,7 +86,7 @@ def logPQ_dist(
         name:str,
         P:Plate, 
         Q:Plate, 
-        sample_data: dict, 
+        sample_data: Tensor, 
         inputs_params: None, 
         extra_log_factors: None, 
         scope: dict[str, Tensor], 
@@ -96,6 +96,7 @@ def logPQ_dist(
         sampling_type:SamplingType
         splits:dict[str, int]):
 
+    assert isinstance(sample_data, Tensor)
     assert isinstance(inputs_params, None)
     assert isinstance(extra_log_factors, None)
 
@@ -123,7 +124,7 @@ def logPQ_dist(
         )
 
         lpq = lpq - lq - math.log(Kdim.size)
-    return lpq
+    return lpq, {**scope, name: sample_data}
 
 
 def logPQ_group(
@@ -181,4 +182,5 @@ def logPQ_group(
         active_platedims=active_platedims
     )
 
-    return total_logP - total_logQ - math.log(Kdim.size)
+    logPQ = total_logP - total_logQ - math.log(Kdim.size)
+    return logPQ, scope
