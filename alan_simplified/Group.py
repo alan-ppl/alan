@@ -10,6 +10,9 @@ class Group():
         self.prog = kwargs
         self.all_args = list(set([dist.all_args for dist in self.kwargs.values()]))
 
+    def filter_scope(self, scope: dict[str, Tensor]):
+        return {k: v for (k,v) in scope.items() if k in self.all_args}
+
     def sample(
             self,
             name:Optional[str],
@@ -19,16 +22,13 @@ class Group():
             sampling_type:SamplingType,
             reparam:bool):
 
+        scope = {**scope}
+
         Kdim = groupvarname2Kdim[name]
         sample_dims = [Kdim, *active_platedims]
 
-        resampled_scope = filter_resample_scope(
-            all_args=self.all_args
-            scope=scope,
-            active_platedims=active_platedims,
-            Kdim=Kdim,
-            sampling_type=sampling_type
-        )
+        filtered_scope = self.filter_scope(self, scope)
+        resampled_scope = sampling_type.resample_scope(filtered_scope, active_platedims, Kdim)
 
         result = {}
         for name, dist in self.prog.items():
@@ -38,19 +38,4 @@ class Group():
             scope[name] = scope
             result[name] = result
 
-        return result
-
-    def log_prob(self, 
-                 sample: Tensor, 
-                 scope: dict[any, Tensor], 
-                 active_platedims: list[str], 
-                 Kdim: Optional[Dim],
-                 sampling_type:SamplingType):
-
-        total_log_prob = 0.
-        for name, dist in self.prog.items():
-            tdd = dist.tdd(scope)
-            lp = tdd.log_prob(sample[name])
-            total_log_prob = total_log_prob + lp
-
-        return total_log_prob
+        return result, scope

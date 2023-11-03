@@ -37,12 +37,12 @@ class SingleSample(SamplingType):
     As there are no K-dimensions, there's no need to modify the scope, or the log_probs.
     """
     @staticmethod
-    def resample_scope(scope: dict[str, Tensor], Kdim: None, active_platedims: list[Dim]):
+    def resample_scope(scope: dict[str, Tensor], active_platedims: list[Dim], Kdim: None):
         assert Kdim is None
         return scope
 
     @staticmethod
-    def reduce_log_prob(self, lp: Tensor, Kdim: Dim, all_Kdims: list[Dim], active_platedims: list[Dim]):
+    def reduce_logQ(self, lp: Tensor, active_platedims: list[Dim], Kdim: Dim):
         return lp
 
 
@@ -54,7 +54,7 @@ class Parallel(MultipleSamples):
     Draw K independent samples from the full joint.
     """
     @staticmethod
-    def resample_scope(self, scope: dict[str, Tensor], Kdim: None, active_platedims: list[Dim]):
+    def resample_scope(self, scope: dict[str, Tensor], active_platedims: list[Dim], Kdim: None):
         """
         Doesn't permute/resample previous variables.
         scope: dict of all previously sampled variables in scope.
@@ -62,7 +62,7 @@ class Parallel(MultipleSamples):
         return scope
 
     @staticmethod
-    def reduce_log_prob(lp: Tensor, Kdim: Dim, all_Kdims: list[Dim], active_platedims: list[Dim]):
+    def reduce_logQ(lp: Tensor, active_platedims: list[Dim], Kdim: Dim):
         """
         lp: log_prob tensor [*active_platedims, *parent_Kdims, var_Kdim]
         Here, we take the "diagonal" of the parent_Kdims
@@ -83,7 +83,7 @@ class Parallel(MultipleSamples):
         
         return lp
 
-def Kdim2varname2tensors(scope: dict[str, Tensor], Kdim:Dim, active_platedims: list[Dim]):
+def Kdim2varname2tensors(scope: dict[str, Tensor], active_platedims: list[Dim]):
     """
     Must permute K-dimensions _not_ just tensors.
     But because of groups there could be several tensors with the same K-dimension.
@@ -122,7 +122,7 @@ class Mixture(MultipleSamples):
     sampling.
     """
     @staticmethod
-    def resample_scope(scope: dict[str, Tensor], Kdim: Dim, active_platedims: list[Dim]):
+    def resample_scope(scope: dict[str, Tensor], active_platedims: list[Dim], Kdim: Dim):
         """
         This is called as we sample Q, and permutes the particles on the parents
 
@@ -132,7 +132,7 @@ class Mixture(MultipleSamples):
         """
 
         scope = {**scope}
-        for var_Kdim,varname2tensor in Kdim2varname2tensors(scope, Kdim, active_platedims).items():
+        for var_Kdim,varname2tensor in Kdim2varname2tensors(scope, active_platedims).items():
             tensor0 = next(iter(varname2tensor.values()))
 
             dims = set(generic_dims(tensor0))
@@ -144,7 +144,7 @@ class Mixture(MultipleSamples):
         return new_scope
 
     @staticmethod
-    def reduce_log_prob(lp: Tensor, Kdim: Dim, active_platedims: list[Dim]):
+    def reduce_logQ(lp: Tensor, active_platedims: list[Dim], Kdim: Dim):
         """
         lp: log_prob tensor [*active_platedims, *parent_Kdim, var_Kdim]
         Here, we take the "average" over parent_Kdim

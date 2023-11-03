@@ -72,6 +72,9 @@ logPQ:
     - Use standard parallelisation tricks to sample from the unsplit latents at the top.
     - Then recompute the split log-prob, fixing the split latents at the top.
 
+Sampling:
+  * When sampling there's always a K-dimension.
+  * The K-dimension could be of size 1 though.
 
 Principles:
   * P has exactly the same structure as Q, except that Q lacks data.

@@ -109,6 +109,7 @@ def logPQ_dist(
         active_platedims=active_platedims,
         Kdim=Kdim,
     )
+
     if Q is not None:
         lq = Q.log_prob(
             sample=sample,
@@ -116,12 +117,7 @@ def logPQ_dist(
             active_platedims=active_platedims,
             Kdim=Kdim,
         )
-        lq = sampling_type.reduce_log_prob(
-            lq=lq,
-            Kdim=Kdim,
-            all_Kdims=all_Kdims,
-            active_platedims=active_platedims
-        )
+        lq = sampling_type.reduce_log_prob(alq, active_platedims, Kdim)
 
         lpq = lpq - lq - math.log(Kdim.size)
     return lpq, {**scope, name: sample_data}
@@ -175,12 +171,7 @@ def logPQ_group(
 
         scope[childname] = childsample
 
-    total_logQ = sampling_type.reduce_log_prob(
-        lq=total_logQ,
-        Kdim=Kdim,
-        all_Kdims=all_Kdims,
-        active_platedims=active_platedims
-    )
+    total_logQ = sampling_type.reduce_log_prob(total_logQ, active_platedims, Kdim)
 
     logPQ = total_logP - total_logQ - math.log(Kdim.size)
     return logPQ, scope

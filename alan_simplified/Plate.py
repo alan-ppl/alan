@@ -17,8 +17,7 @@ class Plate(PlateTimeseries):
             active_platedims:list[Dim],
             groupvarname2Kdim:dict[str, Dim],
             sampling_type:SamplingType,
-            reparam:bool
-            ):
+            reparam:bool):
 
         if name is not None:
             active_platedims = [*active_platedims, all_platedims[name]]
@@ -34,7 +33,8 @@ class Plate(PlateTimeseries):
                 scope=scope, 
                 active_platedims=active_platedims,
                 groupvarname2Kdim=groupvarname2Kdim,
-                sampling_type=sampling_type
+                sampling_type=sampling_type,
+                reparam=reparam,
             )
 
             sample[childname] = childsample
