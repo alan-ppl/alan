@@ -8,7 +8,7 @@ from functorch.dim import Dim
 from torch.utils.checkpoint import checkpoint
 
 Tensor = (functorch.dim.Tensor, t.Tensor)
-OptionalTensor = (None, functorch.dim.Tensor, t.Tensor)
+OptionalTensor = (type(None), functorch.dim.Tensor, t.Tensor)
 Number = (int, float)
 TensorNumber = (*Tensor, *Number)
 

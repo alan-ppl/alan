@@ -7,10 +7,9 @@ class SamplingType:
     
     In particular:
 
-    SingleSample (there aren't any particles).
-    Parallel (draw K samples from the full joint).
-    MixturePermutation (permute the parent particles).
-    MixtureCategorical (sample the parents from a uniform Categorical).
+    IndependentSample (draw K samples from the full joint).
+    PermutationMixtureSample (permute the parent particles).
+    CategoricalMixtureSample (sample the parents from a uniform Categorical).
 
     Thus, these classes modify sampling and computing for the approximate posterior.
     In particular, these classes implement:
@@ -31,6 +30,12 @@ class SamplingType:
     pass
 
 def check_resample_dims(scope, active_platedims, Kdim):
+    """
+    All the variables in scope must end up just having a single K-dimension, that's also the K-dimension
+    on the variable we're trying to generate.
+
+    This function checks that property.
+    """
     all_dims = set([*active_platedims, Kdim])
     for tensor in scope.values():
         for dim in generic_dims(tensor):
@@ -68,14 +73,7 @@ class IndependentSample(SamplingType):
         Here, we take the "diagonal" of the parent_Kdims
         returns log_prob tensor with [*active_platedims, var_Kdim]
         """
-        #Check that every dim in lp is either in active_platedims, or is a Kdim.
-        all_dims = set([*varname2Kdim.values(), *active_platedims])
-        lp_dims = generic_dims(lp)
-        for dim in lp_dims:
-            assert dim in all_dims
-
-        var_Kdim = varname2Kdim[name]
-        parent_Kdims = set(lp_dims).difference([var_Kdim, *active_platedims])
+        parent_Kdims = set(generic_dims(lp)).difference([Kdim, *active_platedims])
         
         if len(parent_Kdims) > 0:
             idxs = [t.arange(Kdim.size)[Kdim] for K in parent_Kdims]

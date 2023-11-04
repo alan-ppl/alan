@@ -34,9 +34,6 @@ def logPQ_plate(
     #by name=None.
     if name is not None:
         active_platedims = [*active_platedims, all_platedims[name]]
-        inputs_params = inputs_params.branches[name]
-        data = data.branches[name]
-        extra_log_factors = extra_log_factors.branches[name]
 
 
     #We want to pass back just the incoming scope, as nothing outside the plate can see
@@ -56,7 +53,7 @@ def logPQ_plate(
         #childQ defaults to None in that case.
 
         if isinstance(childP, Dist):
-            assert isinstance(childQ, (Dist, None, Enumerate))
+            assert isinstance(childQ, (Dist, type(None)))
             method = logPQ_dist
         elif isinstance(childP, Plate):
             assert isinstance(childQ, Plate)
@@ -82,13 +79,21 @@ def logPQ_plate(
             split=split)
         lps.append(lp)
 
-    #Sum over Ks
-    lp = reduce_Ks(lps, [groupvarname2Kdim[name] for name in P])
+    #Collect all Ks in the plate
+    all_Ks = []
+    for varname, dist in Q.prog.items():
+        if isinstance(dist, (Dist, Group)):
+            all_Ks.append(groupvarname2Kdim[varname])
+        else:
+            assert isinstance(dist, Plate)
+
+    #Sum out Ks
+    lp = reduce_Ks(lps, all_Ks)
 
     #Sum over plate dimension if present (remember, if this is a top-layer plate which
     #is signalled by name=None, then there won't be a plate dimension.
     if name is not None:
-        lp = reduce_Ks.sum(all_platedims[name])
+        lp = lp.sum(active_platedims[-1])
 
     return lp, parent_scope
 
@@ -113,31 +118,18 @@ def logPQ_dist(
     assert extra_log_factors is None
 
     #we must have either sample or data, but not both.
-    assert sample is None != data is None
+    assert (sample is None) != (data is None)
     sample_data = sample if sample is not None else data
     #if we have a sample, we must have a Q
     if sample is not None:
         assert Q is not None
 
-
-    Kdim = groupvarname2Kdim[name]
-    all_Kdims = set(groupvarname2Kdim.values())
-
-    lpq = P.log_prob(
-        sample=sample_data,
-        scope=scope,
-        active_platedims=active_platedims,
-        Kdim=Kdim,
-    )
+    lpq = P.log_prob(sample=sample_data, scope=scope)
 
     if sample is not None:
-        lq = Q.log_prob(
-            sample=sample,
-            scope=scope,
-            active_platedims=active_platedims,
-            Kdim=Kdim,
-        )
-        lq = sampling_type.reduce_logQ(alq, active_platedims, Kdim)
+        Kdim = groupvarname2Kdim[name]
+        lq = Q.log_prob(sample=sample, scope=scope)
+        lq = sampling_type.reduce_logQ(lq, active_platedims, Kdim)
 
         lpq = lpq - lq - math.log(Kdim.size)
     return lpq, {**scope, name: sample_data}
@@ -178,20 +170,8 @@ def logPQ_group(
         assert isinstance(childQ, Dist)
         assert isinstance(childsample, Tensor)
 
-        child_logP = childP.log_prob(
-            sample=childsample,
-            scope=scope,
-            active_platedims=active_platedims,
-            Kdim=Kdim,
-        )
-        child_logQ = childQ.log_prob(
-            sample=childsample,
-            scope=scope,
-            active_platedims=active_platedims,
-            Kdim=Kdim,
-        )
-        total_logP = total_logP + child_logP
-        total_logQ = total_logQ + child_logQ
+        total_logP = total_logP + childP.log_prob(sample=childsample, scope=scope)
+        total_logQ = total_logQ + childQ.log_prob(sample=childsample, scope=scope)
 
         scope[childname] = childsample
 

@@ -13,7 +13,7 @@ P = Plate(
     p1 = Plate(
         d = Normal("a", 1),
         p2 = Plate(
-            e = Normal("d", "inp"),
+            e = Normal("d", 1.),
         ),
     ),
 )

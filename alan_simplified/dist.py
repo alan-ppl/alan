@@ -90,9 +90,7 @@ class Dist():
 
     def log_prob(self, 
                  sample: Tensor, 
-                 scope: dict[any, Tensor], 
-                 active_platedims: list[str], 
-                 Kdim: Optional[Dim]):
+                 scope: dict[any, Tensor]):
         return self.tdd(scope).log_prob(sample)
 
 
