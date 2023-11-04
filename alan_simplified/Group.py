@@ -10,8 +10,12 @@ class Group():
             if not isinstance(dist, Dist):
                 raise Exception("{varname} in a Group should be a Dist, but is actually {type(dist)}")
 
+        if len(kwargs) < 2:
+            raise Exception("Groups only make sense if they have two or more random variables, but this group only has {len(kwargs)} random variables")
+
         self.prog = kwargs
-        self.all_args = list(set([dist.all_args for dist in self.kwargs.values()]))
+        all_arg_list = [arg for dist in kwargs.values() for arg in dist.all_args]
+        self.all_args = list(set(all_arg_list))
 
     def filter_scope(self, scope: dict[str, Tensor]):
         return {k: v for (k,v) in scope.items() if k in self.all_args}
@@ -26,20 +30,24 @@ class Group():
             sampling_type:SamplingType,
             reparam:bool):
 
-        scope = {**scope}
+        scope = {**scope} #This is the modified scope that will be used in the outer plate.
+        result = {}       #This is the sample returned.
 
         Kdim = groupvarname2Kdim[name]
         sample_dims = [Kdim, *active_platedims]
 
+        #resampled scope is the scope used in here when sampling from the Group
         filtered_scope = self.filter_scope(scope)
         resampled_scope = sampling_type.resample_scope(filtered_scope, active_platedims, Kdim)
 
-        result = {}
         for name, dist in self.prog.items():
+            print((sample_dims, dist.sample_shape))
+            print(resampled_scope)
             tdd = dist.tdd(resampled_scope)
             sample = tdd.sample(reparam, sample_dims, dist.sample_shape)
 
-            scope[name] = scope
-            result[name] = result
+            scope[name] = sample
+            resampled_scope[name] = sample
+            result[name] = sample
 
         return result, scope

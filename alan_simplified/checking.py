@@ -13,7 +13,7 @@ def all_names(plate: Plate):
     for k, v in plate.prog.items():
         result.append(k)
         if isinstance(v, Group):
-            for gk in v:
+            for gk in v.prog:
                 result.append(gk)
         elif isinstance(v, Plate):
             result = [*result, *all_names(v)]
@@ -86,9 +86,9 @@ def check_support(name:str, distP:Dist, distQ:Any):
         raise Exception(f"Distributions in P and Q for {nameP} have different support.  For P: {supportP}.  While for Q: {supportQ}")
 
 def check_PQ_group(groupname: str, groupP: Group, groupQ: Group):
-    mismatch_names(f"In group {name}, there is a mismatch in the keys, with", groupP.prog.keys(), groupQ.prog.keys())
-    for varname, distP in groupP:
-        distQ = groupQ[varname]
+    mismatch_names(f"In group {groupname}, there is a mismatch in the keys, with", groupP.prog.keys(), groupQ.prog.keys())
+    for varname, distP in groupP.prog.items():
+        distQ = groupQ.prog[varname]
         check_support(varname, distP, distQ)
 
 

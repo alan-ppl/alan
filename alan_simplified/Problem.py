@@ -38,6 +38,7 @@ class Problem():
 
         data_torchdim = named2dim_dict(data, self.all_platedims)
         self.data = tensordict2tree(P, data_torchdim)
+        #Data tree should match structure of P by construction; but check anyway.
         check_tree(P, self.data)
 
         #Check names in P matches those in Q+data, and there are no duplicates.
@@ -67,6 +68,7 @@ class Problem():
         )
         return sample
 
-    def elbo(self, sample):
+    def elbo(self, sample:dict, sampling_type:SamplingType):
         pass
+        
         

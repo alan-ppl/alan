@@ -5,8 +5,10 @@ from functorch.dim import Dim
 from alan_simplified import Normal, Bernoulli, Plate, Group, Problem, IndependentSample
 
 P = Plate(
-    a = Normal(0, 1),
-    b = Normal("a", 1),
+    ab = Group(
+        a = Normal(0, 1),
+        b = Normal("a", 1),
+    ),
     c = Normal(0, lambda a: a.exp()),
     p1 = Plate(
         d = Normal("a", 1),
@@ -17,8 +19,10 @@ P = Plate(
 )
 
 Q = Plate(
-    a = Normal(0, 1),
-    b = Normal("a", 1),
+    ab = Group(
+        a = Normal(0, 1),
+        b = Normal("a", 1),
+    ),
     c = Normal(0, lambda a: a.exp()),
     p1 = Plate(
         d = Normal("a", 1),

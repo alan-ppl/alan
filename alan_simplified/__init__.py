@@ -3,3 +3,4 @@ from .SamplingType import IndependentSample, CategoricalMixtureSample, Permutati
 from .dist import *
 from .BoundPlate import BoundPlate
 from .Problem import Problem
+from .Group import Group

@@ -44,7 +44,9 @@ class IndependentSample(SamplingType):
     def resample_scope(scope: dict[str, Tensor], active_platedims: list[Dim], Kdim: None):
         """
         Doesn't permute/resample previous variables.
-        scope: dict of all previously sampled variables in scope.
+
+        All the variables come in with different K-dimensions.  We need to make them the 
+        same K-dimension for sampling to work.
         """
         new_scope = {}
 
