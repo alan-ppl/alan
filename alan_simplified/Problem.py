@@ -5,8 +5,9 @@ from .Plate import Plate
 from .BoundPlate import BoundPlate
 from .SamplingType import SamplingType
 from .utils import *
-from .tree import tensordict2tree
-from .checking import check_names, check_PQ_plate, check_tree
+from .tree2 import tensordict2tree
+from .checking import check_names, check_PQ_plate
+from .logpq import logPQ_plate
 
 PBP = Union[Plate, BoundPlate]
 
@@ -36,13 +37,19 @@ class Problem():
     def __init__(self, P: PBP, Q: PBP, all_platesizes: dict[str, int], data: dict[str, t.Tensor]):
         self.all_platedims = {name: Dim(name, size) for name, size in all_platesizes.items()}
 
+        P_inputs_params_named = P.inputs_params_named()
+        Q_inputs_params_named = Q.inputs_params_named()
+
+        check_names(P, Q, data.keys(), P_inputs_params_named.keys(), Q_inputs_params_named.keys())
+
         data_torchdim = named2dim_dict(data, self.all_platedims)
         self.data = tensordict2tree(P, data_torchdim)
-        #Data tree should match structure of P by construction; but check anyway.
-        check_tree(P, self.data)
+
+        inputs_params_named = {**P_inputs_params_named, **Q_inputs_params_named}
+        inputs_params_torchdim = named2dim_dict(inputs_params_named, self.all_platedims)
+        self.inputs_params = tensordict2tree(P, inputs_params_torchdim)
 
         #Check names in P matches those in Q+data, and there are no duplicates.
-        check_names(P, Q, data.keys(), [], [])
         #Check the structure of P matches that of Q.
         check_PQ_plate(None, P, Q, self.data)
 
@@ -60,15 +67,41 @@ class Problem():
         sample, _ = self.Q.sample(
             name=None,
             scope={},
+            inputs_params=self.inputs_params,
             active_platedims=[],
             all_platedims=self.all_platedims,
             groupvarname2Kdim=groupvarname2Kdim,
             sampling_type=sampling_type,
             reparam=reparam,
         )
-        return sample
+        return sample, groupvarname2Kdim
 
-    def elbo(self, sample:dict, sampling_type:SamplingType):
-        pass
-        
-        
+    def elbo(
+            self, 
+            sample:dict, 
+            groupvarname2Kdim:dict[str, Dim], 
+            sampling_type:SamplingType, 
+            extra_log_factors=None,
+            split=None):
+
+        if extra_log_factors is None:
+            extra_log_factors = {}
+        extra_log_factors = named2dim_dict(extra_log_factors, self.all_platedims)
+        extra_log_factors = tensordict2tree(self.P, extra_log_factors)
+
+        lp, _ = logPQ_plate(
+            name=None,
+            P=self.P, 
+            Q=self.Q, 
+            sample=sample,
+            inputs_params=self.inputs_params,
+            data=self.data,
+            extra_log_factors=extra_log_factors,
+            scope={}, 
+            active_platedims=[],
+            all_platedims=self.all_platedims,
+            groupvarname2Kdim=groupvarname2Kdim,
+            sampling_type=sampling_type,
+            split=split)
+
+        return lp

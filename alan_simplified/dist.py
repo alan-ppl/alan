@@ -71,6 +71,7 @@ class Dist():
             self,
             name:Optional[str],
             scope: dict[str, Tensor], 
+            inputs_params: dict,
             active_platedims:list[Dim],
             all_platedims:dict[str, Dim],
             groupvarname2Kdim:dict[str, Dim],

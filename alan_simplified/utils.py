@@ -8,6 +8,7 @@ from functorch.dim import Dim
 from torch.utils.checkpoint import checkpoint
 
 Tensor = (functorch.dim.Tensor, t.Tensor)
+OptionalTensor = (None, functorch.dim.Tensor, t.Tensor)
 Number = (int, float)
 TensorNumber = (*Tensor, *Number)
 
@@ -40,6 +41,16 @@ def function_arguments(f):
         raise Exception("In Alan, functions may not have type annotations")
 
     return argspec.args
+
+def update_scope(scope:dict[str, Tensor], inputs_params:dict):
+    scope = {**scope}
+    for n, v in inputs_params.items():
+        if isinstance(v, Tensor):
+            scope[n] = v
+        else:
+            assert isinstance(v, dict)
+    return scope
+
 
 
 #### Utilities for working with torchdims

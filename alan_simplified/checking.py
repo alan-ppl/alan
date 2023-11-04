@@ -3,7 +3,7 @@ from typing import Optional, Any
 from .Plate import Plate
 from .Group import Group
 from .dist import Dist
-from .tree import DictTree, ListTree
+from .tree2 import tree_branches, tree_values
 
 #### Treat everything as a bag of names, and check that the names match for
 #### P and Q+data, and don't overlap as appropriate.
@@ -67,15 +67,6 @@ def mismatch_names(prefix:str, namesP: list[str], namesQdata: list[str]):
 
 
 
-#### Check structure of TreeDict/TreeList corresponds to P
-#### Shouldn't arise due to user error, so just asserts.
-def check_tree(P, tree):
-    for name, dgpt in P.prog.items():
-        if isinstance(dgpt, Plate):
-            assert name in tree.branches
-            check_tree(dgpt, tree.branches[name])
-
-
 
 #### Check the structure of the distributions match.
 
@@ -92,7 +83,7 @@ def check_PQ_group(groupname: str, groupP: Group, groupQ: Group):
         check_support(varname, distP, distQ)
 
 
-def check_PQ_plate(platename: Optional[str], P: Plate, Q: Plate, data: DictTree):
+def check_PQ_plate(platename: Optional[str], P: Plate, Q: Plate, data: dict):
     """
     Checks that 
     * P and Q have the same Plate/Group structure
@@ -103,8 +94,7 @@ def check_PQ_plate(platename: Optional[str], P: Plate, Q: Plate, data: DictTree)
 
     #Check for mismatches between P and Q+data.
     namesP = P.prog.keys()
-    assert isinstance(data, DictTree)
-    namesQdata = [*Q.prog.keys(), *data.values.keys()]
+    namesQdata = [*Q.prog.keys(), *tree_values(data).keys()]
     mismatch_names(f"In plate {platename}, there is a mismatch in the keys, with", namesP, namesQdata)
     #Now, any name in Q or data must appear in P.
 
@@ -112,7 +102,7 @@ def check_PQ_plate(platename: Optional[str], P: Plate, Q: Plate, data: DictTree)
 
     #First, names in data.
     #data must correspond to a Dist in P.
-    for name in data.values.keys():
+    for name in tree_values(data).keys():
         distP = P.prog[name]
         if not isinstance(distP, Dist):
             raise Exception(f"{name} in appears in Plate {platename} as data, so the corresponding {name} in P should be a distribution over a single random variable.  But actually {name} in P is something else: {type(distP)}")
@@ -137,4 +127,4 @@ def check_PQ_plate(platename: Optional[str], P: Plate, Q: Plate, data: DictTree)
             plateP = P.prog[name]
             if not isinstance(plateP, Plate):
                 raise Exception(f"{name} in Q is a Plate, so it should also be a Plate in P, but actually its a {type(plateP)}.")
-            check_PQ_plate(name, plateP, plateQ, data.branches[name])
+            check_PQ_plate(name, plateP, plateQ, data[name])

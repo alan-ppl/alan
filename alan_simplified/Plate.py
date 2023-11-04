@@ -12,12 +12,15 @@ class PlateTimeseries():
     def __init__(self, **kwargs):
         self.prog = kwargs
 
-class Plate(PlateTimeseries):
+    def inputs_params_named(self):
+        return {}
 
+class Plate(PlateTimeseries):
     def sample(
             self,
             name:Optional[str],
             scope: dict[str, Tensor], 
+            inputs_params: dict,
             active_platedims:list[Dim],
             all_platedims:dict[str, Dim],
             groupvarname2Kdim:dict[str, Dim],
@@ -28,7 +31,7 @@ class Plate(PlateTimeseries):
             active_platedims = [*active_platedims, all_platedims[name]]
 
         parent_scope = scope
-        scope = {**scope}
+        scope = update_scope(scope, inputs_params)
         sample = {}
 
         for childname, childP in self.prog.items():
@@ -36,6 +39,7 @@ class Plate(PlateTimeseries):
             childsample, scope = childP.sample(
                 name=childname,
                 scope=scope, 
+                inputs_params=inputs_params.get(childname),
                 active_platedims=active_platedims,
                 all_platedims=all_platedims,
                 groupvarname2Kdim=groupvarname2Kdim,

@@ -49,13 +49,19 @@ Some observations here:
 TODOs (B/T):
 
 TODOs (L):
+* input_params to torchdim.
+* input_params through sample.
+* sample_data in logpq
 * Checking:
   - check scoping
-  - check platedims with inputs, parameter and data.
 * Check reduce_logQ for IndependentSample
 * Source term tricks
 * Enumerating discrete variables
 * Syntax for Timeseries
+* For e.g. ParamNormal:
+  - the parameters are stored as a global dict in the usual way.
+  - the parameters have random names, like sdfhkjlsdgf0_mean
+  - the ParamNormal class has methods for initializing the parameters.
 
 logPQ:
 * The "magic" happens in here.

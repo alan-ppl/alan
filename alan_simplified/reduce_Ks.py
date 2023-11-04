@@ -1,5 +1,5 @@
 import opt_einsum
-from utils import *
+from .utils import *
 
 def einsum_args(lps, sum_dims):
     """

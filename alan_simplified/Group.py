@@ -24,6 +24,7 @@ class Group():
             self,
             name:Optional[str],
             scope: dict[str, Tensor], 
+            inputs_params: dict,
             active_platedims:list[Dim],
             all_platedims:dict[str, Dim],
             groupvarname2Kdim:dict[str, Dim],
@@ -41,8 +42,6 @@ class Group():
         resampled_scope = sampling_type.resample_scope(filtered_scope, active_platedims, Kdim)
 
         for name, dist in self.prog.items():
-            print((sample_dims, dist.sample_shape))
-            print(resampled_scope)
             tdd = dist.tdd(resampled_scope)
             sample = tdd.sample(reparam, sample_dims, dist.sample_shape)
 

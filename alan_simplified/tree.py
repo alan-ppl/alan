@@ -17,7 +17,7 @@ class DictTree(Tree):
         super().__init__({})
 
 class ListTree(Tree):
-    def __init__(self, branches:dict[str, Tree]):
+    def __init__(self):
         super().__init__([])
 
 def empty_ListTree_from_PQ(pq: Plate):
