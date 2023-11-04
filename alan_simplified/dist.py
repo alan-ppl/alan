@@ -1,3 +1,4 @@
+import types
 from typing import Optional
 import inspect
 
@@ -25,16 +26,16 @@ def func_args(something):
     return (args, func)
 
 
-class AlanDist():
+class Dist():
     """
     Abstract base class for distributions that are actually exposed to users.
 
-    All the actual distributions (e.g. Alan.Normal are subclasses of this distribution (the only difference 
+    All the actual distributions (e.g. alan.Normal are subclasses of this distribution (the only difference 
     between e.g. alan.Normal and alan.Gamma is that the PyTorch distribution is stored on `self.dist`).
 
     These distributions are called by the user e.g. `alan.Normal(0, "a")` or `alan.Normal(0, lambda a: a.exp())`.
 
-    There are three different types of argument we can give an AlanDist:
+    There are three different types of argument we can give an Dist:
     A value (such as an integer/float).
     A string representing a name of a variable in-scope.
     A function representing a transformation of the scope.
@@ -64,13 +65,14 @@ class AlanDist():
 
     def tdd(self, scope: dict[str, Tensor]):
         paramname2val = {paramname: func(scope) for (paramname, func) in self.paramname2func.items()}
-        return TorchDimDist(self.dist, **self.paramname2val(scope))
+        return TorchDimDist(self.dist, **paramname2val)
 
     def sample(
             self,
             name:Optional[str],
             scope: dict[str, Tensor], 
             active_platedims:list[Dim],
+            all_platedims:dict[str, Dim],
             groupvarname2Kdim:dict[str, Dim],
             sampling_type:SamplingType,
             reparam:bool):
@@ -78,7 +80,7 @@ class AlanDist():
         Kdim = groupvarname2Kdim[name]
         sample_dims = [Kdim, *active_platedims]
 
-        filtered_scope = self.filter_scope(self, scope)
+        filtered_scope = self.filter_scope(scope)
         resampled_scope = sampling_type.resample_scope(filtered_scope, active_platedims, Kdim)
 
         sample = self.tdd(resampled_scope).sample(reparam, sample_dims, self.sample_shape)
@@ -137,7 +139,7 @@ def new_dist(name, dist):
         name: string, will become the class name for the distribution.
         dist: Distribution class mirroring standard PyTorch distribution API.
     """
-    AD = type(name, (AlanDist,), {'dist': dist})
+    AD = type(name, (Dist,), {'dist': dist})
     globals()[name] = AD
     #setattr(alan, name, AD)
 

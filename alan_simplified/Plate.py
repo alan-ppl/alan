@@ -5,7 +5,7 @@ from functorch.dim import Dim
 from .utils import *
 from .SamplingType import SamplingType
 from .dist import Dist
-from .group import Group
+from .Group import Group
 
 
 class PlateTimeseries():
@@ -19,6 +19,7 @@ class Plate(PlateTimeseries):
             name:Optional[str],
             scope: dict[str, Tensor], 
             active_platedims:list[Dim],
+            all_platedims:dict[str, Dim],
             groupvarname2Kdim:dict[str, Dim],
             sampling_type:SamplingType,
             reparam:bool):
@@ -27,7 +28,7 @@ class Plate(PlateTimeseries):
             active_platedims = [*active_platedims, all_platedims[name]]
 
         parent_scope = scope
-        scope = {**scope, **inputs_params.values}
+        scope = {**scope}
         sample = {}
 
         for childname, childP in self.prog.items():
@@ -36,6 +37,7 @@ class Plate(PlateTimeseries):
                 name=childname,
                 scope=scope, 
                 active_platedims=active_platedims,
+                all_platedims=all_platedims,
                 groupvarname2Kdim=groupvarname2Kdim,
                 sampling_type=sampling_type,
                 reparam=reparam,

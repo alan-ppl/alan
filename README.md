@@ -47,33 +47,28 @@ Some observations here:
 * backend uses named tensors (so we don't have to worry about named dimensions).
 
 TODOs (B/T):
-* Implement and test SamplingType.
-* Tests for TorchDimDist.
-  - note that sample_dims is supposed to be all the samples in the output, not just the extra ones.
-* Tests for LP_Plate (explicitly construct some LP_Plates, and sum out.  Do we get what we expect?)
 
 TODOs (L):
-* Problem:
-  - Check that all names are unique.
-  - Check that the structure of P matches the structure of Q.
-  - write problem.groupvarname2Kdim(K)
+* Checking:
+  - check scoping
+  - check platedims with inputs, parameter and data.
 * Check reduce_logQ for IndependentSample
 * Source term tricks
 * Enumerating discrete variables
 * Syntax for Timeseries
 
 logPQ:
-  * The "magic" happens in here.
-  * Note that this is structured the way it is for efficiency:
-    - logPQ_plate takes P, Q, samples etc for a sub-plate of the program, and returns a single tensor (summing out K and the platedim).
-    - this function can easily be split across the plate and checkpointed.
-  * P, Q are nested dicts containing the prior and approximate posterior.  Structure must match exactly.
-  * sample_data has the same structure as P.
-  * inputs_params is a nested dict, with the same "Plating" structure as P, Q or sample_data.
-  * extra_log_factors is a nested dict, with the same "Plating" structure as P, Q or sample_data.
-  * Using the source-term trick to compute moments or importance weights is easy enough.  Computing the conditionals for sampling is much more painful:
-    - Use standard parallelisation tricks to sample from the unsplit latents at the top.
-    - Then recompute the split log-prob, fixing the split latents at the top.
+* The "magic" happens in here.
+* Note that this is structured the way it is for efficiency:
+  - logPQ_plate takes P, Q, samples etc for a sub-plate of the program, and returns a single tensor (summing out K and the platedim).
+  - this function can easily be split across the plate and checkpointed.
+* P, Q are nested dicts containing the prior and approximate posterior.  Structure must match exactly.
+* sample_data has the same structure as P.
+* inputs_params is a nested dict, with the same "Plating" structure as P, Q or sample_data.
+* extra_log_factors is a nested dict, with the same "Plating" structure as P, Q or sample_data.
+* Using the source-term trick to compute moments or importance weights is easy enough.  Computing the conditionals for sampling is much more painful:
+  - Use standard parallelisation tricks to sample from the unsplit latents at the top.
+  - Then recompute the split log-prob, fixing the split latents at the top.
 
 Sampling:
   * When sampling there's always a K-dimension.

@@ -1,10 +1,14 @@
 from typing import Optional
-from dist import Dist, filter_resample_scope
+from .dist import Dist
+from .utils import *
+from .SamplingType import SamplingType
 
-class Group(): def __init__(self, **kwargs):
+class Group(): 
+    def __init__(self, **kwargs):
         #Groups can only contain Dist, not Plates/Timeseries/other Groups.
-        for dist in kwargs.values():
-            assert isinstance(dist, Dist)
+        for varname, dist in kwargs.items():
+            if not isinstance(dist, Dist):
+                raise Exception("{varname} in a Group should be a Dist, but is actually {type(dist)}")
 
         self.prog = kwargs
         self.all_args = list(set([dist.all_args for dist in self.kwargs.values()]))
@@ -17,6 +21,7 @@ class Group(): def __init__(self, **kwargs):
             name:Optional[str],
             scope: dict[str, Tensor], 
             active_platedims:list[Dim],
+            all_platedims:dict[str, Dim],
             groupvarname2Kdim:dict[str, Dim],
             sampling_type:SamplingType,
             reparam:bool):
@@ -26,7 +31,7 @@ class Group(): def __init__(self, **kwargs):
         Kdim = groupvarname2Kdim[name]
         sample_dims = [Kdim, *active_platedims]
 
-        filtered_scope = self.filter_scope(self, scope)
+        filtered_scope = self.filter_scope(scope)
         resampled_scope = sampling_type.resample_scope(filtered_scope, active_platedims, Kdim)
 
         result = {}
