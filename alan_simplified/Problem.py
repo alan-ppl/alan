@@ -1,12 +1,11 @@
 import torch as t
 from typing import Union
 
-from .Plate import Plate
+from .Plate import Plate, tensordict2tree
 from .BoundPlate import BoundPlate
 from .SamplingType import SamplingType
 from .utils import *
-from .tree2 import tensordict2tree
-from .checking import check_names, check_PQ_plate, mismatch_names
+from .checking import check_PQ_plate, mismatch_names
 from .logpq import logPQ_plate
 
 PBP = Union[Plate, BoundPlate]
@@ -15,9 +14,9 @@ PBP = Union[Plate, BoundPlate]
 
 class Problem():
     def __init__(self, P: PBP, Q: PBP, all_platesizes: dict[str, int], data: dict[str, t.Tensor]):
-        all_names_P     =   P.all_names()
-        all_names_Qdata = [*Q.all_names(), *data.keys()]
-        mismatch_names(all_names_P, all_names_Qdata)
+        all_names_P     =   P.all_prog_names()
+        all_names_Qdata = [*Q.all_prog_names(), *data.keys()]
+        mismatch_names("", all_names_P, all_names_Qdata)
 
         self.P = P
         self.Q = Q
@@ -40,7 +39,7 @@ class Problem():
         sample, _ = self.Q.sample(
             name=None,
             scope={},
-            inputs_params=self.Q.inputs_params(),
+            inputs_params=self.Q.inputs_params(self.all_platedims),
             active_platedims=[],
             all_platedims=self.all_platedims,
             groupvarname2Kdim=groupvarname2Kdim,
@@ -62,16 +61,17 @@ class Problem():
         extra_log_factors = named2dim_dict(extra_log_factors, self.all_platedims)
         extra_log_factors = tensordict2tree(self.P, extra_log_factors)
 
-        lp, _ = logPQ_plate(
+        lp, _, _ = logPQ_plate(
             name=None,
             P=self.P, 
             Q=self.Q, 
             sample=sample,
-            inputs_params_P=self.P.inputs_params(),
-            inputs_params_Q=self.Q.inputs_params(),
+            inputs_params_P=self.P.inputs_params(self.all_platedims),
+            inputs_params_Q=self.Q.inputs_params(self.all_platedims),
             data=self.data,
             extra_log_factors=extra_log_factors,
-            scope={}, 
+            scope_P={}, 
+            scope_Q={}, 
             active_platedims=[],
             all_platedims=self.all_platedims,
             groupvarname2Kdim=groupvarname2Kdim,

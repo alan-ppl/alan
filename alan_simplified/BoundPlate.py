@@ -2,7 +2,7 @@ import torch as t
 import torch.nn as nn
 from .utils import *
 from .SamplingType import SamplingType
-from .tree2 import tensordict2tree
+from .Plate import tensordict2tree, Plate
 
 class BoundPlate(nn.Module):
     """
@@ -11,7 +11,7 @@ class BoundPlate(nn.Module):
 
     Only makes sense at the very top layer.
     """
-    def __init__(self, plate, inputs=None, params=None):
+    def __init__(self, plate: Plate, inputs=None, params=None):
         super().__init__()
         self.plate = plate
         self.prog = plate.prog
@@ -32,13 +32,13 @@ class BoundPlate(nn.Module):
             check_name(name)
         
         #Error checking: no overlap between names in inputs and params.
-        inputs_params_overlap = set(inputs.keys()).union(params.keys())
+        inputs_params_overlap = set(inputs.keys()).intersection(params.keys())
         if 0 != len(inputs_params_overlap):
             raise Exception(f"BoundPlate has overlapping names {inputs_params_overlap} in inputs and params")
 
         #Error checking: no overlap between names in program and in inputs or params.
         prog_names = self.plate.all_prog_names()
-        prog_input_params_overlap = set(input_param_names).union(prog_names)
+        prog_input_params_overlap = set(input_param_names).intersection(prog_names)
         if 0 != len(inputs_params_overlap):
             raise Exception(f"The program in BoundPlate has names that overlap with the inputs/params.  Specifically {prog_inputs_params_overlap}.")
 
@@ -66,10 +66,10 @@ class BoundPlate(nn.Module):
         """
         Returns a flat dict mapping from str -> torchdim tensor
         """
-        return named2dim_dict(self.inputs_params_named(), self.all_platedims)
+        return named2dim_dict(self.inputs_params_flat_named(), all_platedims)
 
-    def inputs_params(self):
+    def inputs_params(self, all_platedims:dict[str, Dim]):
         """
         Returns a nested dict mapping from str -> torchdim tensor
         """
-        return tensordict2tree(self.plate, self.inputs_params_flat_torchdim())
+        return tensordict2tree(self.plate, self.inputs_params_flat_torchdim(all_platedims))

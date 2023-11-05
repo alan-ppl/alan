@@ -1,9 +1,8 @@
 from typing import Optional, Any
 
-from .Plate import Plate
+from .Plate import Plate, tree_branches, tree_values
 from .Group import Group
 from .dist import Dist
-from .tree2 import tree_branches, tree_values
 
 #### Check the structure of the distributions match.
 

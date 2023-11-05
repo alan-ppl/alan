@@ -17,12 +17,12 @@ class Plate(PlateTimeseries):
         self.prog = kwargs
 
         #Error checking: plate/variable/group names aren't reserved
-        all_names = self.all_names()
-        for name in all_names:
+        all_prog_names = self.all_prog_names()
+        for name in all_prog_names:
             check_name(name)
 
         #Error checking: no duplicate names.
-        dup_names = list_duplicates(all_names)
+        dup_names = list_duplicates(all_prog_names)
         if 0 != len(dup_names):
             raise Exception(f"Plate has duplicate names {dup_names}.")
 
@@ -85,12 +85,12 @@ class Plate(PlateTimeseries):
         for k, v in self.prog.items():
             result.append(k)
             if isinstance(v, (Plate, Group)):
-                result = [*result, *all_names(v)]
+                result = [*result, *v.all_prog_names()]
             else:
                 assert isinstance(v, Dist)
         return result
                 
-    def inputs_params_named(self):
+    def inputs_params(self, all_platedims:dict[str, Dim]):
         """
         Returns all the inputs/params used in the program.  Empty
         as these are only defined for BoundPlate.
