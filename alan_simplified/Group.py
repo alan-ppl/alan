@@ -50,3 +50,6 @@ class Group():
             result[name] = sample
 
         return result, scope
+
+    def all_prog_names(self):
+        return self.prog.keys()

@@ -106,7 +106,9 @@ Combining prog with inputs/learned parameters/data.
     - inputs and parameters are named tensors, not torchdim yet (as we haven't associated P with Q, we can't have a unified list of Dims).
 
 Enumeration:
-  * Enumerate type in Q.
+  * Check Enumerate only in Q, not P.
+  * Deal with Enumerate in plate.groupvarname2Kdim.
+  * 
   
 
 Datastructures:

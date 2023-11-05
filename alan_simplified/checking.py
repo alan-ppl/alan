@@ -5,69 +5,6 @@ from .Group import Group
 from .dist import Dist
 from .tree2 import tree_branches, tree_values
 
-#### Treat everything as a bag of names, and check that the names match for
-#### P and Q+data, and don't overlap as appropriate.
-
-def all_names(plate: Plate):
-    result = []
-    for k, v in plate.prog.items():
-        result.append(k)
-        if isinstance(v, Group):
-            for gk in v.prog:
-                result.append(gk)
-        elif isinstance(v, Plate):
-            result = [*result, *all_names(v)]
-    return result
-
-def list_duplicates(xs):
-    dups = set()
-    xs_so_far = set()
-    for x in xs:
-        if x in xs_so_far:
-            dups.add(x)
-        else:
-            xs_so_far.add(x)
-    return list(dups)
-
-def check_names(P: Plate, Q:Plate, data_names: list[str], bound_names_P: list[str], bound_names_Q: list[str]):
-    namesP     = all_names(P)
-    namesQdata = [*all_names(Q), *data_names]
-
-    #Check for duplicates in the programs.
-    dupsP     = list_duplicates(namesP)
-    dupsQdata = list_duplicates(namesQdata)
-    if 0 < len(dupsP):
-        raise Exception(f"Duplicate names {dupsP} in P")
-    if 0 < len(dupsQdata):
-        raise Exception(f"Duplicate names {dupsQdata} in Q")
-
-    #Check for mismatches between P and Q+data.
-    mismatch_names("Names", namesP, namesQdata)
-
-    #Check there's no overlap between bound names for P and Q
-    bound_PQ_overlap = list(set(bound_names_P).intersection(bound_names_Q))
-    if 0 < len(bound_PQ_overlap):
-        raise Exception(f"Names {bound_PQ_overlap} for inputs/parameters present in both P and Q.  Must be different")
-
-    #Check there's no overlap between bound names and names in the prog
-    bound_names = [*bound_names_P, *bound_names_Q]
-    set_prog_names = set(namesP) #All the above confirms that prog names in P and Q+data are the same.
-    bound_prog_overlap = list(set_prog_names.intersection(bound_names))
-    if 0 < len(bound_prog_overlap):
-        raise Exception(f"Names {bound_prog_overlap} is both an inputs/parameter and is present in the programs.")
-
-def mismatch_names(prefix:str, namesP: list[str], namesQdata: list[str]):
-    #Check for mismatches between P and Q+data.
-    inPnotQ = list(set(namesP).difference(namesQdata))
-    inQnotP = list(set(namesQdata).difference(namesP))
-    if 0 < len(inPnotQ):
-        raise Exception(f"{prefix} {inPnotQ} present in P but not Q + data")
-    if 0 < len(inQnotP):
-        raise Exception(f"{prefix} {inQnotP} present in Q + data, but not in P")
-
-
-
-
 #### Check the structure of the distributions match.
 
 def check_support(name:str, distP:Dist, distQ:Any):
@@ -81,6 +18,16 @@ def check_PQ_group(groupname: str, groupP: Group, groupQ: Group):
     for varname, distP in groupP.prog.items():
         distQ = groupQ.prog[varname]
         check_support(varname, distP, distQ)
+
+def mismatch_names(prefix:str, namesP: list[str], namesQdata: list[str]):
+    #Check for mismatches between two lists of names (usually P and Q+data).
+    inPnotQ = list(set(namesP).difference(namesQdata))
+    inQnotP = list(set(namesQdata).difference(namesP))
+    if 0 < len(inPnotQ):
+        raise Exception(f"{prefix} {inPnotQ} present in P but not Q + data")
+    if 0 < len(inQnotP):
+        raise Exception(f"{prefix} {inQnotP} present in Q + data, but not in P")
+
 
 
 def check_PQ_plate(platename: Optional[str], P: Plate, Q: Plate, data: dict):

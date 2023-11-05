@@ -51,6 +51,59 @@ def update_scope(scope:dict[str, Tensor], inputs_params:dict):
             assert isinstance(v, dict)
     return scope
 
+def list_duplicates(xs:list):
+    dups = set()
+    xs_so_far = set()
+    for x in xs:
+        if x in xs_so_far:
+            dups.add(x)
+        else:
+            xs_so_far.add(x)
+    return list(dups)
+
+reserved_names = [
+    "plate", 
+    "prog", 
+    "sample", 
+    "groupvarname2Kdim", 
+    "inputs", 
+    "params", 
+    "inputs_params_named",
+]
+reserved_prefixes = [
+    "K_",
+]
+
+
+def check_name(name:str):
+    if name in reserved_names:
+        raise Exception(f"{name} is reserved in Alan")
+    for prefix in reserved_prefixes:
+        if (len(prefix) <= len(name)) and (prefix == name[:len(prefix)]):
+            raise Exception(f"You can't use the prefix {prefix} in {name} in Alan")
+
+
+
+
+def named2dim_dict(tensors: dict[str, t.Tensor], all_platedims: dict[str, Dim], setting=""):
+    result = {}
+    for varname, tensor in tensors.items():
+        if not isinstance(tensor, t.Tensor):
+            raise Exception(f"{varname} in {setting} must be a (named) torch Tensor")
+
+        for dimname in tensor.names:
+            if (dimname is not None): 
+                if (dimname not in all_platedims):
+                    raise Exception(f"{dimname} appears as a named dimension in {varname} in {setting}, but we don't have a Dim for that plate.")
+                else:
+                    dim = all_platedims[dimname]
+                    if dim.size != tensor.size(dimname):
+                        raise Exception(f"Dimension size mismatch along {dimname} in tensor {varname} in {setting}.  Specifically, the size provided in all_platesizes is {dim.size}, while the size of the tensor along this dimension is {tensor.size(dimname)}.")
+
+        torchdims = [(slice(None) if (dimname is None) else all_platedims[dimname]) for dimname in tensor.names]
+        result[varname] = generic_getitem(tensor.rename(None), torchdims)
+
+    return result
 
 
 #### Utilities for working with torchdims
