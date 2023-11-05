@@ -50,6 +50,15 @@ def logPQ_plate(
 
     lps = list(tree_values(extra_log_factors).values())
 
+
+    for childname, childP in Q.prog.items():
+        childsample = sample[childname]
+        if isinstance(childP, Dist):
+            scope_Q[childname] = childsample
+        elif isinstance(childP, Group):
+            for gn, gs in childsample.items():
+                scope_Q[childname] = childsample
+
     for childname, childP in P.prog.items():
         childQ = Q.prog.get(childname) 
 
@@ -67,7 +76,7 @@ def logPQ_plate(
             assert isinstance(childQ, Group)
             method = logPQ_group
 
-        lp, scope_P, scope_Q = method(
+        lp, scope_P = method(
             name=childname,
             P=childP, 
             Q=childQ, 
@@ -101,7 +110,7 @@ def logPQ_plate(
     if name is not None:
         lp = lp.sum(active_platedims[-1])
 
-    return lp, parent_scope_P, parent_scope_Q
+    return lp, parent_scope_P
 
 def logPQ_dist(
         name:str,

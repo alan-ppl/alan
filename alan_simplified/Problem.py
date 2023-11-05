@@ -36,7 +36,7 @@ class Problem():
         """
         groupvarname2Kdim = self.Q.groupvarname2Kdim(K)
 
-        sample, _ = self.Q.sample(
+        sample = self.Q.sample(
             name=None,
             scope={},
             inputs_params=self.Q.inputs_params(self.all_platedims),

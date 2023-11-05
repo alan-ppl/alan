@@ -42,14 +42,6 @@ def function_arguments(f):
 
     return argspec.args
 
-def update_scope(scope:dict[str, Tensor], inputs_params:dict):
-    scope = {**scope}
-    for n, v in inputs_params.items():
-        if isinstance(v, Tensor):
-            scope[n] = v
-        else:
-            assert isinstance(v, dict)
-    return scope
 
 def list_duplicates(xs:list):
     dups = set()

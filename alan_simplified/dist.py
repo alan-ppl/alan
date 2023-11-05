@@ -86,7 +86,7 @@ class Dist():
 
         sample = self.tdd(resampled_scope).sample(reparam, sample_dims, self.sample_shape)
 
-        return sample, {**scope, name: sample}
+        return sample
 
     def log_prob(self, 
                  sample: Tensor, 

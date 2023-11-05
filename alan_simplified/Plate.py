@@ -9,10 +9,8 @@ from .Group import Group
 from .utils import *
 
 
-class PlateTimeseries():
-    pass
 
-class Plate(PlateTimeseries):
+class Plate():
     def __init__(self, **kwargs):
         self.prog = kwargs
 
@@ -41,13 +39,12 @@ class Plate(PlateTimeseries):
         if name is not None:
             active_platedims = [*active_platedims, all_platedims[name]]
 
-        parent_scope = scope
-        scope = update_scope(scope, inputs_params)
+        scope = update_scope_inputs_params(scope, inputs_params)
         sample = {}
 
         for childname, childP in self.prog.items():
 
-            childsample, scope = childP.sample(
+            childsample = childP.sample(
                 name=childname,
                 scope=scope, 
                 inputs_params=inputs_params.get(childname),
@@ -59,8 +56,9 @@ class Plate(PlateTimeseries):
             )
 
             sample[childname] = childsample
+            scope = update_scope_sample(scope, childname, childP, childsample)
 
-        return sample, parent_scope
+        return sample
 
     def groupvarname2Kdim(self, K):
         """
@@ -98,11 +96,31 @@ class Plate(PlateTimeseries):
         return empty_tree(self)
 
 
-        
+#### Functions to update the scope.
 
-class Timeseries(PlateTimeseries):
-    pass
+def update_scope_sample(scope: dict[str, Tensor], name:str, dgpt, sample):
+    scope = {**scope}
+    if isinstance(dgpt, Dist):
+        assert isinstance(sample, Tensor)
+        scope[name] = sample
+    elif isinstance(dgpt, Group):
+        assert isinstance(sample, dict)
+        for gn, gs in sample.items():
+            assert isinstance(gs, Tensor)
+            scope[gn] = gs
+    else:
+        assert isinstance(dgpt, Plate)
+    return scope
 
+
+def update_scope_inputs_params(scope:dict[str, Tensor], inputs_params:dict):
+    scope = {**scope}
+    for n, v in inputs_params.items():
+        if isinstance(v, Tensor):
+            scope[n] = v
+        else:
+            assert isinstance(v, dict)
+    return scope
 
 
 #### Functions to transform a flat dict to a tree, mirroring the structure of plate.

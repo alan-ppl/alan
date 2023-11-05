@@ -31,25 +31,23 @@ class Group():
             sampling_type:SamplingType,
             reparam:bool):
 
-        scope = {**scope} #This is the modified scope that will be used in the outer plate.
         result = {}       #This is the sample returned.
 
         Kdim = groupvarname2Kdim[name]
         sample_dims = [Kdim, *active_platedims]
 
         #resampled scope is the scope used in here when sampling from the Group
-        filtered_scope = self.filter_scope(scope)
-        resampled_scope = sampling_type.resample_scope(filtered_scope, active_platedims, Kdim)
+        scope = self.filter_scope(scope)
+        scope = sampling_type.resample_scope(scope, active_platedims, Kdim)
 
         for name, dist in self.prog.items():
-            tdd = dist.tdd(resampled_scope)
+            tdd = dist.tdd(scope)
             sample = tdd.sample(reparam, sample_dims, dist.sample_shape)
 
-            scope[name] = sample
-            resampled_scope[name] = sample
+            scope[name]  = sample
             result[name] = sample
 
-        return result, scope
+        return result
 
     def all_prog_names(self):
         return self.prog.keys()
