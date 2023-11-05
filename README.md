@@ -49,19 +49,18 @@ Some observations here:
 TODOs (B/T):
 
 TODOs (L):
-* input_params to torchdim.
-* input_params through sample.
-* sample_data in logpq
+* Diagnostics to print sizes of everything in logPQ
+* Remove checkingpointing from reduce_Ks (as we're going to checkpoint the splits).
+* ParamNormal
+  - the parameters are stored as a global dict in the usual way.
+  - written in Q as a = ParamNormal(prefix="aaa", mean_init=, log_scale_init=, sample_shape=...)
+  - defines variables aaa_mean, aaa_log_scale
+* Source term tricks
+* Sample as a function of one program
 * Checking:
   - check scoping
-* Check reduce_logQ for IndependentSample
-* Source term tricks
 * Enumerating discrete variables
 * Syntax for Timeseries
-* For e.g. ParamNormal:
-  - the parameters are stored as a global dict in the usual way.
-  - the parameters have random names, like sdfhkjlsdgf0_mean
-  - the ParamNormal class has methods for initializing the parameters.
 
 logPQ:
 * The "magic" happens in here.
@@ -108,7 +107,6 @@ Combining prog with inputs/learned parameters/data.
 Enumeration:
   * Check Enumerate only in Q, not P.
   * Deal with Enumerate in plate.groupvarname2Kdim.
-  * 
   
 
 Datastructures:

@@ -38,6 +38,6 @@ data = {'e': t.randn(3, 4, names=('p1', 'p2'))}
 prob = Problem(P, Q, all_platesizes, data)
 
 sampling_type = IndependentSample
-sample, groupvarname2Kdim = prob.sample(3, True, sampling_type)
+sample = prob.sample(3, True, sampling_type)
 
-L = prob.elbo(sample, groupvarname2Kdim, sampling_type)
+L = sample.elbo()

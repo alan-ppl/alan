@@ -1,12 +1,14 @@
 import torch as t
 from typing import Union
 
-from .Plate import Plate, tensordict2tree
+from .Plate import Plate, tensordict2tree, flatten_tree
 from .BoundPlate import BoundPlate
 from .SamplingType import SamplingType
 from .utils import *
 from .checking import check_PQ_plate, mismatch_names
 from .logpq import logPQ_plate
+
+from .Sample import Sample
 
 PBP = Union[Plate, BoundPlate]
 
@@ -46,36 +48,15 @@ class Problem():
             sampling_type=sampling_type,
             reparam=reparam,
         )
-        return sample, groupvarname2Kdim
 
-    def elbo(
-            self, 
-            sample:dict, 
-            groupvarname2Kdim:dict[str, Dim], 
-            sampling_type:SamplingType, 
-            extra_log_factors=None,
-            split=None):
-
-        if extra_log_factors is None:
-            extra_log_factors = {}
-        extra_log_factors = named2dim_dict(extra_log_factors, self.all_platedims)
-        extra_log_factors = tensordict2tree(self.P, extra_log_factors)
-
-        lp = logPQ_plate(
-            name=None,
-            P=self.P, 
-            Q=self.Q, 
+        result = Sample(
+            problem=self,
             sample=sample,
-            inputs_params_P=self.P.inputs_params(self.all_platedims),
-            inputs_params_Q=self.Q.inputs_params(self.all_platedims),
-            data=self.data,
-            extra_log_factors=extra_log_factors,
-            scope_P={}, 
-            scope_Q={}, 
-            active_platedims=[],
-            all_platedims=self.all_platedims,
             groupvarname2Kdim=groupvarname2Kdim,
             sampling_type=sampling_type,
-            split=split)
+            split=None,
+        )
+    
+        return result
 
-        return lp
+

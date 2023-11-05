@@ -123,6 +123,8 @@ def update_scope_inputs_params(scope:dict[str, Tensor], inputs_params:dict):
     return scope
 
 
+
+
 #### Functions to transform a flat dict to a tree, mirroring the structure of plate.
 
 def empty_tree(plate: Plate):
@@ -183,4 +185,37 @@ def tensordict2tree(plate:Plate, tensor_dict:dict[str, Tensor]):
 
         current_branch[name] = tensor
     return root
+
+def treemap(f, *trees):
+    assert 1 <= len(trees)
+
+    if any(isinstance(tree, dict) in trees):
+        #If one argument is a dict, they're all dicts
+        assert all(isinstance(tree, dict) in trees)
+
+        #If they're all dicts, they have the same keys.
+        keys0 = set(trees[0].keys())
+        assert all(keys0 == set(tree.keys()) for tree in trees[1:])
+
+        #If they're dicts, then you can't apply the function yet,
+        #so keep recursing.
+        result = {}
+        for key in keys0:
+            result[key] = treemap(f, *[tree[key] for tree in trees])
+
+        return result
+    else:
+        #If they aren't dicts finally apply the function.
+        return f(*trees)
+
+def flatten_tree(tree):
+    result = {}
+    for k, v in tree.items():
+        if isinstance(v, Tensor):
+            result[k] = v
+        else:
+            assert isinstance(v, dict)
+            result = {**result, **flatten_tree(v)}
+    return result
+
 
