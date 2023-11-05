@@ -1,7 +1,7 @@
 import math
 from typing import Optional
 
-from .Plate import Plate, tree_values
+from .Plate import Plate, tree_values, update_scope_inputs_params, update_scope_sample
 from .Group import Group
 from .utils import *
 from .reduce_Ks import reduce_Ks
@@ -41,23 +41,19 @@ def logPQ_plate(
     #We want to pass back just the incoming scope, as nothing outside the plate can see
     #variables inside the plate.  So `scope` is the internal scope, and `parent_scope`
     #is the external scope we will pass back.
-    parent_scope_P = scope_P
-    parent_scope_Q = scope_Q
-    scope_P = update_scope(scope_P, inputs_params_P)
-    scope_Q = update_scope(scope_Q, inputs_params_Q)
+    scope_P = update_scope_inputs_params(scope_P, inputs_params_P)
+    scope_Q = update_scope_inputs_params(scope_Q, inputs_params_Q)
 
     assert set(P.prog.keys()) == set([*sample.keys(), *tree_values(data).keys()])
 
     lps = list(tree_values(extra_log_factors).values())
 
-
-    for childname, childP in Q.prog.items():
+    #Dump all the scope for Q directly
+    #That allows P and Q to have different orders.
+    #Note that we already know Q has a valid order, because we sampled from Q
+    for childname, childQ in Q.prog.items():
         childsample = sample[childname]
-        if isinstance(childP, Dist):
-            scope_Q[childname] = childsample
-        elif isinstance(childP, Group):
-            for gn, gs in childsample.items():
-                scope_Q[childname] = childsample
+        scope_Q = update_scope_sample(scope_Q, childname, childQ, childsample)
 
     for childname, childP in P.prog.items():
         childQ = Q.prog.get(childname) 
@@ -76,7 +72,7 @@ def logPQ_plate(
             assert isinstance(childQ, Group)
             method = logPQ_group
 
-        lp, scope_P = method(
+        lp = method(
             name=childname,
             P=childP, 
             Q=childQ, 
@@ -94,6 +90,10 @@ def logPQ_plate(
             split=split)
         lps.append(lp)
 
+        childsample = sample.get(childname)
+        if childsample is not None:
+            scope_P = update_scope_sample(scope_P, childname, childP, childsample)
+
     #Collect all Ks in the plate
     all_Ks = []
     for varname, dist in Q.prog.items():
@@ -110,7 +110,7 @@ def logPQ_plate(
     if name is not None:
         lp = lp.sum(active_platedims[-1])
 
-    return lp, parent_scope_P
+    return lp
 
 def logPQ_dist(
         name:str,
@@ -150,7 +150,7 @@ def logPQ_dist(
         lq = sampling_type.reduce_logQ(lq, active_platedims, Kdim)
 
         lpq = lpq - lq - math.log(Kdim.size)
-    return lpq, {**scope_P, name: sample_data}, {**scope_Q, name: sample_data}, 
+    return lpq
 
 
 def logPQ_group(
@@ -180,8 +180,9 @@ def logPQ_group(
     Kdim = groupvarname2Kdim[name]
     all_Kdims = set(groupvarname2Kdim.values())
 
+    #Don't need to copy or update scope_Q, as we have already dumped every variable
+    #in the plate into that scope.
     scope_P = {**scope_P}
-    scope_Q = {**scope_Q}
 
     total_logP = 0.
     total_logQ = 0.
@@ -196,9 +197,8 @@ def logPQ_group(
         total_logQ = total_logQ + childQ.log_prob(sample=childsample, scope=scope_Q)
 
         scope_P[childname] = childsample
-        scope_Q[childname] = childsample
 
     total_logQ = sampling_type.reduce_logQ(total_logQ, active_platedims, Kdim)
 
     logPQ = total_logP - total_logQ - math.log(Kdim.size)
-    return logPQ, scope_P, scope_Q
+    return logPQ

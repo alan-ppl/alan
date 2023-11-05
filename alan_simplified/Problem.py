@@ -61,7 +61,7 @@ class Problem():
         extra_log_factors = named2dim_dict(extra_log_factors, self.all_platedims)
         extra_log_factors = tensordict2tree(self.P, extra_log_factors)
 
-        lp, _, _ = logPQ_plate(
+        lp = logPQ_plate(
             name=None,
             P=self.P, 
             Q=self.Q, 
