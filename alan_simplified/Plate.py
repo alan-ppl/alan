@@ -87,6 +87,25 @@ class Plate():
             else:
                 assert isinstance(v, Dist)
         return result
+
+    def varname2groupvarname(self):
+        """
+        Returns a dictionary mapping the variable name to the groupvarname
+        i.e. for standard random variables, this is an identity mapping, but
+        for variables in a group, it takes the name of the variable, and
+        returns the name of the group.
+        """
+        result = {}
+        for k, v in self.prog.items():
+            if isinstance(v, Dist):
+                result[k] = k
+            elif isinstance(v, Group):
+                for gk, gv in v.prog.items():
+                    result[gk] = k
+            else:
+                assert isinstance(v, Plate)
+                result = {**result, **v.varname2groupvarname()}
+        return result
                 
     def inputs_params(self, all_platedims:dict[str, Dim]):
         """
@@ -94,6 +113,42 @@ class Plate():
         as these are only defined for BoundPlate.
         """
         return empty_tree(self)
+
+    def groupvarname2active_platedimnames(self, active_platedimnames=None):
+        """
+        Returns a dict mapping groupvarname (corresponding to K's) to the names of the active
+        plates for that groupvar.
+
+        Used for constructing Js for marginals + posterior sampling
+        """
+        if active_platedimnames is None:
+            active_platedimnames = []
+
+        result = {}
+        for name, dgpt in self.prog.items():
+            if isinstance(dgpt, (Dist, Group)):
+                result[name] = active_platedimnames
+            else:
+                assert isinstance(dgpt, Plate)
+                active_platedimnames = [*active_platedimnames, name]
+                result = {**result, **dgpt.groupvarname2active_platedimnames(active_platedimnames)}
+        return result
+
+    def groupvarname2parents(self):
+        """
+        Returns a dict mapping groupvarname (corresponding to K's) to the names of the
+        arguments. Arguments could be variables, inputs or parameters.
+
+        Used for constructing Js for posterior sampling
+        """
+        result = {}
+        for vargroupname, dgpt in self.prog.items():
+            if isinstance(dgpt, (Dist, Group)):
+                result[vargroupname] = dgpt.all_args
+            else:
+                assert isinstance(dgpt, Plate)
+                result = {**result, **dgpt.groupvarname2parents()}
+        return result
 
 
 #### Functions to update the scope.

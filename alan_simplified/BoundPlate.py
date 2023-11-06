@@ -15,9 +15,14 @@ class BoundPlate(nn.Module):
         super().__init__()
         self.plate = plate
         self.prog = plate.prog
+        #pass through methods on plate.
         self.sample = plate.sample
         self.groupvarname2Kdim = plate.groupvarname2Kdim
         self.all_prog_names = plate.all_prog_names
+        self.varname2groupvarname = plate.varname2groupvarname 
+        self.groupvarname2active_platedimnames = plate.groupvarname2active_platedimnames
+        self.groupvarname2parents = plate.groupvarname2parents 
+
 
         if inputs is None:
             inputs = {}

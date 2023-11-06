@@ -95,6 +95,12 @@ class Sample():
             marginals_dict[varname] = marginal.refine_names(*dimnames)
 
         return marginals_dict
+
+    def resample(self):
+        #map Kdimname -> active_platedims
+        #map Kdimname -> parent Kdimnames (using all_args on the dist)
+        #create a tree mapping
+        pass
     
 
 

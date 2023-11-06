@@ -58,5 +58,3 @@ class Problem():
         )
     
         return result
-
-
