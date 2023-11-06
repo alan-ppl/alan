@@ -39,5 +39,6 @@ prob = Problem(P, Q, all_platesizes, data)
 
 sampling_type = IndependentSample
 sample = prob.sample(3, True, sampling_type)
-
 L = sample.elbo()
+
+marginals = sample.marginals()
