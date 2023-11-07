@@ -60,6 +60,34 @@ class Plate():
 
         return sample
 
+    def posterior_sample(
+            self,
+            name:Optional[str],
+            sample:Optional[str],
+            Ksample:dict[str, Tensor],
+            groupvarname2Kdim:dict[str, dim],
+        ):
+        pass
+        """
+        To do the permutations, mirror the SamplingType code.
+        The resampling indices have active_platedims, but no explicit torchdim positional dimension.
+        Instead, there is one _positional_ dimension of length N (we don't have to have K samples).
+        Then, when we apply the resampling indices to a sampled value, there's only one K-dimension, so things are easy.
+          use tensor.order to bring the relevant K-dimension to the first positional dimension.
+          apply the permutation.
+          Give it an "N" torchdim dimension.
+
+        For log-prob tensors, things are a bit more complex.
+        The basic idea is to remember that you can extra the diagonal using:
+          a = t.randn(3,3)
+          a[[0,1,2], [0,1,2]]
+        So we:
+          Take the conditional tensor.
+          Convert all the parent Kdims to positional.
+          index with conditional[sampled_K_a, sampled_K_b]
+          gives a tensor with one K-dimension, corresponding to the variable + N as a positional dimension.
+        """
+
     def groupvarname2Kdim(self, K):
         """
         Finds all the Groups/Dists in the program, and creates a 
@@ -105,6 +133,35 @@ class Plate():
             else:
                 assert isinstance(v, Plate)
                 result = {**result, **v.varname2groupvarname()}
+        return result
+
+    def varnames(self):
+        """
+        Returns a list of varnames in the Plate.
+        """
+        result = []
+        for k, v in self.prog.items():
+            if isinstance(v, Dist):
+                result.append(k)
+            elif isinstance(v, Group):
+                result = [*result, *v.prog.keys()]
+            else:
+                assert isinstance(v, Plate)
+                result = [*result, *v.varnames()]
+        return result
+
+    def groupvarnames(self):
+        """
+        Returns a list of groupvarnames in the Plate (i.e. includes group
+        names but not variables in a group).  Corresponds to K-dimensions.
+        """
+        result = []
+        for k, v in self.prog.items():
+            if isinstance(v, (Group, Dist)):
+                result.append(k)
+            else:
+                assert isinstance(v, Plate)
+                result = [*result, *v.groupvarnames()]
         return result
                 
     def inputs_params(self, all_platedims:dict[str, Dim]):

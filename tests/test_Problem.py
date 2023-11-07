@@ -42,3 +42,4 @@ sample = prob.sample(3, True, sampling_type)
 L = sample.elbo()
 
 marginals = sample.marginals()
+conditionals = sample.conditionals()

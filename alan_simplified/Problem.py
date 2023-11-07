@@ -58,3 +58,26 @@ class Problem():
         )
     
         return result
+
+    def groupvarname2parent_groupvarnames(self):
+        """
+        Returns a dictionary giving the dependencies for each groupvar (i.e. variables
+        outside groups and groups).  Only includes those in Q, so should correspond to
+        dependencies for Ks.
+        """
+        varname2groupvarname = self.Q.varname2groupvarname()
+        groupvarnames_inQ = self.Q.groupvarnames()
+
+
+        #Has all keys, including keys for data; also maps to varname, not groupvarname
+        result = {}
+        for gvn, parents in self.P.groupvarname2parents().items():
+            #Only include groups or variables in Q.
+            if gvn in groupvarnames_inQ:
+                modified_parents = []
+                for parent in parents:
+                    #Only include parents in Q.
+                    if parent in varname2groupvarname:
+                        modified_parents.append(varname2groupvarname[parent])
+                result[gvn] = modified_parents
+        return result

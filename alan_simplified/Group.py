@@ -14,8 +14,8 @@ class Group():
             raise Exception("Groups only make sense if they have two or more random variables, but this group only has {len(kwargs)} random variables")
 
         self.prog = kwargs
-        all_arg_list = [arg for dist in kwargs.values() for arg in dist.all_args]
-        self.all_args = list(set(all_arg_list))
+        set_all_arg_list = set([arg for dist in kwargs.values() for arg in dist.all_args])
+        self.all_args = set_all_arg_list.difference(kwargs.keys()) #remove dependencies on other variables in the group.
 
     def filter_scope(self, scope: dict[str, Tensor]):
         return {k: v for (k,v) in scope.items() if k in self.all_args}

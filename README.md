@@ -49,6 +49,9 @@ Some observations here:
 TODOs (B/T):
 
 TODOs (L):
+* Set device on Problem.  Propagate through when sampling.
+* posterior_sample on Plate/Group/Dist; takes conditional probabilities as input.  Accumulates a dict mapping Kname -> sampled indicies.
+* Think about whether its possible to abstract iterating through tree.
 * Diagnostics to print sizes of everything in logPQ
 * Remove checkingpointing from reduce_Ks (as we're going to checkpoint the splits).
 * ParamNormal

@@ -22,6 +22,8 @@ class BoundPlate(nn.Module):
         self.varname2groupvarname = plate.varname2groupvarname 
         self.groupvarname2active_platedimnames = plate.groupvarname2active_platedimnames
         self.groupvarname2parents = plate.groupvarname2parents 
+        self.groupvarnames = plate.groupvarnames
+        self.varnames = plate.varnames
 
 
         if inputs is None:
