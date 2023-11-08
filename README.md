@@ -107,6 +107,21 @@ Combining prog with inputs/learned parameters/data.
     - parameters are learned (used for fixing inputs for Q)
     - inputs and parameters are named tensors, not torchdim yet (as we haven't associated P with Q, we can't have a unified list of Dims).
 
+Prediction:
+  * Define a sample_conditional pass that samples extended plates from the prior, conditioned on some samples passed in as input.
+    - This pass takes samples from Q.  But just depends on P.
+  * Computing logpq in the conditional setting is weirdly easy.
+    - logP - logQ is zero irrespective of the samples.  
+    - so the logpq_conditional pass doesn't need to depend on the extended samples, just the original samples?!?!  
+    - but it does depend on the extra_log_factors...
+    - summing over plates is easy, and doesn't require us to combine extended and original samples / logPQ (though we could).  Specifically, within a plate, everything in the platedim is independent.  So we could reduce_Ks separately, then add them.  Or we could combine the logPQ tensors then reduce_Ks.  Shouldn't matter either way, as logpq for the original samples will have all dependencies from the prior anyway.
+  * Now we can either:
+    - compute \sum_i E_post[log P(data_i| latents)], by treating log P(data_i| latents) as a moment.
+    - compute E_post[\sum_i log P(data_i| latents)], by taking the difference of the ELBO with and without the extra data.
+
+
+
+
 Enumeration:
   * Check Enumerate only in Q, not P.
   * Deal with Enumerate in plate.groupvarname2Kdim.

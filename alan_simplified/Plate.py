@@ -62,12 +62,10 @@ class Plate():
 
     def posterior_sample(
             self,
-            name:Optional[str],
-            sample:Optional[str],
-            Ksample:dict[str, Tensor],
+            conditionals:dict,
+            Kdim2sample_scope:dict[str, dim],
             groupvarname2Kdim:dict[str, dim],
         ):
-        pass
         """
         To do the permutations, mirror the SamplingType code.
         The resampling indices have active_platedims, but no explicit torchdim positional dimension.
@@ -87,6 +85,44 @@ class Plate():
           index with conditional[sampled_K_a, sampled_K_b]
           gives a tensor with one K-dimension, corresponding to the variable + N as a positional dimension.
         """
+        result = {}
+
+        all_Kdims = set(groupvarname2Kdim.values())
+
+        for childname, childP in self.prog.items():
+
+            if isinstance(childP, (Dist, Group):
+                assert isinstance(conditionals, Tensor)
+                varKdim = groupvarname2Kdim[childname]
+                all_dims = set(generic_dims(conditionals))
+
+                active_platedims = all_dims.difference(all_Kdims)
+                all_varKdims = all_dims.intersection(all_Kdims)
+
+                parent_Kdims = all_varKdims.difference({varKdim})
+
+
+                conditionals = generic_order(conditionals, parent_Kdims)
+                Ksamples = [Kdim2sample_scope[Kdim] for Kdim in parent_Kdims]
+                conditionals = generic_getitem(conditionals, Ksamples)
+
+                #If we haven't done any sampling before, then 
+                if 0 == len(parent_Kdims):
+                    assert 0 == conditionals.ndim
+                else:
+                    assert 1 == conditionals.ndim
+                assert set(generic_dims(conditionals)) == set(
+
+            else:
+                #add sub-plate as a tree/nested dict to result, but not to scope. 
+                result[childname] = childP.sample(
+                    conditionals=conditionals.get(childname)
+                    groupvarname2Ksample=groupvarname2Ksample_scope,
+                    groupvarname2Kdim=groupvarname2Kdim,
+                )
+
+        return result
+
 
     def groupvarname2Kdim(self, K):
         """
