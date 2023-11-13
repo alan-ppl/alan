@@ -1,4 +1,5 @@
 from .utils import *
+from .TorchDimDist import TorchDimDist
 
 class SamplingType:
     """
@@ -98,20 +99,34 @@ def Kdim2varname2tensors(scope: dict[str, Tensor], active_platedims: list[Dim]):
     Kdim2varname2tensor = {}
     for varname, tensor in scope.items():
         dims = generic_dims(tensor)
-        Kdims = set(dims).difference(active_platedims)
+        Kdims = list(set(dims).difference(active_platedims))
         assert len(Kdims) in [0, 1]
         if len(Kdims) == 1:
             Kdim = Kdims[0]
-            if Kdim not in Kdim2tensors:
-                Kdim2tensors[Kdim] = {}
+            if Kdim not in Kdim2varname2tensor:
+                Kdim2varname2tensor[Kdim] = {}
             else:
                 #If two tensors have the same K-dimension and thus are part of the
                 #same group, then they should have exactly the same K/plate dims
-                dims_prev = generic_dims(next(iter(Kdim2tensors.values())))
+                dims_prev = generic_dims(next(iter(Kdim2varname2tensor.values())))
                 assert set(generic_dims(tensor)) == set(dims_prev)
-            Kdim2tensors[Kdim][varname] = tensor
-    return Kdim2tensors
+            Kdim2varname2tensor[Kdim][varname] = tensor
+    return Kdim2varname2tensor
 
+def varname2Kdims(scope: dict[str, Tensor], active_platedims: list[Dim]):
+    """
+    Reverse mapping to above, each variable has at most a single K dimension.
+    """
+    varname2Kdim = {}
+    for varname, tensor in scope.items():
+        dims = generic_dims(tensor)
+        Kdims = list(set(dims).difference(active_platedims))
+        assert len(Kdims) in [0, 1]
+        if len(Kdims) == 1:
+            varname2Kdim[varname] = Kdims[0]
+    return varname2Kdim
+    
+    
 class MixtureSample(SamplingType):
     """
     A mixture proposal over all combinations of all particles of parent latent variables.
@@ -119,8 +134,8 @@ class MixtureSample(SamplingType):
     Note that while there is one log_prob, there are actually a few different approaches to
     sampling.
     """
-    @staticmethod
-    def resample_scope(scope: dict[str, Tensor], active_platedims: list[Dim], Kdim: Dim):
+    
+    def resample_scope(self, scope: dict[str, Tensor], active_platedims: list[Dim], Kdim: Dim):
         """
         This is called as we sample Q, and permutes the particles on the parents
 
@@ -138,7 +153,8 @@ class MixtureSample(SamplingType):
             perm = self.perm(dims=dims, Kdim=var_Kdim)
 
             for varname, tensor in varname2tensor.items():
-                new_scope[varname] = tensor.order(var_Kdim)[perm,...][Kdim]
+                perm_tensor = tensor.order(var_Kdim)[perm,...]
+                new_scope[varname] = perm_tensor[Kdim]
 
         check_resample_dims(new_scope, active_platedims, Kdim)
         return new_scope
@@ -151,13 +167,12 @@ class MixtureSample(SamplingType):
         returns log_prob tensor with [*active_platedims, Kdim]
         """
         #Check that every dim in lp is either in active_platedims, or is a Kdim.
-        all_dims = set([*varname2Kdim.values(), *active_platedims])
+        # all_dims = set([*varname2Kdim.values(), *active_platedims])
         lp_dims = generic_dims(lp)
-        for dim in lp_dims:
-            assert dim in all_dims
+        # for dim in lp_dims:
+        #     assert dim in all_dims
 
-        var_Kdim = varname2Kdim[name]
-        parent_Kdims = set(lp_dims).difference([var_Kdim, *active_platedims])
+        parent_Kdims = tuple(set(lp_dims).difference([Kdim, *active_platedims]))
 
         return logmeanexp_dims(lp, dims=parent_Kdims)
 
@@ -169,17 +184,17 @@ class PermutationMixtureSample(MixtureSample):
     A mixture proposal, where we permute the particles on all the parents.
     """
     @staticmethod
-    def perm(self, dims:list[Dim], Kdim:Dim):
+    def perm(dims:set[Dim], Kdim:Dim):
         tdd = TorchDimDist(td.uniform.Uniform, low=0, high=1)
-        return tdd.sample(False, sample_dims=dims, sample_shape=[]).argsort(Kdim).order(Kdim)
+        return tdd.sample(False, sample_dims=[*dims], sample_shape=[]).argsort(Kdim).order(Kdim)
     
 class CategoricalMixtureSample(MixtureSample):
     """
     A mixture proposal, where we resample the particles on the parents using a uniform Categorical.
     """
     @staticmethod
-    def perm(self, dims:list[Dim], Kdim:Dim):
+    def perm(dims:set[Dim], Kdim:Dim):
         tdd = TorchDimDist(td.categorical.Categorical, probs=t.ones(Kdim.size)/Kdim.size)
-        platedims = set(dims)
+        platedims = list(dims)
         platedims.remove(Kdim)
-        return tdd.sample(False, sample_dims=platedims, sample_shape=[])
+        return tdd.sample(False, sample_dims=platedims, sample_shape=[Kdim.size])
