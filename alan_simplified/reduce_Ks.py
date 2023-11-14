@@ -29,6 +29,58 @@ def einsum_args(lps, sum_dims):
 
     return [val for pair in zip(undim_lps, arg_idxs) for val in pair] + [out_idxs], out_dims
 
+
+def sample_Ks(lps, Ks_to_sum, active_platedims=None, num_samples=1):
+    """
+    Fundamental method that returns K samples from the posterior
+    opt_einsum gives an "optimization path", i.e. the indicies of lps to reduce.
+    We use this path to do our reductions, handing everything off to a simple t.einsum
+    call (which ensures a reasonably efficient implementation for each reduction).
+    """
+    assert_unique_dim_iter(Ks_to_sum)
+
+    args, out_dims = einsum_args(lps, Ks_to_sum)
+    path = opt_einsum.contract_path(*args)[0]
+
+    N_dim = Dim('N')
+    
+    lps_for_sampling = [lps.copy()]
+    if active_platedims:
+        Ks_to_sample = list(set(unify_dims(lps)).difference(active_platedims))
+    else:
+        Ks_to_sample = unify_dims(lps)
+        
+    for lp_idxs in path:
+        #Split lps into two groups: those we're going to reduce, and the rest.
+        lps_to_reduce = tuple(lps[i] for i in lp_idxs)
+        lps = [lps[i] for i in range(len(lps)) if i not in lp_idxs]
+
+        #In this step, sum over all Ks in Ks_to_sample, and not in lps (i.e. the other tensors)
+        _Ks_to_sum = tuple(set(Ks_to_sum).difference(unify_dims(lps)))
+
+        #Instantiates but doesn't save lp with _Ks_to_sample dims
+        lps.append(checkpoint(logsumexp_sum, _Ks_to_sum, *lps_to_reduce, use_reentrant=False))
+        lps_for_sampling.append(lps.copy())
+
+    indices = {}
+    sampled_Ks = []
+    for lps in lps_for_sampling[::-1]:
+        Kdims_to_sample = (list(set(unify_dims(lps)).intersection(Ks_to_sample).difference(sampled_Ks)))
+        for sample_dim in Kdims_to_sample:
+            lp = sum(lps)
+            for dim in list(set(generic_dims(lp)).intersection(sampled_Ks)):
+                lp = lp.order(dim)[indices[str(dim)]]
+            
+            indices[str(sample_dim)] = t.multinomial(t.exp(lp.order(sample_dim)), num_samples, replacement=True)[N_dim]
+            sampled_Ks.append(sample_dim)
+            
+
+    for k,v in indices.items():
+        indices[k] = v.order(N_dim, *active_platedims)
+        
+    return indices
+    
+    
 def reduce_Ks(lps, Ks_to_sum):
     """
     Fundamental method that sums over Ks
