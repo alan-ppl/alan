@@ -38,7 +38,8 @@ def sample_Ks(lps, Ks_to_sum, active_platedims=None, num_samples=1):
     call (which ensures a reasonably efficient implementation for each reduction).
     """
     assert_unique_dim_iter(Ks_to_sum)
-
+    assert set(unify_dims(lps)).issuperset(Ks_to_sum)
+    
     args, out_dims = einsum_args(lps, Ks_to_sum)
     path = opt_einsum.contract_path(*args)[0]
 
@@ -72,6 +73,7 @@ def sample_Ks(lps, Ks_to_sum, active_platedims=None, num_samples=1):
                 lp = lp.order(dim)[indices[str(dim)]]
             
             indices[str(sample_dim)] = t.multinomial(t.exp(lp.order(sample_dim)), num_samples, replacement=True)[N_dim]
+
             sampled_Ks.append(sample_dim)
             
 

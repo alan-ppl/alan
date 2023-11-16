@@ -17,10 +17,18 @@ Kdim = Dim('K')
 parent_1_Kdim = Dim('parent_1_K')
 parent_2_Kdim = Dim('parent_2_K')
 plate_1 = Dim('plate_1')
-varname2Kdim = {'parent_1_K':parent_1_Kdim, 'parent_2_K':parent_2_Kdim, 'a':Kdim}
+plate_2 = Dim('plate_2')
+
 active_platedims = [plate_1]
 name = 'a'
 
 lps = [t.randn(2,3,4,5)[Kdim, parent_1_Kdim, parent_2_Kdim, plate_1], t.randn(2,3,5)[Kdim, parent_1_Kdim, plate_1], t.randn(2,4,5)[Kdim, parent_2_Kdim, plate_1]]
 
 print(sample_Ks(lps, [parent_1_Kdim, parent_2_Kdim], active_platedims=active_platedims, num_samples=10))
+
+active_platedims = [plate_1, plate_2]
+
+lps = [t.randn(2,3,4,5,6)[Kdim, parent_1_Kdim, parent_2_Kdim, plate_1, plate_2], t.randn(2,3,5,6)[Kdim, parent_1_Kdim, plate_1, plate_2], t.randn(2,4,5,6)[Kdim, parent_2_Kdim, plate_1, plate_2]]
+
+print(sample_Ks(lps, [parent_1_Kdim, parent_2_Kdim], active_platedims=active_platedims, num_samples=10))
+
