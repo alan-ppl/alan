@@ -64,6 +64,7 @@ def sample_Ks(lps, Ks_to_sum, num_samples=1):
     Ks_to_sample.append(tuple(set(Ks_to_sum).intersection(unify_dims(lps_for_sampling[-1]))))
 
 
+    #Now that we have the list of reduced factors and which Kdims to sample from each factor we can sample from each factor in turn
     indices = {}
     sampled_Ks = []
     for lps, kdims_to_sample in zip(lps_for_sampling[::-1], Ks_to_sample[::-1]): 
@@ -72,10 +73,15 @@ def sample_Ks(lps, Ks_to_sum, num_samples=1):
         for dim in list(set(generic_dims(lp)).intersection(sampled_Ks)):
             lp = lp.order(dim)[indices[str(dim)]]
         
+        #If there is more than one Kdim to sample from this factor we need to sample from the joint distribution
+        #To do this we sample from a multinomial over the indices of the lp tensor
+        #We then unravel the indices and assign them to the appropriate Kdim
         if len(kdims_to_sample) > 1:
             for idx, kdim in zip(t.unravel_index(t.multinomial(t.exp(lp.order(*kdims_to_sample)).ravel(), num_samples, replacement=True), shape=[dim.size for dim in kdims_to_sample]), kdims_to_sample):
                 indices[str(kdim)] = idx[N_dim]
                 sampled_Ks.append(kdim)
+                
+        #Otherwise we can just sample from the multinomial with probabilities given by the Kdim dimension of the lp tensor
         else:
             indices[str(kdims_to_sample[0])] = t.multinomial(t.exp(lp.order(*kdims_to_sample)), num_samples, replacement=True)[N_dim]
             sampled_Ks.append(kdims_to_sample[0])
@@ -84,6 +90,7 @@ def sample_Ks(lps, Ks_to_sum, num_samples=1):
         sampled_Ks.append(kdims_to_sample)
             
 
+    #Remove N_dim from indices that was only used for indexing into subsequent factors
     for k,v in indices.items():
         indices[k] = v.order(N_dim)
         
