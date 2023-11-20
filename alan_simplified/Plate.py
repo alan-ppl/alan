@@ -63,8 +63,8 @@ class Plate():
     def posterior_sample(
             self,
             conditionals:dict,
-            Kdim2sample_scope:dict[str, dim],
-            groupvarname2Kdim:dict[str, dim],
+            Kdim2sample_scope:dict[str, Dim],
+            groupvarname2Kdim:dict[str, Dim],
         ):
         """
         To do the permutations, mirror the SamplingType code.
@@ -91,7 +91,7 @@ class Plate():
 
         for childname, childP in self.prog.items():
 
-            if isinstance(childP, (Dist, Group):
+            if isinstance(childP, (Dist, Group)):
                 assert isinstance(conditionals, Tensor)
                 varKdim = groupvarname2Kdim[childname]
                 all_dims = set(generic_dims(conditionals))
@@ -111,12 +111,12 @@ class Plate():
                     assert 0 == conditionals.ndim
                 else:
                     assert 1 == conditionals.ndim
-                assert set(generic_dims(conditionals)) == set(
+                assert set(generic_dims(conditionals)) == set()
 
             else:
                 #add sub-plate as a tree/nested dict to result, but not to scope. 
                 result[childname] = childP.sample(
-                    conditionals=conditionals.get(childname)
+                    conditionals=conditionals.get(childname),
                     groupvarname2Ksample=groupvarname2Ksample_scope,
                     groupvarname2Kdim=groupvarname2Kdim,
                 )
