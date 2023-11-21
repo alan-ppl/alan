@@ -1,5 +1,6 @@
 import opt_einsum
 from .utils import *
+from .unravel_index import unravel_index
 
 def einsum_args(lps, sum_dims):
     """
@@ -77,7 +78,7 @@ def sample_Ks(lps, Ks_to_sum, num_samples=1):
         #To do this we sample from a multinomial over the indices of the lp tensor
         #We then unravel the indices and assign them to the appropriate Kdim
         if len(kdims_to_sample) > 1:
-            for idx, kdim in zip(t.unravel_index(t.multinomial(t.exp(lp.order(*kdims_to_sample)).ravel(), num_samples, replacement=True), shape=[dim.size for dim in kdims_to_sample]), kdims_to_sample):
+            for idx, kdim in zip(unravel_index(t.multinomial(t.exp(lp.order(*kdims_to_sample)).ravel(), num_samples, replacement=True), shape=[dim.size for dim in kdims_to_sample]), kdims_to_sample):
                 indices[str(kdim)] = idx[N_dim]
                 sampled_Ks.append(kdim)
                 
