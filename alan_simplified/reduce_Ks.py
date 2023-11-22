@@ -68,11 +68,11 @@ def sample_Ks(lps, Ks_to_sum, num_samples=1):
     indices = {}
     sampled_Ks = []
     for lps, kdims_to_sample in zip(lps_for_sampling[::-1], Ks_to_sample[::-1]): 
-        
         lp = sum(lps)
+
         for dim in list(set(generic_dims(lp)).intersection(sampled_Ks)):
             lp = lp.order(dim)[indices[str(dim)]]
-        
+
         #If there is more than one Kdim to sample from this factor we need to sample from the joint distribution
         #To do this we sample from a multinomial over the indices of the lp tensor
         #We then unravel the indices and assign them to the appropriate Kdim
