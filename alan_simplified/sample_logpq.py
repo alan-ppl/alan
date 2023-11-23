@@ -11,73 +11,136 @@ from .dist import Dist
 from .logpq import logPQ_dist, logPQ_group, logPQ_plate
 
 def sample_logPQ(
-    P: Plate,
-    Q: Plate,
-    sample: dict,
+    name:Optional[str],
+    P:Plate, 
+    Q:Plate, 
+    sample: dict, 
     inputs_params_P: dict,
     inputs_params_Q: dict,
     data: dict,
-    extra_log_factors: dict,
-    scope_P: dict[str, Tensor],
-    scope_Q: dict[str, Tensor],
-    active_platedims: list[Dim],
-    all_platedims: dict[str:Dim],
-    groupvarname2Kdim: dict[str, Tensor],
-    sampling_type: SamplingType,
-    split: Optional[Split],
-    number_of_samples: int,
-):
-    
+    extra_log_factors: dict, 
+    scope_P: dict[str, Tensor], 
+    scope_Q: dict[str, Tensor], 
+    active_platedims:list[Dim],
+    all_platedims:dict[str: Dim],
+    groupvarname2Kdim:dict[str, Tensor],
+    sampling_type:SamplingType,
+    split:Optional[Split],
+    indices:dict[str, Tensor],
+    num_samples:int=1):
+
     assert isinstance(sample, dict)
     assert isinstance(inputs_params_P, dict)
     assert isinstance(inputs_params_Q, dict)
     assert isinstance(data, dict)
     assert isinstance(extra_log_factors, dict)
-    
-    indices = {}
-    
-    
-    #Assume we have P samples,and Q samples both in the form of a dict of tensors with the same keys
-    #and with a nested plate structure
-    P_samples = {}
-    Q_samples = {}
-    
-    #We also have log probs in same format?
-    P_log_probs = {}
-    Q_log_probs = {}
-    
-    for plate_idx in range(len(all_platedims)):
-        plate = all_platedims[plate_idx]
-        #Will need this to determine which lps to sum
-        lower_plate_dims = all_platedims[plate_idx+1:]
-        
-        #Maybe we want the factors seperately? Currently summing together
-        current_log_pq_factor = sum([lp - lq for lp, lq in zip(P_log_probs[plate], Q_log_probs[plate])])
-        
-        
-        #We want to index into samples somewhere here
-        
-        
-        
-        #Sum over lower plates and Ks
-        summed_log_pqs = []
-        for lower_plate in lower_plate_dims[::-1]:
-            log_pqs = [lp - lq for lp, lq in zip(P_log_probs[lower_plate], Q_log_probs[lower_plate])] + summed_log_pqs
-            summed_log_pqs.append(reduce_Ks(log_pqs, lower_plate))
-        
-        
-        #At the end should just have the logpqs in the current plate and a factor which has all Ks and plates (from lower plates) summed out
-        assert len(summed_log_pqs) == 1
-        summed_log_pq = summed_log_pqs[0]
-        
-        current_log_pq_factor = current_log_pq_factor + summed_log_pq
-        
-        #Now we need to sample from the current plate
-        indices.update(sample_Ks(current_log_pq_factor, [plate], number_of_samples))
-        
-        
+    assert isinstance(indices, dict)
 
+    
+    #Push an extra plate, if not the top-layer plate (top-layer plate is signalled
+    #by name=None.
+    if name is not None:
+        active_platedims = [*active_platedims, all_platedims[name]]
+
+
+    #We want to pass back just the incoming scope, as nothing outside the plate can see
+    #variables inside the plate.  So `scope` is the internal scope, and `parent_scope`
+    #is the external scope we will pass back.
+    scope_P = update_scope_inputs_params(scope_P, inputs_params_P)
+    scope_Q = update_scope_inputs_params(scope_Q, inputs_params_Q)
+
+    assert set(P.prog.keys()) == set([*sample.keys(), *tree_values(data).keys()])
+
+    lps = list(tree_values(extra_log_factors).values())
+    lp_names = list(tree_values(extra_log_factors).keys())
+    #Dump all the scope for Q directly
+    #That allows P and Q to have different orders.
+    #Note that we already know Q has a valid order, because we sampled from Q
+    for childname, childQ in Q.prog.items():
+        childsample = sample[childname]
+        scope_Q = update_scope_sample(scope_Q, childname, childQ, childsample)
+
+    for childname, childP in P.prog.items():
+        childQ = Q.prog.get(childname) 
+
+        #childQ doesn't necessarily have a distribution if sample_data is data.
+        #childQ defaults to None in that case.
+
+        if isinstance(childP, Dist):
+            assert isinstance(childQ, (Dist, type(None)))
+            method = logPQ_dist
+        elif isinstance(childP, Plate):
+            assert isinstance(childQ, Plate)
+            method = logPQ_plate
+        else:
+            isinstance(childP, Group)
+            assert isinstance(childQ, Group)
+            method = logPQ_group
+
+        lp = method(
+            name=childname,
+            P=childP, 
+            Q=childQ, 
+            sample=sample.get(childname),
+            data=data.get(childname),
+            inputs_params_P=inputs_params_P.get(childname),
+            inputs_params_Q=inputs_params_Q.get(childname),
+            extra_log_factors=extra_log_factors.get(childname),
+            scope_P=scope_P, 
+            scope_Q=scope_Q, 
+            active_platedims=active_platedims,
+            all_platedims=all_platedims,
+            groupvarname2Kdim=groupvarname2Kdim,
+            sampling_type=sampling_type,
+            split=split)
+        lps.append(lp)
+
+        childsample = sample.get(childname)
+        if childsample is not None:
+            scope_P = update_scope_sample(scope_P, childname, childP, childsample)
+
+    #Collect all Ks in the plate
+    all_Ks = []
+    for varname, dist in Q.prog.items():
+        if isinstance(dist, (Dist, Group)):
+            all_Ks.append(groupvarname2Kdim[varname])
+        else:
+            assert isinstance(dist, Plate)
+            
+    lp = sum(lps)
+    for index in indices:
+        lp = lp[index]
         
-    #return indices?
+        
+    indices.update(sample_Ks(lp, all_Ks, num_samples))
+    
+    for childname, childP in P.prog.items():
+        childQ = Q.prog.get(childname)
+        
+        if isinstance(childP, Plate):
+            assert isinstance(childQ, Plate)
+            indices = sample_logPQ(name=childname,
+            P=childP, 
+            Q=childQ, 
+            sample=sample.get(childname),
+            data=data.get(childname),
+            inputs_params_P=inputs_params_P.get(childname),
+            inputs_params_Q=inputs_params_Q.get(childname),
+            extra_log_factors=extra_log_factors.get(childname),
+            scope_P=scope_P, 
+            scope_Q=scope_Q, 
+            active_platedims=active_platedims,
+            all_platedims=all_platedims,
+            groupvarname2Kdim=groupvarname2Kdim,
+            sampling_type=sampling_type,
+            split=split,
+            indices=indices,
+            num_samples=num_samples)
+            
+        childsample = sample.get(childname)
+        if childsample is not None:
+            scope_P = update_scope_sample(scope_P, childname, childP, childsample)
+
+
     return indices
 
