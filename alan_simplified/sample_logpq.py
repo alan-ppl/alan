@@ -108,8 +108,9 @@ def sample_logPQ(
             assert isinstance(dist, Plate)
             
     lp = sum(lps)
-    for index in indices:
-        lp = lp[index]
+    
+    for K in all_Ks:
+        lp = lp.order(K)[index[str(K)]]
         
         
     indices.update(sample_Ks(lp, all_Ks, num_samples))
