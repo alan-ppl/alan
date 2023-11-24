@@ -27,6 +27,7 @@ def logPQ_sample(
     sampling_type:SamplingType,
     split:Optional[Split],
     indices:dict[str, Tensor],
+    prev_Ks:set[Dim],
     num_samples:int=1):
 
     assert isinstance(sample, dict)
@@ -52,7 +53,7 @@ def logPQ_sample(
     assert set(P.prog.keys()) == set([*sample.keys(), *tree_values(data).keys()])
 
     lps = list(tree_values(extra_log_factors).values())
-    lp_names = list(tree_values(extra_log_factors).keys())
+
     #Dump all the scope for Q directly
     #That allows P and Q to have different orders.
     #Note that we already know Q has a valid order, because we sampled from Q
@@ -107,16 +108,20 @@ def logPQ_sample(
         else:
             assert isinstance(dist, Plate)
             
-    lp = sum(lps)
-    
-    
+
+
         
-        
-    indices.update(sample_Ks([lp], all_Ks, num_samples))
+    # if len(indices) > 0:
+    #     for K in set(generic_dims(lp)).intersection(prev_Ks):
+    #         lp = lp.order(K)[indices[str(K)]]
     
-    if len(indices) > 0:
-        for K in all_Ks:
-            lp = lp.order(K)[indices[str(K)]]
+      
+    if len(all_Ks) > 0:
+        indices.update(sample_Ks(lps, all_Ks,indices, num_samples))
+
+        prev_Ks = prev_Ks.union(set(all_Ks))
+
+
         
     for childname, childP in P.prog.items():
         childQ = Q.prog.get(childname)
@@ -139,6 +144,7 @@ def logPQ_sample(
             sampling_type=sampling_type,
             split=split,
             indices=indices,
+            prev_Ks=prev_Ks,
             num_samples=num_samples)
             
         childsample = sample.get(childname)

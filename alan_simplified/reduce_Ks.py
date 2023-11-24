@@ -30,7 +30,7 @@ def einsum_args(lps, sum_dims):
     return [val for pair in zip(undim_lps, arg_idxs) for val in pair] + [out_idxs], out_dims
 
 
-def sample_Ks(lps, Ks_to_sum, num_samples=1):
+def sample_Ks(lps, Ks_to_sum, indices={}, num_samples=1):
     """
     Fundamental method that returns K samples from the posterior
     opt_einsum gives an "optimization path", i.e. the indicies of lps to reduce.
@@ -38,8 +38,7 @@ def sample_Ks(lps, Ks_to_sum, num_samples=1):
     call (which ensures a reasonably efficient implementation for each reduction).
     """
     assert_unique_dim_iter(Ks_to_sum)
-    print(lps)
-    print(Ks_to_sum)
+
     assert set(unify_dims(lps)).issuperset(Ks_to_sum)
     
     args, out_dims = einsum_args(lps, Ks_to_sum)
@@ -67,7 +66,6 @@ def sample_Ks(lps, Ks_to_sum, num_samples=1):
 
 
     #Now that we have the list of reduced factors and which Kdims to sample from each factor we can sample from each factor in turn
-    indices = {}
     sampled_Ks = []
     for lps, kdims_to_sample in zip(lps_for_sampling[::-1], Ks_to_sample[::-1]): 
         lp = sum(lps)
@@ -94,7 +92,9 @@ def sample_Ks(lps, Ks_to_sum, num_samples=1):
 
     #Remove N_dim from indices that was only used for indexing into subsequent factors
     for k,v in indices.items():
-        indices[k] = v.order(N_dim)
+        print(k,v)
+        if len(set(generic_dims(v)).intersection(set([N_dim]))) > 0:
+            indices[k] = v.order(N_dim)
         
     return indices
     

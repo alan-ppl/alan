@@ -129,6 +129,7 @@ class Sample():
             sampling_type=self.sampling_type,
             split=self.split,
             indices={},
+            prev_Ks=set(),
             num_samples=num_samples)
 
         return indices
