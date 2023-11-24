@@ -114,8 +114,9 @@ def sample_logPQ(
         
     indices.update(sample_Ks(lp, all_Ks, num_samples))
     
-    for K in all_Ks:
-        lp = lp.order(K)[indices[str(K)]]
+    if len(indices) > 0:
+        for K in all_Ks:
+            lp = lp.order(K)[indices[str(K)]]
         
     for childname, childP in P.prog.items():
         childQ = Q.prog.get(childname)
