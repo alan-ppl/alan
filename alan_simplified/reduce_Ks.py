@@ -92,7 +92,6 @@ def sample_Ks(lps, Ks_to_sum, indices={}, num_samples=1):
 
     #Remove N_dim from indices that was only used for indexing into subsequent factors
     for k,v in indices.items():
-        print(k,v)
         if len(set(generic_dims(v)).intersection(set([N_dim]))) > 0:
             indices[k] = v.order(N_dim)
         
