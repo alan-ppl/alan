@@ -30,7 +30,7 @@ def einsum_args(lps, sum_dims):
     return [val for pair in zip(undim_lps, arg_idxs) for val in pair] + [out_idxs], out_dims
 
 
-def sample_Ks(lps, Ks_to_sum, indices={}, num_samples=1):
+def sample_Ks(lps, Ks_to_sum, indices={}, N_dim=Dim('N'), num_samples=1):
     """
     Fundamental method that returns K samples from the posterior
     opt_einsum gives an "optimization path", i.e. the indicies of lps to reduce.
@@ -38,13 +38,11 @@ def sample_Ks(lps, Ks_to_sum, indices={}, num_samples=1):
     call (which ensures a reasonably efficient implementation for each reduction).
     """
     assert_unique_dim_iter(Ks_to_sum)
-
     assert set(unify_dims(lps)).issuperset(Ks_to_sum)
     
     args, out_dims = einsum_args(lps, Ks_to_sum)
     path = opt_einsum.contract_path(*args)[0]
 
-    N_dim = Dim('N')
     
     lps_for_sampling = [lps.copy()]
     Ks_to_sample = []
@@ -64,15 +62,15 @@ def sample_Ks(lps, Ks_to_sum, indices={}, num_samples=1):
 
     Ks_to_sample.append(tuple(set(Ks_to_sum).intersection(unify_dims(lps_for_sampling[-1]))))
 
-
     #Now that we have the list of reduced factors and which Kdims to sample from each factor we can sample from each factor in turn
+    indices = {}
     sampled_Ks = []
     for lps, kdims_to_sample in zip(lps_for_sampling[::-1], Ks_to_sample[::-1]): 
+        
         lp = sum(lps)
-
         for dim in list(set(generic_dims(lp)).intersection(sampled_Ks)):
             lp = lp.order(dim)[indices[str(dim)]]
-
+        
         #If there is more than one Kdim to sample from this factor we need to sample from the joint distribution
         #To do this we sample from a multinomial over the indices of the lp tensor
         #We then unravel the indices and assign them to the appropriate Kdim
@@ -91,9 +89,8 @@ def sample_Ks(lps, Ks_to_sum, indices={}, num_samples=1):
             
 
     #Remove N_dim from indices that was only used for indexing into subsequent factors
-    for k,v in indices.items():
-        if len(set(generic_dims(v)).intersection(set([N_dim]))) > 0:
-            indices[k] = v.order(N_dim)
+    # for k,v in indices.items():
+    #     indices[k] = v.order(N_dim)
         
     return indices
     

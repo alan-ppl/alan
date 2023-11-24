@@ -28,7 +28,8 @@ def logPQ_sample(
     split:Optional[Split],
     indices:dict[str, Tensor],
     prev_Ks:set[Dim],
-    num_samples:int=1):
+    num_samples:int=1,
+    N_dim = Dim('N')):
 
     assert isinstance(sample, dict)
     assert isinstance(inputs_params_P, dict)
@@ -110,14 +111,13 @@ def logPQ_sample(
             
 
 
-        
-    # if len(indices) > 0:
-    #     for K in set(generic_dims(lp)).intersection(prev_Ks):
-    #         lp = lp.order(K)[indices[str(K)]]
-    
-      
+    for i in range(len(lps)):
+        for dim in list(set(generic_dims(lps[i])).intersection(prev_Ks)):
+            lps[i] = lps[i].order(dim)[indices[str(dim)]]
+
+
     if len(all_Ks) > 0:
-        indices.update(sample_Ks(lps, all_Ks,indices, num_samples))
+        indices.update(sample_Ks(lps, all_Ks,indices,N_dim, num_samples))
 
         prev_Ks = prev_Ks.union(set(all_Ks))
 
@@ -145,7 +145,8 @@ def logPQ_sample(
             split=split,
             indices=indices,
             prev_Ks=prev_Ks,
-            num_samples=num_samples)
+            num_samples=num_samples,
+            N_dim = N_dim)
             
         childsample = sample.get(childname)
         if childsample is not None:
