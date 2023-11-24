@@ -109,12 +109,14 @@ def sample_logPQ(
             
     lp = sum(lps)
     
-    for K in all_Ks:
-        lp = lp.order(K)[index[str(K)]]
+    
         
         
     indices.update(sample_Ks(lp, all_Ks, num_samples))
     
+    for K in all_Ks:
+        lp = lp.order(K)[indices[str(K)]]
+        
     for childname, childP in P.prog.items():
         childQ = Q.prog.get(childname)
         
