@@ -10,7 +10,7 @@ from .SamplingType import SamplingType
 from .dist import Dist
 from .logpq import logPQ_dist, logPQ_group, logPQ_plate
 
-def sample_logPQ(
+def logPQ_sample(
     name:Optional[str],
     P:Plate, 
     Q:Plate, 
@@ -112,7 +112,7 @@ def sample_logPQ(
     
         
         
-    indices.update(sample_Ks(lp, all_Ks, num_samples))
+    indices.update(sample_Ks([lp], all_Ks, num_samples))
     
     if len(indices) > 0:
         for K in all_Ks:
@@ -123,7 +123,7 @@ def sample_logPQ(
         
         if isinstance(childP, Plate):
             assert isinstance(childQ, Plate)
-            indices = sample_logPQ(name=childname,
+            indices = logPQ_sample(name=childname,
             P=childP, 
             Q=childQ, 
             sample=sample.get(childname),

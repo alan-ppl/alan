@@ -38,6 +38,8 @@ def sample_Ks(lps, Ks_to_sum, num_samples=1):
     call (which ensures a reasonably efficient implementation for each reduction).
     """
     assert_unique_dim_iter(Ks_to_sum)
+    print(lps)
+    print(Ks_to_sum)
     assert set(unify_dims(lps)).issuperset(Ks_to_sum)
     
     args, out_dims = einsum_args(lps, Ks_to_sum)

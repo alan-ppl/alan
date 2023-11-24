@@ -6,6 +6,7 @@ from .Split import Split
 from .Plate import Plate, tensordict2tree, flatten_tree, empty_tree
 from .utils import *
 from .logpq import logPQ_plate
+from .sample_logpq import logPQ_sample
 
 class Sample():
     def __init__(
@@ -102,8 +103,37 @@ class Sample():
         #create a tree mapping
         pass
     
+    def sample_posterior(self, extra_log_factors=None, num_samples=1):
 
 
+        if extra_log_factors is None:
+            extra_log_factors = empty_tree(self.P)
+        assert isinstance(extra_log_factors, dict)
+        #extra_log_factors = named2dim_dict(extra_log_factors, self.all_platedims)
+        #extra_log_factors = tensordict2tree(self.P, extra_log_factors)
+        
+        indices = logPQ_sample(
+            name=None,
+            P=self.P, 
+            Q=self.Q, 
+            sample=self.sample,
+            inputs_params_P=self.P.inputs_params(self.all_platedims),
+            inputs_params_Q=self.Q.inputs_params(self.all_platedims),
+            data=self.problem.data,
+            extra_log_factors=extra_log_factors,
+            scope_P={}, 
+            scope_Q={}, 
+            active_platedims=[],
+            all_platedims=self.all_platedims,
+            groupvarname2Kdim=self.groupvarname2Kdim,
+            sampling_type=self.sampling_type,
+            split=self.split,
+            indices={},
+            num_samples=num_samples)
+
+        return indices
+    
+    
     def marginals(self):
 
         #List of named Js to go into torch.autograd.grad
