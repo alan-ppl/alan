@@ -53,7 +53,7 @@ def sample_Ks(lps, Ks_to_sum, indices={}, N_dim=Dim('N'), num_samples=1):
         lps = [lps[i] for i in range(len(lps)) if i not in lp_idxs]
 
         #In this step, sum over all Ks in Ks_to_sample, and not in lps (i.e. the other tensors)
-        _Ks_to_sum = tuple(set(Ks_to_sum).difference(unify_dims(lps)))
+        _Ks_to_sum = tuple(set(Ks_to_sum).difference(unify_dims(lps)).intersection(unify_dims(lps_to_reduce)))
         Ks_to_sample.append(_Ks_to_sum)
 
         #Instantiates but doesn't save lp with _Ks_to_sample dims
@@ -69,7 +69,7 @@ def sample_Ks(lps, Ks_to_sum, indices={}, N_dim=Dim('N'), num_samples=1):
     
     for lps, kdims_to_sample in zip(lps_for_sampling[::-1], Ks_to_sample[::-1]): 
         lp = sum(lps)
-        kdims_to_sample = tuple(set(generic_dims(lp)).intersection(set(kdims_to_sample)))
+
         for dim in list(set(generic_dims(lp)).intersection(sampled_Ks)):
             lp = lp.order(dim)[indices[str(dim)]]
         
