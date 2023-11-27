@@ -50,7 +50,6 @@ def sample_posterior(
     if name is not None:
         active_platedims = [*active_platedims, all_platedims[name]]
 
-    print(f"plate: {name}")
     #We want to pass back just the incoming scope, as nothing outside the plate can see
     #variables inside the plate.  So `scope` is the internal scope, and `parent_scope`
     #is the external scope we will pass back.
