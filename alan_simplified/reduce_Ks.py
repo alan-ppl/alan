@@ -31,7 +31,7 @@ def einsum_args(lps, sum_dims):
     return [val for pair in zip(undim_lps, arg_idxs) for val in pair] + [out_idxs], out_dims
 
 
-def sample_Ks(lps, Ks_to_sum, num_samples=1):
+def sample_Ks(lps, Ks_to_sum, num_samples=1, N_dim=Dim('N')):
     """
     Fundamental method that returns K samples from the posterior
     opt_einsum gives an "optimization path", i.e. the indicies of lps to reduce.
@@ -44,7 +44,7 @@ def sample_Ks(lps, Ks_to_sum, num_samples=1):
     args, out_dims = einsum_args(lps, Ks_to_sum)
     path = opt_einsum.contract_path(*args)[0]
 
-    N_dim = Dim('N')
+    # N_dim = Dim('N')
     
     lps_for_sampling = [lps.copy()]
     Ks_to_sample = []
@@ -55,7 +55,7 @@ def sample_Ks(lps, Ks_to_sum, num_samples=1):
         lps = [lps[i] for i in range(len(lps)) if i not in lp_idxs]
 
         #In this step, sum over all Ks in Ks_to_sample, and not in lps (i.e. the other tensors)
-        _Ks_to_sum = tuple(set(Ks_to_sum).difference(unify_dims(lps)))
+        _Ks_to_sum = tuple(set(Ks_to_sum).difference(unify_dims(lps)).intersection(unify_dims(lps_to_reduce)))
         Ks_to_sample.append(_Ks_to_sum)
 
         #Instantiates but doesn't save lp with _Ks_to_sample dims
@@ -91,9 +91,9 @@ def sample_Ks(lps, Ks_to_sum, num_samples=1):
         sampled_Ks.append(kdims_to_sample)
             
 
-    #Remove N_dim from indices that was only used for indexing into subsequent factors
-    for k,v in indices.items():
-        indices[k] = v.order(N_dim)
+    # #Remove N_dim from indices that was only used for indexing into subsequent factors
+    # for k,v in indices.items():
+    #     indices[k] = v.order(N_dim)
         
     return indices
     
