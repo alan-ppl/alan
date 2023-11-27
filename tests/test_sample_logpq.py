@@ -31,6 +31,32 @@ Q = Plate(
         ),
     ),
 )
+
+P = Plate(
+    a = Normal(0, 1),
+    b = Normal("a", 1),
+   
+    c = Normal(0, lambda a: a.exp()),
+    p1 = Plate(
+        d = Normal("a", 1),
+        p2 = Plate(
+            e = Normal("d", 1.),
+        ),
+    ),
+)
+
+Q = Plate(
+    a = Normal("a_mean", 1),
+    b = Normal("a", 1),
+   
+    c = Normal(0, lambda a: a.exp()),
+    p1 = Plate(
+        d = Normal("d_mean", 1),
+        p2 = Plate(
+        ),
+    ),
+)
+
 Q = BoundPlate(Q, params={'a_mean': t.zeros(()), 'd_mean':t.zeros(3, names=('p1',))})
 
 all_platesizes = {'p1': 3, 'p2': 4}

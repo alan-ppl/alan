@@ -60,14 +60,16 @@ def sample_Ks(lps, Ks_to_sum, indices={}, N_dim=Dim('N'), num_samples=1):
         lps.append(checkpoint(logsumexp_sum, _Ks_to_sum, *lps_to_reduce, use_reentrant=False))
         lps_for_sampling.append(lps.copy())
 
+
     Ks_to_sample.append(tuple(set(Ks_to_sum).intersection(unify_dims(lps_for_sampling[-1]))))
 
     #Now that we have the list of reduced factors and which Kdims to sample from each factor we can sample from each factor in turn
     indices = {}
     sampled_Ks = []
+    
     for lps, kdims_to_sample in zip(lps_for_sampling[::-1], Ks_to_sample[::-1]): 
-        
         lp = sum(lps)
+        kdims_to_sample = tuple(set(generic_dims(lp)).intersection(set(kdims_to_sample)))
         for dim in list(set(generic_dims(lp)).intersection(sampled_Ks)):
             lp = lp.order(dim)[indices[str(dim)]]
         
