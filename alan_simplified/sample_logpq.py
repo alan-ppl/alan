@@ -116,7 +116,7 @@ def logPQ_sample(
 
 
     if len(all_Ks) > 0:
-        indices.update(sample_Ks(lps, all_Ks,indices,N_dim, num_samples))
+        indices.update(sample_Ks(lps, all_Ks,N_dim, num_samples))
 
 
 

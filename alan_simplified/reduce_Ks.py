@@ -30,7 +30,7 @@ def einsum_args(lps, sum_dims):
     return [val for pair in zip(undim_lps, arg_idxs) for val in pair] + [out_idxs], out_dims
 
 
-def sample_Ks(lps, Ks_to_sum, indices, N_dim, num_samples):
+def sample_Ks(lps, Ks_to_sum, N_dim, num_samples):
     """
     Fundamental method that returns K samples from the posterior
     opt_einsum gives an "optimization path", i.e. the indicies of lps to reduce.
