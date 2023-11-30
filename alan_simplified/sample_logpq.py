@@ -109,14 +109,14 @@ def logPQ_sample(
             assert isinstance(dist, Plate)
             
 
-
+    # Index into each lp with the indices we've collected so far
     for i in range(len(lps)):
         for dim in list(set(generic_dims(lps[i])).intersection(set(indices.keys()))):
             lps[i] = lps[i].order(dim)[indices[dim]]
 
 
     if len(all_Ks) > 0:
-        indices.update(sample_Ks(lps, all_Ks,N_dim, num_samples))
+        indices = {**indices, **sample_Ks(lps, all_Ks,N_dim, num_samples)}
 
 
 

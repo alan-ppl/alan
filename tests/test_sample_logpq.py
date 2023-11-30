@@ -4,6 +4,7 @@ from functorch.dim import Dim
 
 from alan_simplified import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, IndependentSample
 
+t.manual_seed(0)
 
 P = Plate(
     ab = Group(
