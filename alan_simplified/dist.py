@@ -87,6 +87,40 @@ class Dist():
         sample = self.tdd(resampled_scope).sample(reparam, sample_dims, self.sample_shape)
 
         return sample
+    
+    def sample_extended(
+            self,
+            sample:Tensor,
+            name:Optional[str],
+            scope:dict[str, Tensor],
+            inputs_params:dict,
+            original_platedims:dict[str, Dim],
+            extended_platedims:dict[str, Dim],
+            active_original_platedims:list[Dim],
+            active_extended_platedims:list[Dim],
+            Ndim:Dim,
+            reparam:bool,
+            data:Optional[dict[str, Tensor]]):
+
+        print(name)
+
+        sample_dims = [Ndim, *active_extended_platedims]
+
+        filtered_scope = self.filter_scope(scope)
+
+        extended_sample = self.tdd(filtered_scope).sample(reparam, sample_dims, self.sample_shape)
+        original_sample = sample if sample is not None else data[name]
+
+        extended_sample = extended_sample.order(*active_extended_platedims)
+        original_sample = original_sample.order(*active_original_platedims)
+
+        original_idxs = [slice(0, dim.size) for dim in active_original_platedims]
+
+        generic_setitem(extended_sample, original_idxs, original_sample)
+
+        extended_sample = generic_getitem(extended_sample, active_extended_platedims)
+
+        return extended_sample
 
     def log_prob(self, 
                  sample: Tensor, 

@@ -59,6 +59,49 @@ class Plate():
             scope = update_scope_sample(scope, childname, childP, childsample)
 
         return sample
+    
+    def sample_extended(
+            self,
+            sample:dict,
+            name:Optional[str],
+            scope:dict[str, Tensor],
+            inputs_params:dict,
+            original_platedims:dict[str, Dim],
+            extended_platedims:dict[str, Dim],
+            active_original_platedims:list[Dim],
+            active_extended_platedims:list[Dim],
+            Ndim:Dim,
+            reparam:bool,
+            data:Optional[dict[str, Tensor]]):
+
+        if name is not None:
+            active_original_platedims = [*active_original_platedims, original_platedims[name]]
+            active_extended_platedims = [*active_extended_platedims, extended_platedims[name]]
+
+        scope = update_scope_inputs_params(scope, inputs_params)
+
+        for childname, childP in self.prog.items():
+            
+            # input(f"{childname}, {inputs_params}, {scope}")
+            
+            childsample = childP.sample_extended(
+                sample=sample.get(childname),
+                name=childname,
+                scope=scope,
+                inputs_params=inputs_params.get(childname),
+                original_platedims=original_platedims,
+                extended_platedims=extended_platedims,
+                active_original_platedims=active_original_platedims,
+                active_extended_platedims=active_extended_platedims,
+                Ndim=Ndim,
+                reparam=reparam,
+                data=data[name] if name is not None else data  # only pass the data for the current plate
+            )
+
+            sample[childname] = childsample
+            scope = update_scope_sample(scope, childname, childP, childsample)
+
+        return sample
 
     def posterior_sample(
             self,
