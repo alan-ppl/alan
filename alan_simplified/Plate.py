@@ -72,7 +72,8 @@ class Plate():
             active_extended_platedims:list[Dim],
             Ndim:Dim,
             reparam:bool,
-            data:Optional[dict[str, Tensor]]):
+            original_data:Optional[dict[str, Tensor]],
+            extended_data:Optional[dict[str, Tensor]]):
 
         if name is not None:
             active_original_platedims = [*active_original_platedims, original_platedims[name]]
@@ -80,11 +81,12 @@ class Plate():
 
         scope = update_scope_inputs_params(scope, inputs_params)
 
+        original_ll = {}
+        extended_ll = {}
+
         for childname, childP in self.prog.items():
-            
-            # input(f"{childname}, {inputs_params}, {scope}")
-            
-            childsample = childP.sample_extended(
+
+            childsample, child_original_ll, child_extended_ll = childP.sample_extended(
                 sample=sample.get(childname),
                 name=childname,
                 scope=scope,
@@ -95,13 +97,18 @@ class Plate():
                 active_extended_platedims=active_extended_platedims,
                 Ndim=Ndim,
                 reparam=reparam,
-                data=data[name] if name is not None else data  # only pass the data for the current plate
+                original_data=original_data[name] if name is not None else original_data,  # only pass the data for the current plate
+                extended_data=extended_data#[name] if name is not None and extended_data is not None else extended_data  # only pass the data for the current plate
             )
 
             sample[childname] = childsample
             scope = update_scope_sample(scope, childname, childP, childsample)
 
-        return sample
+            original_ll = {**original_ll, **child_original_ll}
+            extended_ll = {**extended_ll, **child_extended_ll}
+
+
+        return sample, original_ll, extended_ll
 
     def posterior_sample(
             self,

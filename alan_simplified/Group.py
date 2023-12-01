@@ -61,16 +61,20 @@ class Group():
             active_extended_platedims:list[Dim],
             Ndim:Dim,
             reparam:bool,
-            data:Optional[dict[str, Tensor]]):
+            original_data:Optional[dict[str, Tensor]],
+            extended_data:Optional[dict[str, Tensor]]):
 
         result = {}       #This is the sample returned.
+
+        original_ll = {}
+        extended_ll = {}
 
         #resampled scope is the scope used in here when sampling from the Group
         scope = self.filter_scope(scope)
 
         for name, dist in self.prog.items():
-            # tdd = dist.tdd(scope)
-            childsample = dist.sample_extended(
+
+            childsample, child_original_ll, child_extended_ll = dist.sample_extended(
                 sample=sample.get(name),
                 name=name,
                 scope=scope,
@@ -81,13 +85,17 @@ class Group():
                 active_extended_platedims=active_extended_platedims,
                 Ndim=Ndim,
                 reparam=reparam,
-                data=data
+                original_data=original_data,
+                extended_data=extended_data
             )
 
             scope[name]  = childsample
             result[name] = childsample
 
-        return result
+            original_ll = {**original_ll, **child_original_ll}
+            extended_ll = {**extended_ll, **child_extended_ll}
+
+        return result, original_ll, extended_ll
 
     def all_prog_names(self):
         return self.prog.keys()

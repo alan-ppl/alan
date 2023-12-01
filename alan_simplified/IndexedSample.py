@@ -59,8 +59,9 @@ class IndexedSample():
 
         return result
     
-    def predictive_sample(self, P: PBP, all_platesizes: dict[str, int], reparam: bool):
-        '''Returns a dictionary of samples from the predictive distribution.'''
+    def _predictive(self, P: PBP, all_platesizes: dict[str, int], reparam: bool, all_data: dict[str, Tensor]):
+        '''Samples from the predictive distribution of P and, if given all_data, returns the
+        log-likelihood of the original data under the predictive distribution of P.'''
         assert isinstance(P, (Plate, BoundPlate))
         assert isinstance(all_platesizes, dict)
 
@@ -76,7 +77,7 @@ class IndexedSample():
         # Create the new platedims from the platesizes.
         all_platedims = {name: Dim(name, size) for name, size in all_platesizes.items()}
 
-        pred_sample = P.sample_extended(
+        pred_sample, original_ll, extended_ll = P.sample_extended(
             sample=self.sample,
             name=None,
             scope={},
@@ -87,18 +88,46 @@ class IndexedSample():
             active_extended_platedims=[],
             Ndim=self.Ndim,
             reparam=reparam,
-            data=self.original_sample.problem.data
+            original_data=self.original_sample.problem.data,
+            extended_data=all_data
         )
+
+        return pred_sample, original_ll, extended_ll
+
+    def predictive_sample(self, P: PBP, all_platesizes: dict[str, int], reparam: bool):
+        '''Returns a dictionary of samples from the predictive distribution.'''
+        pred_sample, _, _ = self._predictive(
+            P=P, 
+            all_platesizes=all_platesizes,
+            reparam=reparam, 
+            all_data=None)
 
         return pred_sample
 
-    def predictive_ll(
-        P:Plate,
-        train_samples: dict,
-        all_samples: dict):
+    def predictive_ll(self, P: PBP, all_platesizes: dict[str, int], reparam: bool, all_data: dict[str, Tensor]):
         '''This function returns the predictive log-likelihood, given the training samples and the
-        predictive samples.'''
+        predictive samples.'''        
+        _, lls_train, lls_all = self._predictive(
+            P=P, 
+            all_platesizes=all_platesizes,
+            reparam=reparam, 
+            all_data=all_data)
 
-        # calculate and return: ll(all_samples) - ll(train_samples)
+        assert set(lls_all.keys()) == set(lls_train.keys())
 
-        pass
+        result = {}
+        for varname in lls_all:
+            ll_all   = lls_all[varname]
+            ll_train = lls_train[varname]
+
+            dims_all   = [dim for dim in ll_all.dims   if dim is not self.Ndim]
+            dims_train = [dim for dim in ll_train.dims if dim is not self.Ndim]
+            assert len(dims_all) == len(dims_train)
+
+            if 0 < len(dims_all):
+                ll_all   = ll_all.sum(dims_all)
+                ll_train = ll_train.sum(dims_train)
+
+            result[varname] = logmeanexp_dims(ll_all - ll_train, (self.Ndim,))
+
+        return result
