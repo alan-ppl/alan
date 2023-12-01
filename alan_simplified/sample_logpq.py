@@ -30,6 +30,8 @@ def logPQ_sample(
     N_dim:Dim,
     num_samples:int):
 
+    assert isinstance(P, Plate)
+    assert isinstance(Q, Plate)
     assert isinstance(sample, dict)
     assert isinstance(inputs_params_P, dict)
     assert isinstance(inputs_params_Q, dict)
