@@ -1,7 +1,8 @@
 import math
-from typing import Optional
+from typing import Optional, Union
 
 from .Plate import Plate, tree_values, update_scope_inputs_params, update_scope_sample
+from .BoundPlate import BoundPlate
 from .Group import Group
 from .utils import *
 from .reduce_Ks import reduce_Ks, sample_Ks
@@ -10,10 +11,12 @@ from .SamplingType import SamplingType
 from .dist import Dist
 from .logpq import logPQ_dist, logPQ_group, logPQ_plate
 
+PBP = Union[Plate, BoundPlate]
+
 def logPQ_sample(
     name:Optional[str],
-    P:Plate, 
-    Q:Plate, 
+    P: PBP, 
+    Q: PBP, 
     sample: dict, 
     inputs_params_P: dict,
     inputs_params_Q: dict,
@@ -30,8 +33,8 @@ def logPQ_sample(
     N_dim:Dim,
     num_samples:int):
 
-    assert isinstance(P, Plate)
-    assert isinstance(Q, Plate)
+    assert isinstance(P, (Plate, BoundPlate))
+    assert isinstance(Q, (Plate, BoundPlate))
     assert isinstance(sample, dict)
     assert isinstance(inputs_params_P, dict)
     assert isinstance(inputs_params_Q, dict)
