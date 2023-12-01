@@ -31,7 +31,8 @@ def einsum_args(lps, sum_dims):
     return [val for pair in zip(undim_lps, arg_idxs) for val in pair] + [out_idxs], out_dims
 
 
-def sample_Ks(lps, Ks_to_sum, num_samples=1, N_dim=Dim('N')):
+def sample_Ks(lps, Ks_to_sum, N_dim, num_samples):
+
     """
     Fundamental method that returns K samples from the posterior
     opt_einsum gives an "optimization path", i.e. the indicies of lps to reduce.
@@ -44,12 +45,11 @@ def sample_Ks(lps, Ks_to_sum, num_samples=1, N_dim=Dim('N')):
     args, out_dims = einsum_args(lps, Ks_to_sum)
     path = opt_einsum.contract_path(*args)[0]
 
-    # N_dim = Dim('N')
     
-    lps_for_sampling = [lps.copy()]
+    lps_for_sampling = [[*lps]]
     Ks_to_sample = []
     
-    for lp_idxs in path[:-1]:
+    for lp_idxs in path:
         #Split lps into two groups: those we're going to reduce, and the rest.
         lps_to_reduce = tuple(lps[i] for i in lp_idxs)
         lps = [lps[i] for i in range(len(lps)) if i not in lp_idxs]
@@ -60,40 +60,34 @@ def sample_Ks(lps, Ks_to_sum, num_samples=1, N_dim=Dim('N')):
 
         #Instantiates but doesn't save lp with _Ks_to_sample dims
         lps.append(checkpoint(logsumexp_sum, _Ks_to_sum, *lps_to_reduce, use_reentrant=False))
-        lps_for_sampling.append(lps.copy())
+        lps_for_sampling.append([*lps])
 
-    Ks_to_sample.append(tuple(set(Ks_to_sum).intersection(unify_dims(lps_for_sampling[-1]))))
-
+    lps_for_sampling = lps_for_sampling[:-1]
 
     #Now that we have the list of reduced factors and which Kdims to sample from each factor we can sample from each factor in turn
     indices = {}
-    sampled_Ks = []
+    
     for lps, kdims_to_sample in zip(lps_for_sampling[::-1], Ks_to_sample[::-1]): 
-        
         lp = sum(lps)
-        for dim in list(set(generic_dims(lp)).intersection(sampled_Ks)):
-            lp = lp.order(dim)[indices[str(dim)]]
+
+        for dim in list(set(generic_dims(lp)).intersection(set(indices.keys()))):
+            lp = lp.order(dim)[indices[dim]]
         
         #If there is more than one Kdim to sample from this factor we need to sample from the joint distribution
         #To do this we sample from a multinomial over the indices of the lp tensor
         #We then unravel the indices and assign them to the appropriate Kdim
-        if len(kdims_to_sample) > 1:
-            for idx, kdim in zip(unravel_index(t.multinomial(t.exp(lp.order(*kdims_to_sample)).ravel(), num_samples, replacement=True), shape=[dim.size for dim in kdims_to_sample]), kdims_to_sample):
-                indices[str(kdim)] = idx[N_dim]
-                sampled_Ks.append(kdim)
+
+        sampled_flat_idx = t.multinomial(t.exp(lp.order(*kdims_to_sample)).ravel(), num_samples, replacement=True)
+        unravelled_indices = unravel_index(sampled_flat_idx, shape=[dim.size for dim in kdims_to_sample])
+        
+        for idx, kdim in zip(unravelled_indices, kdims_to_sample):
+            indices[kdim] = idx[N_dim]
+
                 
         #Otherwise we can just sample from the multinomial with probabilities given by the Kdim dimension of the lp tensor
-        else:
-            indices[str(kdims_to_sample[0])] = t.multinomial(t.exp(lp.order(*kdims_to_sample)), num_samples, replacement=True)[N_dim]
-            sampled_Ks.append(kdims_to_sample[0])
+        # else:
+        #     indices[kdims_to_sample[0]] = t.multinomial(t.exp(lp.order(*kdims_to_sample)), num_samples, replacement=True)[N_dim]
 
-
-        sampled_Ks.append(kdims_to_sample)
-            
-
-    # #Remove N_dim from indices that was only used for indexing into subsequent factors
-    # for k,v in indices.items():
-    #     indices[k] = v.order(N_dim)
         
     return indices
     
