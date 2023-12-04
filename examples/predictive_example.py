@@ -46,16 +46,18 @@ post_idxs = sample.sample_posterior(num_samples=10)
 
 isample = IndexedSample(sample, post_idxs)
 
+print(isample.sample)
+
 extended_platesizes = {'p1': 5, 'p2': 6}
 
 test_data = {'e': t.randn(5, 6, names=('p1', 'p2'))}
 predictive_samples = isample.predictive_sample(P, extended_platesizes, True)
 
+print(isample.sample)
+
+# breakpoint()
 print(predictive_samples)
 
-# we can't call isample._predictive twice on one IndexedSample, but it does work otherwise
-# (there's probably some inplace operation that's messing things up)
-isample = IndexedSample(sample, post_idxs)
 pll = isample.predictive_ll(P, extended_platesizes, True, test_data)
 print(pll)
 

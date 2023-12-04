@@ -59,6 +59,21 @@ class IndexedSample():
 
         return result
     
+    def clone_sample(self, sample: dict):
+        '''Takes a sample (nested dict of tensors) and returns a new dict with the same structure
+        but with copies of the tensors.'''
+
+        result = {}
+
+        for name, value in sample.items():
+            if isinstance(value, dict):
+                result[name] = self.clone_sample(value)
+            else:
+                assert isinstance(value, Tensor)
+                result[name] = value.clone()
+
+        return result
+    
     def _predictive(self, P: PBP, all_platesizes: dict[str, int], reparam: bool, all_data: dict[str, Tensor]):
         '''Samples from the predictive distribution of P and, if given all_data, returns the
         log-likelihood of the original data under the predictive distribution of P.'''
@@ -77,8 +92,10 @@ class IndexedSample():
         # Create the new platedims from the platesizes.
         all_platedims = {name: Dim(name, size) for name, size in all_platesizes.items()}
 
+        sample_copy = self.clone_sample(self.sample)
+
         pred_sample, original_ll, extended_ll = P.sample_extended(
-            sample=self.sample,
+            sample=sample_copy,
             name=None,
             scope={},
             inputs_params=P.inputs_params(self.original_sample.all_platedims),
