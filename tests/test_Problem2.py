@@ -46,7 +46,7 @@ print(L)
 # print(marginals)
 # print(conditionals)
 
-post_idxs = sample.posterior(num_samples=10)
+post_idxs = sample.sample_posterior(num_samples=10)
 print(post_idxs)
 
 

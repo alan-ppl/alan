@@ -6,7 +6,6 @@ from .Split import Split
 from .Plate import Plate, tensordict2tree, flatten_tree, empty_tree
 from .utils import *
 from .logpq import logPQ_plate
-
 from .sample_logpq import logPQ_sample
 
 class Sample():
@@ -62,36 +61,6 @@ class Sample():
             split=self.split)
 
         return lp
-
-    def posterior(self, num_samples=1, extra_log_factors=None):
-
-        if extra_log_factors is None:
-            extra_log_factors = empty_tree(self.P)
-        assert isinstance(extra_log_factors, dict)
-        #extra_log_factors = named2dim_dict(extra_log_factors, self.all_platedims)
-        #extra_log_factors = tensordict2tree(self.P, extra_log_factors)
-
-        post_idxs = sample_posterior(
-                    name=None,
-                    P=self.P, 
-                    Q=self.Q, 
-                    sample=self.sample,
-                    inputs_params_P=self.P.inputs_params(self.all_platedims),
-                    inputs_params_Q=self.Q.inputs_params(self.all_platedims),
-                    data=self.problem.data,
-                    extra_log_factors=extra_log_factors,
-                    scope_P={}, 
-                    scope_Q={}, 
-                    active_platedims=[],
-                    all_platedims=self.all_platedims,
-                    groupvarname2Kdim=self.groupvarname2Kdim,
-                    sampling_type=self.sampling_type,
-                    split=self.split,
-                    post_idxs={},
-                    prev_Ks=set(),
-                    num_samples=num_samples)
-
-        return post_idxs
     
 #    def marginals(self):
 #        #This is an ordered dict.

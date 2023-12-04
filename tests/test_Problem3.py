@@ -42,6 +42,6 @@ sampling_type = IndependentSample
 sample = prob.sample(3, True, sampling_type)
 
 
-K_samples = sample.posterior(num_samples=10)
+K_samples = sample.sample_posterior(num_samples=10)
 
 print(K_samples)
