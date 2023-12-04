@@ -75,6 +75,12 @@ class Plate():
             original_data:Optional[dict[str, Tensor]],
             extended_data:Optional[dict[str, Tensor]]):
 
+        # NOTE: I think we might be able to get rid of active_original_platedims and active_extended_platedims
+        #  in this function (and the corresponding functions in Group and Dist) as they can be inferred from
+        #  the samples/data and the dicts original_platedims and extended_platedims.
+        #  At the moment, only active_extended_platedims is used: in the Dist function when calculating the
+        #  logprobs of extended data, but there might be a smarter way of providing extended_data that 
+        #  circumvents this need.
         if name is not None:
             active_original_platedims = [*active_original_platedims, original_platedims[name]]
             active_extended_platedims = [*active_extended_platedims, extended_platedims[name]]
@@ -98,7 +104,7 @@ class Plate():
                 Ndim=Ndim,
                 reparam=reparam,
                 original_data=original_data[name] if name is not None else original_data,  # only pass the data for the current plate
-                extended_data=extended_data#[name] if name is not None and extended_data is not None else extended_data  # only pass the data for the current plate
+                extended_data=extended_data # pass all extended data, this is a flat dict whereas original_data has a tree structure
             )
 
             sample[childname] = childsample

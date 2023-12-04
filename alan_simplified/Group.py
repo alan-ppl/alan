@@ -72,6 +72,8 @@ class Group():
         #resampled scope is the scope used in here when sampling from the Group
         scope = self.filter_scope(scope)
 
+        # Loop through all dists in the group and sample from them (plus potentially get 
+        # logprobs of original and extended data IF extended_data is provided, i.e. not None)
         for name, dist in self.prog.items():
 
             childsample, child_original_ll, child_extended_ll = dist.sample_extended(

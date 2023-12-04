@@ -92,6 +92,8 @@ class IndexedSample():
         # Create the new platedims from the platesizes.
         all_platedims = {name: Dim(name, size) for name, size in all_platesizes.items()}
 
+        # We have to work on a copy of the sample so that self.sample's own dimensions 
+        # aren't changed.
         sample_copy = self.clone_sample(self.sample)
 
         pred_sample, original_ll, extended_ll = P.sample_extended(
@@ -130,6 +132,8 @@ class IndexedSample():
             reparam=reparam, 
             all_data=all_data)
 
+        # If we have lls for a variable in the training data, we should also have lls
+        # for it in the all (training+test) data.
         assert set(lls_all.keys()) == set(lls_train.keys())
 
         result = {}
@@ -142,9 +146,11 @@ class IndexedSample():
             assert len(dims_all) == len(dims_train)
 
             if 0 < len(dims_all):
+                # Sum over plates
                 ll_all   = ll_all.sum(dims_all)
                 ll_train = ll_train.sum(dims_train)
 
+            # Take mean over Ndim
             result[varname] = logmeanexp_dims(ll_all - ll_train, (self.Ndim,))
 
         return result
