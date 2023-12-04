@@ -124,8 +124,8 @@ class IndexedSample():
         return pred_sample
 
     def predictive_ll(self, P: PBP, all_platesizes: dict[str, int], reparam: bool, all_data: dict[str, Tensor]):
-        '''This function returns the predictive log-likelihood, given the training samples and the
-        predictive samples.'''        
+        '''This function returns the predictive log-likelihood of the test data (all_data - train_data), given 
+        the training samples and the predictive samples.'''        
         _, lls_train, lls_all = self._predictive(
             P=P, 
             all_platesizes=all_platesizes,
