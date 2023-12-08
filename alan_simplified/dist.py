@@ -87,6 +87,72 @@ class Dist():
         sample = self.tdd(resampled_scope).sample(reparam, sample_dims, self.sample_shape)
 
         return sample
+    
+    def sample_extended(
+            self,
+            sample:Tensor,
+            name:Optional[str],
+            scope:dict[str, Tensor],
+            inputs_params:dict,
+            original_platedims:dict[str, Dim],
+            extended_platedims:dict[str, Dim],
+            active_original_platedims:list[Dim],
+            active_extended_platedims:list[Dim],
+            Ndim:Dim,
+            reparam:bool,
+            original_data:Optional[dict[str, Tensor]],
+            extended_data:Optional[dict[str, Tensor]]):
+
+        filtered_scope = self.filter_scope(scope)
+
+        # dicts to store logprobs of original and extended data (if needed)
+        original_ll = {}
+        extended_ll = {}
+
+        if sample is not None or extended_data is None: 
+            # "sample is not None" means this dist is not for observed data, so we need to sample it
+            # "extended_data is None" means even if this dist *is* observed, we should sample it, not return a logprob
+
+            sample_dims = [*active_extended_platedims, Ndim]
+                        
+            original_sample = sample if sample is not None else original_data[name]
+            extended_sample = self.tdd(filtered_scope).sample(reparam, sample_dims, self.sample_shape)
+
+            # Need to ensure that we work with lists of platedims in corresponding orders for original and extended samples.
+            original_dims, extended_dims = corresponding_plates(original_platedims, extended_platedims, original_sample, extended_sample)
+
+            original_sample = generic_order(original_sample, original_dims)
+            extended_sample = generic_order(extended_sample, extended_dims)
+
+            # Insert the original sample into the extended sample
+            original_idxs = [slice(0, dim.size) for dim in original_dims]
+            generic_setitem(extended_sample, original_idxs, original_sample)
+
+            # Put extended_dims back on extended_sample
+            extended_sample = generic_getitem(extended_sample, extended_dims)
+
+            # Put Ndim back at end of dims. (not sure if this is necessary)
+            # if Ndim in set(extended_sample.dims):
+            #     extended_sample = extended_sample.order(Ndim)[Ndim]
+
+            return extended_sample, original_ll, extended_ll
+
+        else:
+            # Put extended_platedims onto extended_data (which is a dict of tensors without Dims)
+            # Note that original_data already has the correct Dims due to it being passed through Problem()
+            extended_data_with_dims = extended_data[name].rename(None)[active_extended_platedims]
+
+            extended_ll[name] = self.tdd(filtered_scope).log_prob(extended_data_with_dims)
+
+            original_dims, extended_dims = corresponding_plates(original_platedims, extended_platedims, original_data[name], extended_data_with_dims) 
+
+            # Take the logprob of the original data from the extended logprob tensor
+            original_idxs = [slice(0, dim.size) for dim in original_dims]
+            original_ll[name] = generic_getitem(generic_order(extended_ll[name], extended_dims), original_idxs)
+            original_ll[name] = generic_getitem(original_ll[name], original_dims)
+
+            return extended_data[name], original_ll, extended_ll
+
 
     def log_prob(self, 
                  sample: Tensor, 

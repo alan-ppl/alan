@@ -15,8 +15,8 @@ PBP = Union[Plate, BoundPlate]
 
 def logPQ_sample(
     name:Optional[str],
-    P:PBP, 
-    Q:PBP, 
+    P: PBP, 
+    Q: PBP, 
     sample: dict, 
     inputs_params_P: dict,
     inputs_params_Q: dict,
