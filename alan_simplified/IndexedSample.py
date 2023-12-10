@@ -47,7 +47,7 @@ class IndexedSample():
         for name, value in sample.items():
             if isinstance(value, dict):
                 result[name] = self.index_in(value, post_idxs)
-            else:
+            elif isinstance(value, Tensor):
                 assert isinstance(value, Tensor)
 
                 temp = value
@@ -56,6 +56,7 @@ class IndexedSample():
                     temp = temp.order(dim)[post_idxs[dim]]
  
                 result[name] = temp
+
 
         return result
     

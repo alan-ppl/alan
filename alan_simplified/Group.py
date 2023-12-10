@@ -5,7 +5,7 @@ from .SamplingType import SamplingType
 
 class Group(): 
     def __init__(self, **kwargs):
-        #Groups can only contain Dist, not Plates/Timeseries/other Groups.
+        #Groups can only contain Dist, not Plates/Timeseries/Data/other Groups.
         for varname, dist in kwargs.items():
             if not isinstance(dist, Dist):
                 raise Exception("{varname} in a Group should be a Dist, but is actually {type(dist)}")

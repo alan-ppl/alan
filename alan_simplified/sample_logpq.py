@@ -10,6 +10,7 @@ from .Split import Split
 from .SamplingType import SamplingType
 from .dist import Dist
 from .logpq import logPQ_dist, logPQ_group, logPQ_plate
+from .Data import Data
 
 PBP = Union[Plate, BoundPlate]
 
@@ -73,7 +74,7 @@ def logPQ_sample(
         #childQ defaults to None in that case.
 
         if isinstance(childP, Dist):
-            assert isinstance(childQ, (Dist, type(None)))
+            assert isinstance(childQ, (Dist, type(None), Data))
             method = logPQ_dist
         elif isinstance(childP, Plate):
             assert isinstance(childQ, Plate)
@@ -111,7 +112,7 @@ def logPQ_sample(
         if isinstance(dist, (Dist, Group)):
             all_Ks.append(groupvarname2Kdim[varname])
         else:
-            assert isinstance(dist, Plate)
+            assert isinstance(dist, (Plate, Data))
             
 
     # Index into each lp with the indices we've collected so far
