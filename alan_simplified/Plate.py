@@ -6,7 +6,8 @@ from .utils import *
 from .SamplingType import SamplingType
 from .dist import Dist
 from .Group import Group
-from .utils import *
+from .Data import Data
+
 
 
 
@@ -41,9 +42,9 @@ class Plate():
 
         scope = update_scope_inputs_params(scope, inputs_params)
         sample = {}
-
+        
         for childname, childP in self.prog.items():
-
+            
             childsample = childP.sample(
                 name=childname,
                 scope=scope, 
@@ -169,7 +170,7 @@ class Plate():
                     assert 1 == conditionals.ndim
                 assert set(generic_dims(conditionals)) == set()
 
-            else:
+            elif isinstance(childP, Plate):
                 #add sub-plate as a tree/nested dict to result, but not to scope. 
                 result[childname] = childP.sample(
                     conditionals=conditionals.get(childname),
@@ -189,7 +190,7 @@ class Plate():
         for childname, childP in self.prog.items():
             if isinstance(childP, (Dist, Group)):
                 result[childname] = Dim(f"K_{childname}", K)
-            else:
+            elif isinstance(childP, Plate):
                 assert isinstance(childP, Plate)
                 result = {**result, **childP.groupvarname2Kdim(K)}
         return result
@@ -205,7 +206,7 @@ class Plate():
             if isinstance(v, (Plate, Group)):
                 result = [*result, *v.all_prog_names()]
             else:
-                assert isinstance(v, Dist)
+                assert isinstance(v, (Dist, Data))
         return result
 
     def varname2groupvarname(self):
@@ -222,9 +223,10 @@ class Plate():
             elif isinstance(v, Group):
                 for gk, gv in v.prog.items():
                     result[gk] = k
-            else:
-                assert isinstance(v, Plate)
+            elif isinstance(v, Plate):
                 result = {**result, **v.varname2groupvarname()}
+            else:
+                assert isinstance(v, Data)
         return result
 
     def varnames(self):
@@ -237,9 +239,10 @@ class Plate():
                 result.append(k)
             elif isinstance(v, Group):
                 result = [*result, *v.prog.keys()]
-            else:
-                assert isinstance(v, Plate)
+            elif isinstance(v, Plate):
                 result = [*result, *v.varnames()]
+            else:
+                assert isinstance(v, Data)
         return result
 
     def groupvarnames(self):
@@ -251,9 +254,10 @@ class Plate():
         for k, v in self.prog.items():
             if isinstance(v, (Group, Dist)):
                 result.append(k)
-            else:
-                assert isinstance(v, Plate)
+            elif isinstance(v, Plate):
                 result = [*result, *v.groupvarnames()]
+            else:
+                assert isinstance(v, Data)
         return result
                 
     def inputs_params(self, all_platedims:dict[str, Dim]):
@@ -277,10 +281,11 @@ class Plate():
         for name, dgpt in self.prog.items():
             if isinstance(dgpt, (Dist, Group)):
                 result[name] = active_platedimnames
-            else:
-                assert isinstance(dgpt, Plate)
+            elif isinstance(dgpt, Plate):
                 active_platedimnames = [*active_platedimnames, name]
                 result = {**result, **dgpt.groupvarname2active_platedimnames(active_platedimnames)}
+            else:
+                assert isinstance(v, Data)
         return result
 
     def groupvarname2parents(self):
@@ -294,9 +299,10 @@ class Plate():
         for vargroupname, dgpt in self.prog.items():
             if isinstance(dgpt, (Dist, Group)):
                 result[vargroupname] = dgpt.all_args
-            else:
-                assert isinstance(dgpt, Plate)
+            elif isinstance(dgpt, Plate):
                 result = {**result, **dgpt.groupvarname2parents()}
+            else:
+                assert isinstance(v, Data)
         return result
 
 
@@ -313,7 +319,7 @@ def update_scope_sample(scope: dict[str, Tensor], name:str, dgpt, sample):
             assert isinstance(gs, Tensor)
             scope[gn] = gs
     else:
-        assert isinstance(dgpt, Plate)
+        assert isinstance(dgpt, (Plate, Data))
     return scope
 
 

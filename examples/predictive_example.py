@@ -1,7 +1,8 @@
 import torch as t
-from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, IndependentSample
+from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, IndependentSample, Data
 from alan_simplified.IndexedSample import IndexedSample
 
+t.manual_seed(0)
 
 P = Plate(
     ab = Group(
@@ -26,6 +27,7 @@ Q = Plate(
     p1 = Plate(
         d = Normal("d_mean", 1),
         p2 = Plate(
+            e = Data()
         ),
     ),
 )

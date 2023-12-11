@@ -8,6 +8,7 @@ from .reduce_Ks import reduce_Ks
 from .Split import Split
 from .SamplingType import SamplingType
 from .dist import Dist
+from .Data import Data
 
 def logPQ_plate(
         name:Optional[str],
@@ -62,7 +63,7 @@ def logPQ_plate(
         #childQ defaults to None in that case.
 
         if isinstance(childP, Dist):
-            assert isinstance(childQ, (Dist, type(None)))
+            assert isinstance(childQ, (Dist, type(None), Data))
             method = logPQ_dist
         elif isinstance(childP, Plate):
             assert isinstance(childQ, Plate)
@@ -100,7 +101,7 @@ def logPQ_plate(
         if isinstance(dist, (Dist, Group)):
             all_Ks.append(groupvarname2Kdim[varname])
         else:
-            assert isinstance(dist, Plate)
+            assert isinstance(dist, (Plate, Data))
 
     #Sum out Ks
     lp = reduce_Ks(lps, all_Ks)
