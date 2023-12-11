@@ -223,9 +223,10 @@ class Plate():
             elif isinstance(v, Group):
                 for gk, gv in v.prog.items():
                     result[gk] = k
-            else:
-                assert isinstance(v, Plate)
+            elif isinstance(v, Plate):
                 result = {**result, **v.varname2groupvarname()}
+            else:
+                assert isinstance(v, Data)
         return result
 
     def varnames(self):
@@ -238,9 +239,10 @@ class Plate():
                 result.append(k)
             elif isinstance(v, Group):
                 result = [*result, *v.prog.keys()]
-            else:
-                assert isinstance(v, Plate)
+            elif isinstance(v, Plate):
                 result = [*result, *v.varnames()]
+            else:
+                assert isinstance(v, Data)
         return result
 
     def groupvarnames(self):
@@ -252,9 +254,10 @@ class Plate():
         for k, v in self.prog.items():
             if isinstance(v, (Group, Dist)):
                 result.append(k)
-            else:
-                assert isinstance(v, Plate)
+            elif isinstance(v, Plate):
                 result = [*result, *v.groupvarnames()]
+            else:
+                assert isinstance(v, Data)
         return result
                 
     def inputs_params(self, all_platedims:dict[str, Dim]):
@@ -278,10 +281,11 @@ class Plate():
         for name, dgpt in self.prog.items():
             if isinstance(dgpt, (Dist, Group)):
                 result[name] = active_platedimnames
-            else:
-                assert isinstance(dgpt, Plate)
+            elif isinstance(dgpt, Plate):
                 active_platedimnames = [*active_platedimnames, name]
                 result = {**result, **dgpt.groupvarname2active_platedimnames(active_platedimnames)}
+            else:
+                assert isinstance(v, Data)
         return result
 
     def groupvarname2parents(self):
@@ -295,9 +299,10 @@ class Plate():
         for vargroupname, dgpt in self.prog.items():
             if isinstance(dgpt, (Dist, Group)):
                 result[vargroupname] = dgpt.all_args
-            else:
-                assert isinstance(dgpt, Plate)
+            elif isinstance(dgpt, Plate):
                 result = {**result, **dgpt.groupvarname2parents()}
+            else:
+                assert isinstance(v, Data)
         return result
 
 
