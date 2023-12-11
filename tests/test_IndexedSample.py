@@ -232,6 +232,53 @@ class TestIndexedSample_predictive(unittest.TestCase):
 
             assert value.shape == ()
 
+class TestIndexedSample_predictive_analytic(unittest.TestCase):
+
+    def setUp(self):
+        t.manual_seed(127)
+
+        self.data = t.tensor([0,1,2])
+        self.extended_data = t.tensor([0,1,2,3])
+        #Doing true pred_ll first because changing num_samples changes the result of predictive_ll if we do this after for some reason
+        self.extended_platesizes = {'p1': 4}
+        self.extended_data = {'obs': self.extended_data.refine_names('p1')} 
+
+
+        posterior_mean = (3+1)**(-1) * (3*t.tensor([0.0,1.0,2.0]).mean() + 0)
+        posterior_var = (3+1)**(-1)
+        #By hand pred_ll
+        pred_dist = t.distributions.Normal(posterior_mean, (1 + posterior_var)**(1/2))
+        self.true_pred_lik = pred_dist.log_prob(t.tensor([3.0])).sum()
+
+
+        self.sampling_type = IndependentSample
+
+        self.P = Plate(mu = Normal(0, 1), 
+                                p1 = Plate(obs = Normal("mu", 1)))
+                
+        self.Q = Plate(mu = Normal("mu_mean", 1),
+                        p1 = Plate())
+
+        self.Q = BoundPlate(self.Q, params={'mu_mean': t.zeros(())})
+        self.platesizes = {'p1': 3}
+        self.data = {'obs': self.data.refine_names('p1')}
+        self.prob = Problem(self.P, self.Q, self.platesizes, self.data)
+
+    def test_predictive_ll_analytic(self):
+        for seed in range(10):
+            t.manual_seed(seed)
+            
+            K = 100000
+            num_samples = 100000
+
+            sample = self.prob.sample(K, True, self.sampling_type)
+            post_idxs = sample.sample_posterior(num_samples=num_samples)
+            isample = IndexedSample(sample, post_idxs)
+
+            ll = isample.predictive_ll(self.prob.P, self.extended_platesizes, True, self.extended_data)
+
+            assert abs(ll['obs'] - self.true_pred_lik) < 0.01
+
 
 if __name__ == '__main__':
     unittest.main()
