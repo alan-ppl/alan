@@ -48,19 +48,21 @@ post_idxs = sample.sample_posterior(num_samples=10)
 
 # Create posterior samples explicitly using sample and post_idxs
 isample = IndexedSample(sample, post_idxs)
-print(isample.sample)
 
-# Sample some fake test data 
-# (technically we should ensure that test_data includes the original data)
-extended_platesizes = {'p1': 5, 'p2': 6}
-test_data = {'e': t.randn(5, 6, names=('p1', 'p2'))}
 
-# Compute predictive samples and predictive log likelihood
-predictive_samples = isample.predictive_sample(P, extended_platesizes, True)
-print(predictive_samples)
+def mean(x):
+    """
+    Takes the mean.  Can handle a dict, and can handle a single tensor, or
+    a tuple of a sample and a weight.
+    """
 
-pll = isample.predictive_ll(P, extended_platesizes, True, test_data)
-print(pll)
+    sample = x
+    dim = x.dims[-1]
 
-# breakpoint()
+    w = 1/dim.size
+    return (w * sample).sum(dim)
 
+
+
+moments = isample.moments({'d': [mean]}, sample, post_idxs)
+print(moments)

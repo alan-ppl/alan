@@ -1,6 +1,8 @@
-from typing import Optional, Union
+from typing import Optional, Union, List
+from torch.autograd import grad
 
-from .Plate import Plate, tree_values, update_scope_inputs_params, update_scope_sample
+from .Plate import Plate, tree_values, update_scope_inputs_params, update_scope_sample, tensordict2tree
+
 from .BoundPlate import BoundPlate
 from .Group import Group
 from .utils import *
@@ -155,3 +157,63 @@ class IndexedSample():
             result[varname] = logmeanexp_dims(ll_all - ll_train, (self.Ndim,))
 
         return result
+    
+    
+    def moments(self, latent_to_moment: dict[Dim, List], input_sample: dict, post_idxs: dict[Dim, Tensor]):
+        """latent_to_moment should be a dict mapping from latent varname to a list of functions that takes a sample and returns a moment"""
+        
+        #List of named Js to go into torch.autograd.grad
+        Js_named_list = []
+        #Flat dict of torchdim tensors to go into elbo as extra_log_factors
+        Js_torchdim_dict = {}
+        #dimension names
+        dimnamess = []
+        
+        groupvarname2active_platedimnames = input_sample.Q.groupvarname2active_platedimnames()
+        groupvarnames = list(groupvarname2active_platedimnames.keys())
+
+        indexed_sample = self.index_in(input_sample.sample, post_idxs)
+        
+        for (varname, active_platedimnames) in groupvarname2active_platedimnames.items():
+            if varname not in latent_to_moment:
+                continue
+            
+            
+            
+            active_platedims = [input_sample.all_platedims[name] for name in active_platedimnames]
+            Kdim = input_sample.groupvarname2Kdim[varname]
+            dims = [*active_platedims, Kdim]
+            
+            if active_platedimnames != []:
+                for name in active_platedimnames:
+                    sample = indexed_sample[name]
+                
+                ms = [f(sample[varname]) for f in latent_to_moment[varname]]
+            else:
+                ms = [f(indexed_sample[varname]) for f in latent_to_moment[varname]]
+            print(ms)
+
+            shape = [dim.size for dim in dims]
+            dimnames = [*[str(dim) for dim in active_platedims], 'K']
+            dimnamess.append(dimnames)
+            J_named = t.zeros(shape, requires_grad=True)
+            Js_named_list.append(J_named)
+            J_torchdim = J_named.rename(None)[dims]
+            #Moments need different names from variables.
+            #This is really a problem in how we're representing trees...
+            for m,f in zip(ms,latent_to_moment[varname]):
+                Js_torchdim_dict[f"{varname}_{f}"] = J_torchdim * m
+                
+        Js_torchdim_tree = tensordict2tree(input_sample.P, Js_torchdim_dict)
+
+        #Compute loss
+        L = input_sample.elbo(extra_log_factors=Js_torchdim_tree)
+        #marginals as a list
+        moments_list = grad(L, Js_named_list)
+
+        #moments as a flat dict
+        moments_dict = {}
+        for varname, moment, dimnames in zip(latent_to_moment.keys(), moments_list, dimnamess):
+            moments_dict[varname] = moment.refine_names(*dimnames)
+
+        return moments_dict

@@ -2,7 +2,7 @@ import torch as t
 import functorch.dim
 from functorch.dim import Dim, dims
 
-from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, IndependentSample
+from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, IndependentSample, Data
 from alan_simplified.IndexedSample import IndexedSample
 
 import unittest
@@ -86,6 +86,7 @@ class TestIndexedSample_index_in(unittest.TestCase):
             p1 = Plate(
                 d = Normal("d_mean", 1),
                 p2 = Plate(
+                    e = Data(),
                 ),
             ),
         )
@@ -141,6 +142,7 @@ class TestIndexedSample_predictive(unittest.TestCase):
             p1 = Plate(
                 d = Normal("d_mean", 1),
                 p2 = Plate(
+                    e = Data(),
                 ),
             ),
         )
@@ -257,7 +259,7 @@ class TestIndexedSample_predictive_analytic(unittest.TestCase):
                                 p1 = Plate(obs = Normal("mu", 1)))
                 
         self.Q = Plate(mu = Normal("mu_mean", 1),
-                        p1 = Plate())
+                        p1 = Plate(obs = Data()))
 
         self.Q = BoundPlate(self.Q, params={'mu_mean': t.zeros(())})
         self.platesizes = {'p1': 3}

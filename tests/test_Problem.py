@@ -43,3 +43,4 @@ L = sample.elbo()
 
 marginals = sample.marginals()
 conditionals = sample.conditionals()
+

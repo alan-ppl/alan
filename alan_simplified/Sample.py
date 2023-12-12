@@ -221,3 +221,7 @@ class Sample():
 
         return conditionals_dict
 
+
+
+        
+        

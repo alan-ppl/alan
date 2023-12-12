@@ -89,7 +89,7 @@ def logsumexp_sum(_Ks_to_sum, *lps_to_reduce):
 
 def collect_lps(lps, Ks_to_sum):
     """
-    Helper method that sums over Ks and returns a list of the reduced tensors along with a list of which Ks were reduced for each reduced tensor.
+    Helper method that sums over Ks and returns a list of the reduced tensors along with a list of which Ks were reduced over for each reduced tensor.
     opt_einsum gives an "optimization path", i.e. the indicies of lps to reduce.
     We use this path to do our reductions, handing everything off to a simple t.einsum
     call (which ensures a reasonably efficient implementation for each reduction).

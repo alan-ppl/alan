@@ -44,20 +44,20 @@ class Plate():
         sample = {}
         
         for childname, childP in self.prog.items():
-            
-            childsample = childP.sample(
-                name=childname,
-                scope=scope, 
-                inputs_params=inputs_params.get(childname),
-                active_platedims=active_platedims,
-                all_platedims=all_platedims,
-                groupvarname2Kdim=groupvarname2Kdim,
-                sampling_type=sampling_type,
-                reparam=reparam,
-            )
+            if not isinstance(childP, (Data)):
+                childsample = childP.sample(
+                    name=childname,
+                    scope=scope, 
+                    inputs_params=inputs_params.get(childname),
+                    active_platedims=active_platedims,
+                    all_platedims=all_platedims,
+                    groupvarname2Kdim=groupvarname2Kdim,
+                    sampling_type=sampling_type,
+                    reparam=reparam,
+                )
 
-            sample[childname] = childsample
-            scope = update_scope_sample(scope, childname, childP, childsample)
+                sample[childname] = childsample
+                scope = update_scope_sample(scope, childname, childP, childsample)
 
         return sample
     
@@ -285,7 +285,7 @@ class Plate():
                 active_platedimnames = [*active_platedimnames, name]
                 result = {**result, **dgpt.groupvarname2active_platedimnames(active_platedimnames)}
             else:
-                assert isinstance(v, Data)
+                assert isinstance(dgpt, Data)
         return result
 
     def groupvarname2parents(self):

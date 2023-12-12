@@ -191,6 +191,8 @@ def lp_getter(
     #That allows P and Q to have different orders.
     #Note that we already know Q has a valid order, because we sampled from Q
     for childname, childQ in Q.prog.items():
+        if isinstance(childQ, Data):
+            continue
         childsample = sample[childname]
         scope_Q = update_scope_sample(scope_Q, childname, childQ, childsample)
 
