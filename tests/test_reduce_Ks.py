@@ -74,7 +74,7 @@ class TestSampleKs(unittest.TestCase):
         for k,v in samples.items():
             assert set(v.dims) == {self.Ndim, self.plate_1, self.plate_2}
             
-    def test_Sample_Ks_compare_Marginals(self):
+    def test_Sample_Ks_compare_conditionals(self):
         P = Plate(
             ab = Group(
                 a = Normal(0, 1),
