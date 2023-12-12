@@ -2,7 +2,7 @@ import torch as t
 import torch.distributions as td
 from functorch.dim import Dim
 
-from alan_simplified import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, IndependentSample
+from alan_simplified import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, IndependentSample, Data
 
 P = Plate(
     ab = Group(
@@ -27,6 +27,7 @@ Q = Plate(
     p1 = Plate(
         d = Normal("d_mean", 1),
         p2 = Plate(
+            e = Data()
         ),
     ),
 )

@@ -2,36 +2,10 @@ import torch as t
 import torch.distributions as td
 from functorch.dim import Dim
 
-from alan_simplified import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, IndependentSample
+from alan_simplified import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, IndependentSample, Data
 
 t.manual_seed(0)
 
-P = Plate(
-    ab = Group(
-        a = Normal(0, 1),
-        b = Normal("a", 1),
-    ),
-    c = Normal(0, lambda a: a.exp()),
-    p1 = Plate(
-        d = Normal("a", 1),
-        p2 = Plate(
-            e = Normal("d", 1.),
-        ),
-    ),
-)
-
-Q = Plate(
-    ab = Group(
-        a = Normal("a_mean", 1),
-        b = Normal("a", 1),
-    ),
-    c = Normal(0, lambda a: a.exp()),
-    p1 = Plate(
-        d = Normal("d_mean", 1),
-        p2 = Plate(
-        ),
-    ),
-)
 
 P = Plate(
     a = Normal(0, 1),
@@ -54,6 +28,7 @@ Q = Plate(
     p1 = Plate(
         d = Normal("d_mean", 1),
         p2 = Plate(
+            e = Data()
         ),
     ),
 )

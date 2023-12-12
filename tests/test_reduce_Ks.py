@@ -3,7 +3,7 @@ import functorch.dim
 from functorch.dim import Dim, dims
 
 
-from alan_simplified import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, IndependentSample
+from alan_simplified import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, IndependentSample, Data
 from alan_simplified.reduce_Ks import reduce_Ks, sample_Ks, logsumexp_sum
 
 import unittest
@@ -98,6 +98,7 @@ class TestSampleKs(unittest.TestCase):
             p1 = Plate(
                 d = Normal("d_mean", 1),
                 p2 = Plate(
+                    e = Data()
                 ),
             ),
         )
