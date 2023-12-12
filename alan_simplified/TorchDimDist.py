@@ -114,8 +114,8 @@ class TorchDimDist():
         sample_tensor = sample_method(sample_shape=sample_shape)
         
         #output dims are:
-        #[unnamed_batch_dims, extra_torchdims, arg_torchdims, unnamed_event_dims]
-        dims = [..., *extra_sample_dims, *arg_dims, *colons(self.sample_event_dim)]
+        # [unnamed_batch_dims, extra_torchdims, arg_torchdims, unnamed_event_dims & dist.batch_dims that aren't in arg_torchdims]
+        dims = [..., *extra_sample_dims, *arg_dims, *colons(self.sample_event_dim + len(dist.batch_shape) - len(arg_dims))]
         return generic_getitem(sample_tensor, dims)
 
 
@@ -125,15 +125,16 @@ class TorchDimDist():
 
         dims = unify_dims([x, *self.kwargs_torchdim.values()])
 
-        x_tensor = tdd_order(x, dims, self.sample_event_dim)
+        x_tensor = tdd_order(x, dims, self.sample_event_dim + x.ndim)
 
         kwargs_tensor = {}
         for name, arg_torchdim in self.kwargs_torchdim.items():
             #Rearrange tensors as 
             #[unnamed batch dimensions, torchdim batch dimensions, event dimensions]
-            kwargs_tensor[name] = generic_tdd_order(arg_torchdim, dims, self.arg_event_dim[name])
+            kwargs_tensor[name] = generic_tdd_order(arg_torchdim, dims, self.arg_event_dim[name] + x.ndim)
+
         dist = self.dist(**kwargs_tensor)
         lp_tensor = dist.log_prob(x_tensor)
 
-        return generic_getitem(lp_tensor, [..., *dims])
+        return generic_getitem(lp_tensor, [..., *dims, *colons(x.ndim)])
 

@@ -99,7 +99,7 @@ def logPQ_sample(
             groupvarname2Kdim=groupvarname2Kdim,
             sampling_type=sampling_type,
             split=split)
-        lps.append(lp)
+        lps.append(lp.sum())
 
         childsample = sample.get(childname)
         if childsample is not None:
