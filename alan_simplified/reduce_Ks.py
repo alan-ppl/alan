@@ -77,7 +77,10 @@ def sample_Ks(lps, Ks_to_sum, N_dim, num_samples):
         #To do this we sample from a multinomial over the indices of the lp tensor
         #We then unravel the indices and assign them to the appropriate Kdim
 
-        sampled_flat_idx = t.multinomial(t.exp(lp.order(*kdims_to_sample)).ravel(), num_samples, replacement=True)
+        # shift lps up by the max value in each kdim_to_sample to avoid numerical issues
+        lp_max = lp.amax(kdims_to_sample)
+
+        sampled_flat_idx = t.multinomial(t.exp(lp.order(*kdims_to_sample) - lp_max).ravel(), num_samples, replacement=True)
         unravelled_indices = unravel_index(sampled_flat_idx, shape=[dim.size for dim in kdims_to_sample])
         
         for idx, kdim in zip(unravelled_indices, kdims_to_sample):
