@@ -62,7 +62,14 @@ def mean(x):
     w = 1/dim.size
     return (w * sample).sum(dim)
 
+def second_moment(x):
+    return mean(t.square(x))
 
+def square(x):
+    return x**2
 
-moments = isample.moments({'d': [mean]}, sample, post_idxs)
+def var(x):
+    return mean(square(x)) - square(mean(x))
+
+moments = sample.moments({'d': [mean, var], 'c': [second_moment]}, post_idxs, isample)
 print(moments)
