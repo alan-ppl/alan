@@ -1,3 +1,4 @@
+from typing import Optional
 import torch as t
 import torch.nn as nn
 from .utils import *
@@ -80,3 +81,34 @@ class BoundPlate(nn.Module):
         Returns a nested dict mapping from str -> torchdim tensor
         """
         return tensordict2tree(self.plate, self.inputs_params_flat_torchdim(all_platedims))
+
+    def sample_extended(
+            self,
+            sample:dict,
+            name:Optional[str],
+            scope:dict[str, Tensor],
+            inputs_params:dict,
+            original_platedims:dict[str, Dim],
+            extended_platedims:dict[str, Dim],
+            active_original_platedims:list[Dim],
+            active_extended_platedims:list[Dim],
+            Ndim:Dim,
+            reparam:bool,
+            original_data:Optional[dict[str, Tensor]],
+            extended_data:Optional[dict[str, Tensor]]):
+        
+        scope = {**scope, **self.inputs_params_flat_named()}
+
+        return self.plate.sample_extended(
+            sample,
+            name,
+            scope,
+            inputs_params,
+            original_platedims,
+            extended_platedims,
+            active_original_platedims,
+            active_extended_platedims,
+            Ndim,
+            reparam,
+            original_data,
+            extended_data)

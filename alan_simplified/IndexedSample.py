@@ -1,6 +1,6 @@
 from typing import Optional, Union
 
-from .Plate import Plate, tree_values, update_scope_inputs_params, update_scope_sample
+from .Plate import Plate, tree_values, update_scope_inputs_params, update_scope_sample, tensordict2tree
 from .BoundPlate import BoundPlate
 from .Group import Group
 from .utils import *
@@ -74,7 +74,7 @@ class IndexedSample():
 
         return result
     
-    def _predictive(self, P: PBP, all_platesizes: dict[str, int], reparam: bool, all_data: dict[str, Tensor]):
+    def _predictive(self, P: PBP, all_platesizes: dict[str, int], reparam: bool, all_data: dict[str, Tensor], all_inputs: dict[str, Tensor]):
         '''Samples from the predictive distribution of P and, if given all_data, returns the
         log-likelihood of the original data under the predictive distribution of P.'''
         assert isinstance(P, (Plate, BoundPlate))
@@ -96,11 +96,14 @@ class IndexedSample():
         # aren't changed.
         sample_copy = self.clone_sample(self.sample)
 
+        # Will need to add the extended inputs to the scope
+        all_inputs_params = tensordict2tree(P, named2dim_dict(all_inputs, all_platedims))
+
         pred_sample, original_ll, extended_ll = P.sample_extended(
             sample=sample_copy,
             name=None,
             scope={},
-            inputs_params=P.inputs_params(self.original_sample.all_platedims),
+            inputs_params=all_inputs_params,
             original_platedims=self.original_sample.all_platedims,
             extended_platedims=all_platedims,
             active_original_platedims=[],
@@ -113,24 +116,26 @@ class IndexedSample():
 
         return pred_sample, original_ll, extended_ll
 
-    def predictive_sample(self, P: PBP, all_platesizes: dict[str, int], reparam: bool):
+    def predictive_sample(self, P: PBP, all_platesizes: dict[str, int], reparam: bool, all_inputs: dict[str, Tensor]):
         '''Returns a dictionary of samples from the predictive distribution.'''
         pred_sample, _, _ = self._predictive(
             P=P, 
             all_platesizes=all_platesizes,
             reparam=reparam, 
-            all_data=None)
+            all_data=None,
+            all_inputs=all_inputs)
 
         return pred_sample
 
-    def predictive_ll(self, P: PBP, all_platesizes: dict[str, int], reparam: bool, all_data: dict[str, Tensor]):
+    def predictive_ll(self, P: PBP, all_platesizes: dict[str, int], reparam: bool, all_data: dict[str, Tensor], all_inputs: dict[str, Tensor]):
         '''This function returns the predictive log-likelihood of the test data (all_data - train_data), given 
         the training samples and the predictive samples.'''        
         _, lls_train, lls_all = self._predictive(
             P=P, 
             all_platesizes=all_platesizes,
             reparam=reparam, 
-            all_data=all_data)
+            all_data=all_data,
+            all_inputs=all_inputs)
 
         # If we have lls for a variable in the training data, we should also have lls
         # for it in the all (training+test) data.

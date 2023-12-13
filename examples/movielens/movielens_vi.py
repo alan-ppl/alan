@@ -1,5 +1,6 @@
 import torch as t
 from alan_simplified import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, IndependentSample
+from alan_simplified.IndexedSample import IndexedSample
 
 d_z = 18
 M, N = 300, 5
@@ -30,7 +31,7 @@ Q = Plate(
 )
 
 platesizes = {'plate_1': M, 'plate_2': N}
-all_platesizes = {'plate_1': 2*M, 'plate_2': 2*N}
+all_platesizes = {'plate_1': M, 'plate_2': 2*N}
 
 covariates = {'x':t.load(f'data/weights_{N}_{M}.pt')}
 test_covariates = {'x':t.load(f'data/test_weights_{N}_{M}.pt')}
@@ -58,10 +59,13 @@ prob = Problem(P, Q, platesizes, data)
 
 sampling_type = IndependentSample
 sample = prob.sample(3, True, sampling_type)
-print(sample.sample)
-print(sample.elbo())
+print("Prior sample:", sample.sample)
+print("Elbo: ", sample.elbo())
 
-input("Press Enter to continue...")
-K_samples = sample.sample_posterior(num_samples=10)
+post_idxs = sample.sample_posterior(num_samples=10)
 
-print(K_samples)
+isample = IndexedSample(sample, post_idxs)
+print("Posterior sample:", isample.sample)
+
+ll = isample.predictive_ll(prob.P, all_platesizes, True, all_data, all_covariates)
+print("PredLL: ", ll['obs'])
