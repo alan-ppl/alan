@@ -34,5 +34,5 @@ isample = IndexedSample(sample, post_idxs)
 
 extended_platesizes = {'p1': 4}
 extended_data = {'obs': t.randn((4,2), names=('p1', None))} 
-ll = isample.predictive_ll(prob.P, extended_platesizes, True, extended_data)
+ll = isample.predictive_ll(prob.P, extended_platesizes, True, extended_data, {})
 print(ll['obs'])

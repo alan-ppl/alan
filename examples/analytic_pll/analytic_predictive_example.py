@@ -48,7 +48,7 @@ for i, K in enumerate(Ks):
             post_idxs_simple = sample_simple.sample_posterior(num_samples=num_samples)
             isample_simple = IndexedSample(sample_simple, post_idxs_simple)
 
-            ll = isample_simple.predictive_ll(prob_simple.P, extended_platesizes, True, extended_data)
+            ll = isample_simple.predictive_ll(prob_simple.P, extended_platesizes, True, extended_data, {})
 
             print(f"K={K}, N={num_samples}, run {k}: {ll['obs']}")
             results[i,j,k] = ll['obs']

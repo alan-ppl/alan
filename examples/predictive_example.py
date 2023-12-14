@@ -54,10 +54,10 @@ extended_platesizes = {'p1': 5, 'p2': 6}
 test_data = {'e': t.randn(5, 6, names=('p1', 'p2'))}
 
 # Compute predictive samples and predictive log likelihood
-predictive_samples = isample.predictive_sample(P, extended_platesizes, True)
+predictive_samples = isample.predictive_sample(P, extended_platesizes, True, {})
 print(predictive_samples)
 
-pll = isample.predictive_ll(P, extended_platesizes, True, test_data)
+pll = isample.predictive_ll(P, extended_platesizes, True, test_data, {})
 print(pll)
 
 # breakpoint()
