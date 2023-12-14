@@ -48,7 +48,7 @@ post_idxs = sample.sample_posterior(num_samples=10)
 
 # Create posterior samples explicitly using sample and post_idxs
 isample = IndexedSample(sample, post_idxs)
-
+indexed_sample = isample.sample
 
 def mean(x):
     sample = x
@@ -66,5 +66,5 @@ def square(x):
 def var(x):
     return mean(square(x)) - square(mean(x))
 
-moments = sample.moments({'d': [mean, var], 'c': [second_moment]}, post_idxs, isample)
+moments = sample.moments({'d': [mean, var], 'c': [second_moment]})
 print(moments)

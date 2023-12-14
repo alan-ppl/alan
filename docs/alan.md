@@ -111,3 +111,11 @@ moments = sample.moments({'d': [mean, var], 'c': [second_moment]}, post_idxs, is
 
 As you see we must pass as arguments a dictionary of functions to compute the moments for each variable, the sampled posterior indices and the `IndexedSample` object. 
 
+## Computing the ELBO
+
+We can compute the ELBO using the `sample.elbo()` method. 
+
+```python
+elbo = sample.elbo()
+```
+

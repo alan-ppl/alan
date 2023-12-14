@@ -225,7 +225,7 @@ class Sample():
         return conditionals_dict
 
 
-    def moments(self, latent_to_moment: dict[Dim, List], post_idxs: dict[Dim, Tensor], isample):
+    def moments(self, latent_to_moment: dict[Dim, List]):
         """latent_to_moment should be a dict mapping from latent varname to a list of functions that takes a sample and returns a moment"""
         
         #List of named Js to go into torch.autograd.grad
@@ -237,7 +237,6 @@ class Sample():
         
         groupvarname2active_platedimnames = self.Q.groupvarname2active_platedimnames()
 
-        indexed_sample = isample.index_in(self.sample, post_idxs)
 
         
         for (varname, active_platedimnames) in groupvarname2active_platedimnames.items():
@@ -250,11 +249,12 @@ class Sample():
             
             if active_platedimnames != []:
                 for name in active_platedimnames:
-                    sample = indexed_sample[name]
+                    sample = self.sample[name]
+
                 
                 ms = [f(sample[varname]) for f in latent_to_moment[varname]]
             else:
-                ms = [f(indexed_sample[varname]) for f in latent_to_moment[varname]]
+                ms = [f(self.sample[varname]) for f in latent_to_moment[varname]]
 
 
             shape = [dim.size for dim in dims]
