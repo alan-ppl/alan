@@ -114,22 +114,23 @@ class TestSampleKs(unittest.TestCase):
 
         posterior_samples = list(sample.sample_posterior(num_samples=1000).values())
 
-        conditionals = sample.conditionals()
+        marginals = sample.marginals()
 
         ab = posterior_samples[0].order(posterior_samples[0].dims) 
         c = posterior_samples[1].order(posterior_samples[1].dims)
         d = posterior_samples[2].order(posterior_samples[2].dims[1])
 
         posterior_ab = t.bincount(ab) / 1000
-        source_term_ab = conditionals['ab'].order(conditionals['ab'].dims[0])
+        source_term_ab = marginals['ab'].rename(None)
         assert (t.abs(posterior_ab - source_term_ab) < 0.05).all()
 
         posterior_c = t.bincount(c) / 1000
-        source_term_c = conditionals['c'].sum(conditionals['c'].dims[1]).order(conditionals['c'].dims[0])
+        print(marginals['c'])
+        source_term_c = marginals['c'].rename(None)
         assert (t.abs(posterior_c - source_term_c) < 0.05).all()
 
         posterior_d = (t.bincount(d) / 1000).order(d.dims[0])
-        source_term_d = conditionals['d'].sum(conditionals['d'].dims[-1]).order(conditionals['d'].dims[1]).order(d.dims[0])
+        source_term_d = marginals['d'].rename(None)
         assert (t.abs(posterior_d - source_term_d) < 0.05).all()
         
         

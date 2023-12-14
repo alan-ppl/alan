@@ -51,11 +51,6 @@ isample = IndexedSample(sample, post_idxs)
 
 
 def mean(x):
-    """
-    Takes the mean.  Can handle a dict, and can handle a single tensor, or
-    a tuple of a sample and a weight.
-    """
-
     sample = x
     dim = x.dims[-1]
 

@@ -236,7 +236,6 @@ class Sample():
         dimnamess = []
         
         groupvarname2active_platedimnames = self.Q.groupvarname2active_platedimnames()
-        groupvarnames = list(groupvarname2active_platedimnames.keys())
 
         indexed_sample = isample.index_in(self.sample, post_idxs)
 
@@ -244,9 +243,7 @@ class Sample():
         for (varname, active_platedimnames) in groupvarname2active_platedimnames.items():
             if varname not in latent_to_moment:
                 continue
-            
-            
-            
+                 
             active_platedims = [self.all_platedims[name] for name in active_platedimnames]
             Kdim = self.groupvarname2Kdim[varname]
             dims = [*active_platedims, Kdim]
