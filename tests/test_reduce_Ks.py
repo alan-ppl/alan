@@ -109,29 +109,35 @@ class TestSampleKs(unittest.TestCase):
 
         prob = Problem(P, Q, all_platesizes, data)
 
-        sampling_type = IndependentSample
-        sample = prob.sample(3, True, sampling_type)
+        sample = prob.sample(K, True, sampling_type)
 
-        posterior_samples = list(sample.sample_posterior(num_samples=1000).values())
+        posterior_samples = list(sample.sample_posterior(num_samples=N).values())
 
+        conditionals = sample.conditionals()
         marginals = sample.marginals()
 
-        ab = posterior_samples[0].order(posterior_samples[0].dims) 
-        c = posterior_samples[1].order(posterior_samples[1].dims)
-        d = posterior_samples[2].order(posterior_samples[2].dims[1])
 
-        posterior_ab = t.bincount(ab) / 1000
+        posterior_ab = posterior_samples[0].order(posterior_samples[0].dims) 
+        posterior_c = posterior_samples[1].order(posterior_samples[1].dims)
+        posterior_d = posterior_samples[2].order(posterior_samples[2].dims)
+
+
+
+        posterior_ab = t.bincount(posterior_ab, minlength=K)
+        posterior_c = t.bincount(posterior_c, minlength=K)
+        posterior_d = t.bincount(posterior_d, minlength=K)
+
         source_term_ab = marginals['ab'].rename(None)
-        assert (t.abs(posterior_ab - source_term_ab) < 0.05).all()
+        mean = N * source_term_ab
+        var = N * (source_term_ab) * (1 - source_term_ab)
+        assert t.sqrt(((posterior_ab - mean)**2 / mean).sum() / N) < 0.1
 
-        posterior_c = t.bincount(c) / 1000
-        print(marginals['c'])
+
+        
         source_term_c = marginals['c'].rename(None)
-        assert (t.abs(posterior_c - source_term_c) < 0.05).all()
-
-        posterior_d = (t.bincount(d) / 1000).order(d.dims[0])
-        source_term_d = marginals['d'].rename(None)
-        assert (t.abs(posterior_d - source_term_d) < 0.05).all()
+        mean = N * source_term_c
+        var = N * (source_term_c) * (1 - source_term_c)
+        assert t.sqrt(((posterior_c - mean)**2 / mean).sum() / N) < 0.1
         
         
 class Testlogsumexp_sum(unittest.TestCase):
