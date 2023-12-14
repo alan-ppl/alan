@@ -73,5 +73,5 @@ for i in range(100):
     post_idxs = sample.sample_posterior(num_samples=10)
     isample = IndexedSample(sample, post_idxs)
 
-    ll = isample.predictive_ll(prob.P, all_platesizes, True, all_data, all_covariates)
+    ll = isample.predictive_ll(P=prob.P, all_platesizes=all_platesizes, reparam=True, all_data=all_data, all_inputs=all_covariates)
     print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
