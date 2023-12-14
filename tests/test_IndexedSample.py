@@ -161,7 +161,7 @@ class TestIndexedSample_predictive(unittest.TestCase):
     def test_predictive_no_extended_data(self):
         extended_platesizes = {'p1': 5, 'p2': 6}
 
-        predictive_samples, ll_train, ll_all = self.isample._predictive(self.prob.P, extended_platesizes, True, None)
+        predictive_samples, ll_train, ll_all = self.isample._predictive(self.prob.P, extended_platesizes, True, None, {})
 
         assert ll_train == {}
         assert ll_all == {}
@@ -178,7 +178,7 @@ class TestIndexedSample_predictive(unittest.TestCase):
         extended_platesizes = {'p1': 5, 'p2': 6}
         extended_data = {'e': t.randn(5, 6, names=('p1', 'p2'))}
 
-        predictive_samples, ll_train, ll_all = self.isample._predictive(self.prob.P, extended_platesizes, True, extended_data)
+        predictive_samples, ll_train, ll_all = self.isample._predictive(self.prob.P, extended_platesizes, True, extended_data, {})
 
         nested_tensor_dict_assert(predictive_samples, lambda x: isinstance(x, Tensor))
 
@@ -207,7 +207,7 @@ class TestIndexedSample_predictive(unittest.TestCase):
     def test_predictive_sample(self):
         extended_platesizes = {'p1': 5, 'p2': 6}
 
-        predictive_samples = self.isample.predictive_sample(self.prob.P, extended_platesizes, True)
+        predictive_samples = self.isample.predictive_sample(self.prob.P, extended_platesizes, True, {})
 
         # Check predictive_samples has Ndims rather than Kdims
         nested_tensor_dict_assert(predictive_samples, lambda x: isinstance(x, Tensor))
@@ -221,7 +221,7 @@ class TestIndexedSample_predictive(unittest.TestCase):
         extended_platesizes = {'p1': 5, 'p2': 6}
         extended_data = {'e': t.randn(5, 6, names=('p1', 'p2'))}
 
-        ll = self.isample.predictive_ll(self.prob.P, extended_platesizes, True, extended_data)
+        ll = self.isample.predictive_ll(self.prob.P, extended_platesizes, True, extended_data, {})
 
         # Check ll_train and ll_all contain the same variables as self.data
         assert set(ll.keys()) == set(self.data.keys())
@@ -275,7 +275,7 @@ class TestIndexedSample_predictive_analytic(unittest.TestCase):
             post_idxs = sample.sample_posterior(num_samples=num_samples)
             isample = IndexedSample(sample, post_idxs)
 
-            ll = isample.predictive_ll(self.prob.P, self.extended_platesizes, True, self.extended_data)
+            ll = isample.predictive_ll(self.prob.P, self.extended_platesizes, True, self.extended_data, {})
 
             assert abs(ll['obs'] - self.true_pred_lik) < 0.01
 
