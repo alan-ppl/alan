@@ -58,14 +58,20 @@ all_data['obs'] = all_data['obs'].rename('plate_1','plate_2')
 prob = Problem(P, Q, platesizes, data)
 
 sampling_type = IndependentSample
-sample = prob.sample(3, True, sampling_type)
-print("Prior sample:", sample.sample)
-print("Elbo: ", sample.elbo())
 
-post_idxs = sample.sample_posterior(num_samples=10)
+K = 3
+opt = t.optim.Adam(prob.Q.parameters(), lr=0.01)
+for i in range(100):
+    opt.zero_grad()
 
-isample = IndexedSample(sample, post_idxs)
-print("Posterior sample:", isample.sample)
+    sample = prob.sample(K, True, sampling_type)
+    elbo = sample.elbo()
 
-ll = isample.predictive_ll(prob.P, all_platesizes, True, all_data, all_covariates)
-print("PredLL: ", ll['obs'])
+    (-elbo).backward()
+    opt.step()
+
+    post_idxs = sample.sample_posterior(num_samples=10)
+    isample = IndexedSample(sample, post_idxs)
+
+    ll = isample.predictive_ll(prob.P, all_platesizes, True, all_data, all_covariates)
+    print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
