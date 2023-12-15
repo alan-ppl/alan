@@ -200,7 +200,7 @@ def generic_order(x, dims):
     #If x is not a dimtensor, then we can't have any dims.
     if not is_dimtensor(x):
         assert 0 == len(dims)
-
+    
     return x.order(*dims) if 0<len(dims) else x
 
 def generic_getitem(x, dims):

@@ -74,7 +74,7 @@ class TestSampleKs(unittest.TestCase):
         for k,v in samples.items():
             assert set(v.dims) == {self.Ndim, self.plate_1, self.plate_2}
             
-    def test_Sample_Ks_compare_conditionals(self):
+    def test_Sample_Ks_compare_marginals(self):
         P = Plate(
             ab = Group(
                 a = Normal(0, 1),
@@ -115,7 +115,7 @@ class TestSampleKs(unittest.TestCase):
 
         sample = prob.sample(K, True, sampling_type)
 
-        posterior_samples = list(sample.sample_posterior(num_samples=N).values())
+        posterior_samples = list(sample.sample_posterior_indices(num_samples=N).values())
 
         marginals = sample.marginals()
 
