@@ -5,9 +5,13 @@ from alan_simplified.IndexedSample import IndexedSample
 num_runs = 500
 Ks = [1,10,100]
 
+platesizes = {'p1': 3, 'p2': 4}
+
 # Scalar-valued random variable model
 print("Scalar-valued random variable model")
 elbos = t.zeros((len(Ks), num_runs))
+
+data = {'e': t.randn(3, 4, names=('p1', 'p2'))}
 
 for num_run in range(num_runs):
     # if num_run % 100 == 0: 
@@ -42,9 +46,6 @@ for num_run in range(num_runs):
 
         Q = BoundPlate(Q, params={'a_mean': t.zeros(()), 'd_mean':t.zeros(3, names=('p1',))})
 
-        platesizes = {'p1': 3, 'p2': 4}
-        data = {'e': t.randn(3, 4, names=('p1', 'p2'))}
-
         prob = Problem(P, Q, platesizes, data)
 
         sampling_type = IndependentSample
@@ -61,10 +62,10 @@ print()
 
 # Vector-valued random variable model
 print("Vector-valued random variable model")
-
 elbos = t.zeros((len(Ks), num_runs))
 
 d = 25
+data = {'e': t.randn(3, 4, d, names=('p1', 'p2', None))}
 
 for num_run in range(num_runs):
     # if num_run % 100 == 0: 
@@ -97,10 +98,7 @@ for num_run in range(num_runs):
             ),
         )
 
-        Q = BoundPlate(Q, params={'a_mean': t.zeros((d,)), 'd_mean':t.zeros((3,d), names=('p1',None))})
-
-        platesizes = {'p1': 3, 'p2': 4}
-        data = {'e': t.randn(3, 4, d, names=('p1', 'p2', None))}
+        Q = BoundPlate(Q, params={'a_mean': t.zeros((d,)), 'd_mean':t.zeros((3,d), names=('p1',None))})        
 
         prob = Problem(P, Q, platesizes, data)
 

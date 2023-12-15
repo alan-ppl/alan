@@ -124,22 +124,23 @@ class TorchDimDist():
         assert isinstance(x, Tensor)
 
         dims = unify_dims([x, *self.kwargs_torchdim.values()])
+        x_ndim = generic_ndim(x)
 
-        x_tensor = tdd_order(x, dims, self.sample_event_dim + generic_ndim(x))
+        x_tensor = tdd_order(x, dims, self.sample_event_dim + x_ndim)
 
         kwargs_tensor = {}
         for name, arg_torchdim in self.kwargs_torchdim.items():
             #Rearrange tensors as 
             #[unnamed batch dimensions, torchdim batch dimensions, event dimensions]
-            kwargs_tensor[name] = generic_tdd_order(arg_torchdim, dims, self.arg_event_dim[name] + generic_ndim(x))
+            kwargs_tensor[name] = generic_tdd_order(arg_torchdim, dims, self.arg_event_dim[name] + x_ndim)
 
         dist = self.dist(**kwargs_tensor)
         lp_tensor = dist.log_prob(x_tensor)
 
-        lp = generic_getitem(lp_tensor, [..., *dims, *colons(generic_ndim(x))])
-        
-        if generic_ndim(lp) > 0:
-            lp = lp.sum([*range(-generic_ndim(x), 0)])
+        lp = generic_getitem(lp_tensor, [..., *dims, *colons(x_ndim)])
+
+        if x_ndim > 0:
+            lp = lp.sum([*range(-x_ndim, 0)])
 
         return lp
 
