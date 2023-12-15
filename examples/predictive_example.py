@@ -1,6 +1,5 @@
 import torch as t
 from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, IndependentSample, Data
-from alan_simplified.IndexedSample import IndexedSample
 
 t.manual_seed(0)
 
@@ -44,11 +43,8 @@ sampling_type = IndependentSample
 sample = prob.sample(5, True, sampling_type)
 
 # Obtain K indices from posterior
-post_idxs = sample.sample_posterior(num_samples=10)
+# post_idxs = sample.sample_posterior(num_samples=10)
 
-# Create posterior samples explicitly using sample and post_idxs
-isample = IndexedSample(sample, post_idxs)
-print(isample.sample)
 
 # Sample some fake test data 
 # (technically we should ensure that test_data includes the original data)
@@ -56,10 +52,10 @@ extended_platesizes = {'p1': 5, 'p2': 6}
 test_data = {'e': t.randn(5, 6, names=('p1', 'p2'))}
 
 # Compute predictive samples and predictive log likelihood
-predictive_samples = isample.predictive_sample(P, extended_platesizes, True)
+predictive_samples = sample.predictive_sample(extended_platesizes, True, num_samples=10)
 print(predictive_samples)
 
-pll = isample.predictive_ll(P, extended_platesizes, True, test_data)
+pll = sample.predictive_ll(extended_platesizes, True, test_data, num_samples=10)
 print(pll)
 
 # breakpoint()

@@ -1,6 +1,5 @@
 import torch as t
 from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, IndependentSample, Data
-from alan_simplified.IndexedSample import IndexedSample
 
 t.manual_seed(0)
 
@@ -41,19 +40,17 @@ prob = Problem(P, Q, platesizes, data)
 
 # Get some initial samples (with K dims)
 sampling_type = IndependentSample
-sample = prob.sample(5, True, sampling_type)
+sample = prob.sample(3, True, sampling_type)
 
-# Obtain K indices from posterior
-post_idxs = sample.sample_posterior(num_samples=10)
-
-# Create posterior samples explicitly using sample and post_idxs
-isample = IndexedSample(sample, post_idxs)
-indexed_sample = isample.sample
+for K in [1,3,10,30,100]:
+    print(prob.sample(K, True, sampling_type).elbo())
+# # Obtain K indices from posterior
+# post_idxs = sample.sample_posterior(num_samples=10)
 
 def mean(x):
     sample = x
-    dim = x.dims[-1]
-
+    dim = x.dims[0]
+    
     w = 1/dim.size
     return (w * sample).sum(dim)
 
@@ -66,5 +63,14 @@ def square(x):
 def var(x):
     return mean(square(x)) - square(mean(x))
 
-moments = sample.moments({'d': [mean, var], 'c': [second_moment]})
-print(moments)
+# moments = sample.moments({'d': [mean, var], 'c': [second_moment]})
+# print(moments)
+
+# #Getting moments from posterior samples:
+
+# posterior_samples = sample.sample_posterior(num_samples=1000)
+
+# print(posterior_samples['d'].mean('N'))
+# print((posterior_samples['d']**2).mean('N') - posterior_samples['d'].mean('N')**2)
+
+# print((posterior_samples['c']**2).mean('N'))

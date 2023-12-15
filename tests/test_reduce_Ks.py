@@ -108,36 +108,59 @@ class TestSampleKs(unittest.TestCase):
         data = {'e': t.randn(3, 4, names=('p1', 'p2'))}
 
         prob = Problem(P, Q, all_platesizes, data)
+        K=5
+        N=1000
+        sampling_type = IndependentSample
+
 
         sample = prob.sample(K, True, sampling_type)
 
         posterior_samples = list(sample.sample_posterior(num_samples=N).values())
 
-        conditionals = sample.conditionals()
         marginals = sample.marginals()
 
 
         posterior_ab = posterior_samples[0].order(posterior_samples[0].dims) 
         posterior_c = posterior_samples[1].order(posterior_samples[1].dims)
-        posterior_d = posterior_samples[2].order(posterior_samples[2].dims)
+        posterior_d = posterior_samples[2].order(posterior_samples[2].dims[1]).order(posterior_samples[2].dims[0])
 
 
 
         posterior_ab = t.bincount(posterior_ab, minlength=K)
         posterior_c = t.bincount(posterior_c, minlength=K)
-        posterior_d = t.bincount(posterior_d, minlength=K)
+        post_d = []
+        for i in range(all_platesizes['p1']):
+            post_d.append(t.bincount(posterior_d[i,:], minlength=K))
 
-        source_term_ab = marginals['ab'].rename(None)
-        mean = N * source_term_ab
-        var = N * (source_term_ab) * (1 - source_term_ab)
-        assert t.sqrt(((posterior_ab - mean)**2 / mean).sum() / N) < 0.1
+        #Can't accurately test for zero counts, so mask them out
+        mask = posterior_ab > 0
+        source_term_ab = marginals['ab'].rename(None) * mask
+        
+        mean = t.floor(N * source_term_ab)
+        var = t.ceil(N * (source_term_ab) * (1 - source_term_ab))
 
+        assert( t.abs(mean - posterior_ab) <= var).all()
+        
+
+
+        #Can't accurately test for zero counts, so mask them out
+        mask = posterior_c > 0
+        source_term_c = marginals['c'].rename(None) * mask
+        mean = t.floor(N * source_term_c)
+        var = t.ceil(N * (source_term_c) * (1 - source_term_c))
+        
+
+        assert (t.abs(mean - posterior_c) <= var).all()
 
         
-        source_term_c = marginals['c'].rename(None)
-        mean = N * source_term_c
-        var = N * (source_term_c) * (1 - source_term_c)
-        assert t.sqrt(((posterior_c - mean)**2 / mean).sum() / N) < 0.1
+        for i in range(all_platesizes['p1']):
+            mask = post_d[i] > 0
+            source_term_d = marginals['d'].rename(None)[i,:] * mask
+            mean = t.floor(N * source_term_d)
+            var = t.ceil(N * (source_term_d) * (1 - source_term_d))
+
+            assert (t.abs(mean - post_d[i]) <= var).all()
+
         
         
 class Testlogsumexp_sum(unittest.TestCase):

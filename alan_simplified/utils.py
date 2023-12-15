@@ -66,6 +66,14 @@ reserved_prefixes = [
     "K_",
 ]
 
+def flatten_dict(d:dict):
+    result = {}
+    for k, v in d.items():
+        if isinstance(v, dict):
+                result = {**result, **flatten_dict(v)}
+        else:
+            result[k] = v
+    return result
 
 def check_name(name:str):
     if name in reserved_names:
@@ -275,6 +283,11 @@ def dim2named_tensor(x):
     names = [repr(dim) for dim in dims]
     return generic_order(x, dims).rename(*names, ...)
 
+def dictdim2named_tensordict(d):
+    """
+    Converts a dict of torchdims to a dict of named tensors.
+    """
+    return {k: dim2named_tensor(v) for (k, v) in d.items()}
 #### Utilities for working with dictionaries of plates
 
 def named2dim_tensor(d, x):

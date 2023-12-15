@@ -9,6 +9,7 @@ from .Plate import Plate, tensordict2tree, flatten_tree, empty_tree
 from .utils import *
 from .logpq import logPQ_plate
 from .sample_logpq import logPQ_sample
+from .BoundPlate import BoundPlate
 
 
 class Sample():
@@ -106,9 +107,9 @@ class Sample():
         #create a tree mapping
         pass
     
-    def sample_posterior(self, extra_log_factors=None, num_samples=1):
+    def sample_posterior_indices(self, extra_log_factors=None, num_samples=1):
 
-
+        Ndim = Dim('N', num_samples)
         if extra_log_factors is None:
             extra_log_factors = empty_tree(self.P)
         assert isinstance(extra_log_factors, dict)
@@ -133,10 +134,14 @@ class Sample():
             split=self.split,
             indices={},
             num_samples=num_samples,
-            N_dim=Dim('N'))
+            N_dim=Ndim)
 
         return indices
     
+    def sample_posterior(self, extra_log_factors=None, num_samples=1):
+        '''Returns a sample from the posterior distribution.'''
+        post_idxs = self.sample_posterior_indices(extra_log_factors, num_samples)
+        return dictdim2named_tensordict(flatten_dict(self.index_in(self.sample, post_idxs)))
     
     def marginals(self):
 
@@ -245,7 +250,7 @@ class Sample():
                  
             active_platedims = [self.all_platedims[name] for name in active_platedimnames]
             Kdim = self.groupvarname2Kdim[varname]
-            dims = [*active_platedims, Kdim]
+            dims = [*active_platedims]
             
             if active_platedimnames != []:
                 for name in active_platedimnames:
@@ -260,11 +265,14 @@ class Sample():
             shape = [dim.size for dim in dims]
 
             for m,f in zip(ms,latent_to_moment[varname]):
-                dimnames = [*[str(dim) for dim in active_platedims], 'K']
+                dimnames = [*[str(dim) for dim in active_platedims]]
                 dimnamess.append(dimnames)
                 J_named = t.zeros(shape, requires_grad=True)
                 Js_named_list.append(J_named)
-                J_torchdim = J_named.rename(None)[dims]
+                if len(dims) > 0:
+                    J_torchdim = J_named.rename(None)[dims]
+                else:
+                    J_torchdim = J_named.rename(None)
                 #Moments need different names from variables.
                 #This is really a problem in how we're representing trees...
                 Js_torchdim_dict[f"{varname}_{f.__name__}"] = J_torchdim * m
@@ -283,4 +291,126 @@ class Sample():
 
         return moments_dict
         
+        
+    def index_in(self, sample: dict, post_idxs: dict[Dim, Tensor]):
+        '''Takes a sample (nested dict of tensors with Kdims) and a dictionary of Kdims to indices.
+        Returns a new sample (nested dict of tensors with Ndims instead of Kdims) with the indices
+        applied to the sample.'''
+
+        result = {}
+        
+        
+        for name, value in sample.items():
+            if isinstance(value, dict):
+                result[name] = self.index_in(value, post_idxs)
+            elif isinstance(value, Tensor):
+                assert isinstance(value, Tensor)
+
+                temp = value
+
+                for dim in list(set(generic_dims(value)).intersection(set(post_idxs.keys()))):
+                    temp = temp.order(dim)[post_idxs[dim]]
+ 
+                result[name] = temp
+
+        # print(post_idxs)
+        return result
+    
+    def clone_sample(self, sample: dict):
+        '''Takes a sample (nested dict of tensors) and returns a new dict with the same structure
+        but with copies of the tensors.'''
+
+        result = {}
+
+        for name, value in sample.items():
+            if isinstance(value, dict):
+                result[name] = self.clone_sample(value)
+            else:
+                assert isinstance(value, Tensor)
+                result[name] = value.clone()
+
+        return result
+    
+    def _predictive(self, all_platesizes: dict[str, int], reparam: bool, all_data: dict[str, Tensor], num_samples):
+        '''Samples from the predictive distribution of P and, if given all_data, returns the
+        log-likelihood of the original data under the predictive distribution of P.'''
+        assert isinstance(self.P, (Plate, BoundPlate))
+        assert isinstance(all_platesizes, dict)
+
+        post_idxs = self.sample_posterior_indices(num_samples=num_samples)
+        
+        
+        # If all_platesizes is missing some plates from self.all_platedims,
+        # add them in without changing their sizes.
+        for name, dim in self.all_platedims.items():
+            if name not in all_platesizes:
+                all_platesizes[name] = dim.size
+
+        # Check that all_platesizes contains no extra plates.
+        assert set(all_platesizes.keys()) == set(self.all_platedims.keys())
+
+        # Create the new platedims from the platesizes.
+        all_platedims = {name: Dim(name, size) for name, size in all_platesizes.items()}
+
+        # We have to work on a copy of the sample so that self.sample's own dimensions 
+        # aren't changed.
+        indexed_sample = self.index_in(self.clone_sample(self.sample), post_idxs)
+        pred_sample, original_ll, extended_ll = self.P.sample_extended(
+            sample=indexed_sample,
+            name=None,
+            scope={},
+            inputs_params=self.P.inputs_params(self.all_platedims),
+            original_platedims=self.all_platedims,
+            extended_platedims=all_platedims,
+            active_original_platedims=[],
+            active_extended_platedims=[],
+            Ndim=self.Ndim,
+            reparam=reparam,
+            original_data=self.problem.data,
+            extended_data=all_data
+        )
+
+        return pred_sample, original_ll, extended_ll
+
+    def predictive_sample(self, all_platesizes: dict[str, int], reparam: bool, num_samples=1):
+        '''Returns a dictionary of samples from the predictive distribution.'''
+        pred_sample, _, _ = self._predictive(
+            all_platesizes=all_platesizes,
+            reparam=reparam, 
+            all_data=None,
+            num_samples=num_samples)
+
+        return flatten_dict(pred_sample)
+
+    def predictive_ll(self, all_platesizes: dict[str, int], reparam: bool, all_data: dict[str, Tensor], num_samples=1):
+        '''This function returns the predictive log-likelihood of the test data (all_data - train_data), given 
+        the training samples and the predictive samples.'''        
+        _, lls_train, lls_all = self._predictive(
+            all_platesizes=all_platesizes,
+            reparam=reparam, 
+            all_data=all_data,
+            num_samples=num_samples)
+
+        # If we have lls for a variable in the training data, we should also have lls
+        # for it in the all (training+test) data.
+        assert set(lls_all.keys()) == set(lls_train.keys())
+
+        result = {}
+        for varname in lls_all:
+            ll_all   = lls_all[varname]
+            ll_train = lls_train[varname]
+
+            dims_all   = [dim for dim in ll_all.dims   if dim is not self.Ndim]
+            dims_train = [dim for dim in ll_train.dims if dim is not self.Ndim]
+            assert len(dims_all) == len(dims_train)
+
+            if 0 < len(dims_all):
+                # Sum over plates
+                ll_all   = ll_all.sum(dims_all)
+                ll_train = ll_train.sum(dims_train)
+
+            # Take mean over Ndim
+            result[varname] = logmeanexp_dims(ll_all - ll_train, (self.Ndim,))
+
+        return result
         
