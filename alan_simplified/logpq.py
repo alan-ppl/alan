@@ -114,8 +114,8 @@ def logPQ_plate(
 
 def logPQ_dist(
         name:str,
-        P:Plate, 
-        Q:Optional[Plate], 
+        P:Dist, 
+        Q:Optional[Dist], 
         sample: OptionalTensor,
         inputs_params_P: dict,
         inputs_params_Q: dict,

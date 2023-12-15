@@ -3,10 +3,10 @@ from alan_simplified import Normal, Bernoulli, Plate, BoundPlate, Group, Problem
 from alan_simplified.IndexedSample import IndexedSample
 import pickle
 
-Ks = [3,10]#,30,100,300,1000]
+Ks = [3,5,10]#30,100,300,1000]
 lrs = [0.0001]#, 0.001, 0.01]
 num_runs = 10
-num_iters = 1
+num_iters = 0
 
 d_z = 18
 M, N = 300, 5
@@ -98,11 +98,14 @@ for num_run in range(num_runs):
 
 to_pickle = {'elbos': elbos, 'p_lls': p_lls, 'Ks': Ks, 'lrs': lrs, 'num_runs': num_runs, 'num_iters': num_iters}
 
+print()
+
 for K_idx, K in enumerate(Ks):
     for lr_idx, lr in enumerate(lrs):
         print(f"K: {K}, lr: {lr}")
-        print(f"elbo: {elbos[K_idx, lr_idx, -1,:].mean():.3f}")
-        print(f"p_ll: {p_lls[K_idx, lr_idx, -1,:].mean():.3f}")
+        print(f"elbo: {elbos[K_idx, lr_idx, 0,:].mean():.3f}")
+        print(f"p_ll: {p_lls[K_idx, lr_idx, 0,:].mean():.3f}")
+        print()
 
 # breakpoint()
 # with open('results/results.pkl', 'wb') as f:
