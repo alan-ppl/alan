@@ -6,7 +6,7 @@ num_runs = 500
 Ks = [1,10,100]
 
 # Scalar-valued random variable model
-print("Vector-valued random variable model")
+print("Scalar-valued random variable model")
 elbos = t.zeros((len(Ks), num_runs))
 
 for num_run in range(num_runs):

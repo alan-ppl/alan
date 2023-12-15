@@ -88,7 +88,7 @@ def logPQ_plate(
             groupvarname2Kdim=groupvarname2Kdim,
             sampling_type=sampling_type,
             split=split)
-        lps.append(lp.sum())
+        lps.append(lp)
 
         childsample = sample.get(childname)
         if childsample is not None:

@@ -136,5 +136,10 @@ class TorchDimDist():
         dist = self.dist(**kwargs_tensor)
         lp_tensor = dist.log_prob(x_tensor)
 
-        return generic_getitem(lp_tensor, [..., *dims, *colons(generic_ndim(x))])
+        lp = generic_getitem(lp_tensor, [..., *dims, *colons(generic_ndim(x))])
+        
+        if generic_ndim(lp) > 0:
+            lp = lp.sum([*range(-generic_ndim(x), 0)])
+
+        return lp
 
