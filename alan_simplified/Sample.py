@@ -26,7 +26,6 @@ class Sample():
         self.groupvarname2Kdim = groupvarname2Kdim
         self.sampling_type = sampling_type
         self.split = split
-        self.Ndim = Dim('N', 1)
 
         
 
@@ -112,7 +111,7 @@ class Sample():
     
     def sample_posterior_indices(self, extra_log_factors=None, num_samples=1):
 
-        self.Ndim = Dim('N', num_samples)
+        Ndim = Dim('N', num_samples)
         if extra_log_factors is None:
             extra_log_factors = empty_tree(self.P)
         assert isinstance(extra_log_factors, dict)
@@ -137,7 +136,7 @@ class Sample():
             split=self.split,
             indices={},
             num_samples=num_samples,
-            N_dim=self.Ndim)
+            N_dim=Ndim)
 
         return indices
     
