@@ -28,10 +28,6 @@ TODO (long run):
   * Friendly error messages:
     - For mismatching dimension names / plate names for data / inputs / params.
     - Make sure inputs_params have separate names for P and Q.
-  * Make scope simpler once we have sample.
-    - Check that the dependency order for P makes sense beforehand.
-    - Then just dump the whole of the plate scope directly.
-    - As long as inputs_params don't clash for P and Q, then there's only one scope.
   * Split for efficient computation.
   * Natural RWS: Bound plate has two extra arguments:
     - a dict of moments + scalar moment initializers {"moment_name": (lambda a, b: a*b, 0.)}
