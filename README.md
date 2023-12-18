@@ -12,13 +12,15 @@ Laurence recent changes:
   * I added a check for the dependency structure in P+Q in Problem (basically, when you set up Problem, you sample from P+Q).
 
 Immanent TODOs:
-  * Edits to posterior sampling:
+  * Edits to posterior sampling (Sam?):
     - I got rid of the mutable `N_dim` on `Sample`, which is really bad; instead that function (now `importance_sampled_idxs`) returns `N_dim`.
     - `sample.index_in` should take `post_idxs, N_dim` as inputs (it knows the sample as it lives inside the object).  You can define this method in terms of a separate function if you like.
     - logPQ_sample should return a dict[str, Tensor], with str representing variable name (mainly because we can always map from str to Dim, but we can't reliably go back).
+  * Unify inputs_params_P and inputs_params_Q (Laurence).
+  * Unify scope_P and scope_Q (Laurence).
+  * Toss dependency computing crap (Laurence).
 
-TODO:
-  * Unify scope and input_params when sampling/computing logpq.
+TODO (long run):
   * Device (set on Problem).
     - Problem is an nn.Module.
     - Problem has a "dummy" tensor (when you call problem.to('cuda') this dummy tensor gets the same device).
