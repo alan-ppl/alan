@@ -14,7 +14,7 @@ Laurence recent changes:
   * Unify scope_P and scope_Q in logpq = sample_logpq (buggy?).
 
 Immanent TODOs:
-  * Edits to posterior sampling (Sam?):
+  * Edits to posterior sampling:
     - I got rid of the mutable `N_dim` on `Sample`, which is really bad; instead that function (now `importance_sampled_idxs`) returns `N_dim`.
     - `sample.index_in` should take `post_idxs, N_dim` as inputs (it knows the sample as it lives inside the object).  You can define this method in terms of a separate function if you like.
     - logPQ_sample should return a dict[str, Tensor], with str representing variable name (mainly because we can always map from str to Dim, but we can't reliably go back).
