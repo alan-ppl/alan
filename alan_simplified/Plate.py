@@ -300,22 +300,31 @@ class Plate():
 #        return result
 
 
-#### Functions to update the scope.
+#Functions to update the scope
 
 def update_scope_sample(scope: dict[str, Tensor], name:str, dgpt, sample):
-    scope = {**scope}
-    if isinstance(dgpt, Dist):
-        assert isinstance(sample, Tensor)
-        scope[name] = sample
-    elif isinstance(dgpt, Group):
-        assert isinstance(sample, dict)
-        for gn, gs in sample.items():
-            assert isinstance(gs, Tensor)
-            scope[gn] = gs
-    else:
-        assert isinstance(dgpt, (Plate, Data))
-    return scope
+    return update_scope_samples(scope, {name:dgpt}, {name: sample})
 
+def update_scope_samples(scope: dict[str, Tensor], Q_prog:dict, samples:dict):
+    scope = {**scope}
+
+    for childname, childQ in Q_prog.items():
+        if isinstance(childQ, Data):
+            assert childname not in samples
+        else:
+            sample = samples[childname]
+
+            if isinstance(childQ, Dist):
+                assert isinstance(sample, Tensor)
+                scope[childname] = sample
+            elif isinstance(childQ, Group):
+                assert isinstance(sample, dict)
+                for gn, gs in sample.items():
+                    assert isinstance(gs, Tensor)
+                    scope[gn] = gs
+            else:
+                assert isinstance(childQ, Plate)
+    return scope
 
 def update_scope_inputs_params(scope:dict[str, Tensor], inputs_params:dict):
     scope = {**scope}
@@ -326,6 +335,10 @@ def update_scope_inputs_params(scope:dict[str, Tensor], inputs_params:dict):
             assert isinstance(v, dict)
     return scope
 
+def update_scope(scope:dict[str, Tensor], P:Plate, sample:dict, inputs_params:dict):
+    scope = update_scope_inputs_params(scope, inputs_params)
+    scope = update_scope_samples(scope, P.prog, sample)
+    return scope
 
 
 

@@ -1,7 +1,7 @@
 import math
 from typing import Optional, Union
 
-from .Plate import Plate, tree_values, update_scope_inputs_params, update_scope_sample
+from .Plate import Plate, tree_values, update_scope_inputs_params, update_scope_samples
 from .BoundPlate import BoundPlate
 from .Group import Group
 from .utils import *
@@ -19,12 +19,10 @@ def logPQ_sample(
     P: PBP, 
     Q: PBP, 
     sample: dict, 
-    inputs_params_P: dict,
-    inputs_params_Q: dict,
+    inputs_params: dict,
     data: dict,
     extra_log_factors: dict, 
-    scope_P: dict[str, Tensor], 
-    scope_Q: dict[str, Tensor], 
+    scope: dict[str, Tensor], 
     active_platedims:list[Dim],
     all_platedims:dict[str: Dim],
     groupvarname2Kdim:dict[str, Tensor],
@@ -37,30 +35,26 @@ def logPQ_sample(
     assert isinstance(P, (Plate, BoundPlate))
     assert isinstance(Q, (Plate, BoundPlate))
     assert isinstance(sample, dict)
-    assert isinstance(inputs_params_P, dict)
-    assert isinstance(inputs_params_Q, dict)
+    assert isinstance(inputs_params, dict)
     assert isinstance(data, dict)
     assert isinstance(extra_log_factors, dict)
     assert isinstance(indices, dict)
 
     
-    lps, all_Ks, scope_P, scope_Q, active_platedims = lp_getter(
+    lps, all_Ks, scope, active_platedims = lp_getter(
         name=name,
         P=P, 
         Q=Q, 
         sample=sample, 
-        inputs_params_P=inputs_params_P,
-        inputs_params_Q=inputs_params_Q,
+        inputs_params=inputs_params,
         data=data,
         extra_log_factors=extra_log_factors, 
-        scope_P=scope_P, 
-        scope_Q=scope_Q, 
+        scope=scope, 
         active_platedims=active_platedims,
         all_platedims=all_platedims,
         groupvarname2Kdim=groupvarname2Kdim,
         sampling_type=sampling_type,
         split=split)
-            
 
     # Index into each lp with the indices we've collected so far
     for i in range(len(lps)):
@@ -70,9 +64,6 @@ def logPQ_sample(
 
     if len(all_Ks) > 0:
         indices = {**indices, **sample_Ks(lps, all_Ks,N_dim, num_samples)}
-
-
-
         
     for childname, childP in P.prog.items():
         childQ = Q.prog.get(childname)
@@ -84,11 +75,9 @@ def logPQ_sample(
             Q=childQ, 
             sample=sample.get(childname),
             data=data.get(childname),
-            inputs_params_P=inputs_params_P.get(childname),
-            inputs_params_Q=inputs_params_Q.get(childname),
+            inputs_params=inputs_params.get(childname),
             extra_log_factors=extra_log_factors.get(childname),
-            scope_P=scope_P, 
-            scope_Q=scope_Q, 
+            scope=scope, 
             active_platedims=active_platedims,
             all_platedims=all_platedims,
             groupvarname2Kdim=groupvarname2Kdim,
@@ -97,11 +86,6 @@ def logPQ_sample(
             indices=indices,
             num_samples=num_samples,
             N_dim = N_dim)
-            
-        childsample = sample.get(childname)
-        if childsample is not None:
-            scope_P = update_scope_sample(scope_P, childname, childP, childsample)
-
 
     return indices
 

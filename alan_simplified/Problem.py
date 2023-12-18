@@ -47,3 +47,6 @@ class Problem():
             sampling_type=sampling_type,
             split=None,
         )
+
+    def inputs_params(self):
+        return {**self.P.inputs_params(self.all_platedims), **self.Q.inputs_params(self.all_platedims)}

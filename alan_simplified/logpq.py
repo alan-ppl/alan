@@ -1,7 +1,7 @@
 import math
 from typing import Optional, Union
 
-from .Plate import Plate, tree_values, update_scope_inputs_params, update_scope_sample
+from .Plate import Plate, tree_values, update_scope
 from .Group import Group
 from .utils import *
 from .reduce_Ks import reduce_Ks
@@ -15,12 +15,10 @@ def logPQ_plate(
         P:Plate, 
         Q:Plate, 
         sample: dict, 
-        inputs_params_P: dict,
-        inputs_params_Q: dict,
+        inputs_params: dict,
         data: dict,
         extra_log_factors: dict, 
-        scope_P: dict[str, Tensor], 
-        scope_Q: dict[str, Tensor], 
+        scope: dict[str, Tensor], 
         active_platedims:list[Dim],
         all_platedims:dict[str: Dim],
         groupvarname2Kdim:dict[str, Tensor],
@@ -31,22 +29,19 @@ def logPQ_plate(
     assert isinstance(Q, Plate)
 
     assert isinstance(sample, dict)
-    assert isinstance(inputs_params_P, dict)
-    assert isinstance(inputs_params_Q, dict)
+    assert isinstance(inputs_params, dict)
     assert isinstance(data, dict)
     assert isinstance(extra_log_factors, dict)
 
-    lps, all_Ks, scope_P, scope_Q, active_platedims = lp_getter(
+    lps, all_Ks, scope, active_platedims = lp_getter(
         name=name,
         P=P, 
         Q=Q, 
         sample=sample, 
-        inputs_params_P=inputs_params_P,
-        inputs_params_Q=inputs_params_Q,
+        inputs_params=inputs_params,
         data=data,
         extra_log_factors=extra_log_factors, 
-        scope_P=scope_P, 
-        scope_Q=scope_Q, 
+        scope=scope, 
         active_platedims=active_platedims,
         all_platedims=all_platedims,
         groupvarname2Kdim=groupvarname2Kdim,
@@ -68,12 +63,10 @@ def logPQ_dist(
         P:Dist, 
         Q:Union[Dist, Data],
         sample: OptionalTensor,
-        inputs_params_P: dict,
-        inputs_params_Q: dict,
+        inputs_params: dict,
         data: OptionalTensor,
         extra_log_factors: None,
-        scope_P: dict[str, Tensor], 
-        scope_Q: dict[str, Tensor], 
+        scope: dict[str, Tensor], 
         active_platedims:list[Dim],
         all_platedims:dict[str: Dim],
         groupvarname2Kdim:dict[str, Tensor],
@@ -84,8 +77,7 @@ def logPQ_dist(
     assert isinstance(Q, (Dist, Data))
 
     assert isinstance(sample, OptionalTensor)
-    assert inputs_params_P is None
-    assert inputs_params_Q is None
+    assert inputs_params is None
     assert isinstance(data, OptionalTensor)
     assert extra_log_factors is None
 
@@ -96,11 +88,11 @@ def logPQ_dist(
     if sample is not None:
         assert Q is not None
 
-    lpq = P.log_prob(sample=sample_data, scope=scope_P)
+    lpq = P.log_prob(sample=sample_data, scope=scope)
 
     if sample is not None:
         Kdim = groupvarname2Kdim[name]
-        lq = Q.log_prob(sample=sample, scope=scope_Q)
+        lq = Q.log_prob(sample=sample, scope=scope)
         lq = sampling_type.reduce_logQ(lq, active_platedims, Kdim)
 
         lpq = lpq - lq - math.log(Kdim.size)
@@ -112,12 +104,10 @@ def logPQ_group(
         P:Group, 
         Q:Group, 
         sample: dict, 
-        inputs_params_P: dict,
-        inputs_params_Q: dict,
+        inputs_params: dict,
         data: None,
         extra_log_factors: None, 
-        scope_P: dict[str, Tensor], 
-        scope_Q: dict[str, Tensor], 
+        scope: dict[str, Tensor], 
         active_platedims:list[Dim],
         all_platedims:dict[str: Dim],
         groupvarname2Kdim:dict[str, Tensor],
@@ -129,8 +119,7 @@ def logPQ_group(
 
 
     assert isinstance(sample, dict)
-    assert inputs_params_P is None
-    assert inputs_params_Q is None
+    assert inputs_params is None
     assert data is None
     assert extra_log_factors is None
 
@@ -139,7 +128,7 @@ def logPQ_group(
 
     #Don't need to copy or update scope_Q, as we have already dumped every variable
     #in the plate into that scope.
-    scope_P = {**scope_P}
+    scope = {**scope}
 
     total_logP = 0.
     total_logQ = 0.
@@ -150,10 +139,8 @@ def logPQ_group(
         assert isinstance(childQ, Dist)
         assert isinstance(childsample, Tensor)
 
-        total_logP = total_logP + childP.log_prob(sample=childsample, scope=scope_P)
-        total_logQ = total_logQ + childQ.log_prob(sample=childsample, scope=scope_Q)
-
-        scope_P[childname] = childsample
+        total_logP = total_logP + childP.log_prob(sample=childsample, scope=scope)
+        total_logQ = total_logQ + childQ.log_prob(sample=childsample, scope=scope)
 
     total_logQ = sampling_type.reduce_logQ(total_logQ, active_platedims, Kdim)
 
@@ -166,12 +153,10 @@ def lp_getter(
         P:Plate, 
         Q:Plate, 
         sample: dict, 
-        inputs_params_P: dict,
-        inputs_params_Q: dict,
+        inputs_params: dict,
         data: dict,
         extra_log_factors: dict, 
-        scope_P: dict[str, Tensor], 
-        scope_Q: dict[str, Tensor], 
+        scope: dict[str, Tensor], 
         active_platedims:list[Dim],
         all_platedims:dict[str: Dim],
         groupvarname2Kdim:dict[str, Tensor],
@@ -193,21 +178,11 @@ def lp_getter(
     #We want to pass back just the incoming scope, as nothing outside the plate can see
     #variables inside the plate.  So `scope` is the internal scope, and `parent_scope`
     #is the external scope we will pass back.
-    scope_P = update_scope_inputs_params(scope_P, inputs_params_P)
-    scope_Q = update_scope_inputs_params(scope_Q, inputs_params_Q)
+    scope = update_scope(scope, Q, sample, inputs_params)
 
     assert set(P.prog.keys()) == set(Q.prog.keys())
 
     lps = list(tree_values(extra_log_factors).values())
-
-    #Dump all the scope for Q directly
-    #That allows P and Q to have different orders.
-    #Note that we already know Q has a valid order, because we sampled from Q
-    for childname, childQ in Q.prog.items():
-        if isinstance(childQ, Data):
-            continue
-        childsample = sample[childname]
-        scope_Q = update_scope_sample(scope_Q, childname, childQ, childsample)
 
     for childname, childP in P.prog.items():
         childQ = Q.prog.get(childname) 
@@ -232,21 +207,15 @@ def lp_getter(
             Q=childQ, 
             sample=sample.get(childname),
             data=data.get(childname),
-            inputs_params_P=inputs_params_P.get(childname),
-            inputs_params_Q=inputs_params_Q.get(childname),
+            inputs_params=inputs_params.get(childname),
             extra_log_factors=extra_log_factors.get(childname),
-            scope_P=scope_P, 
-            scope_Q=scope_Q, 
+            scope=scope, 
             active_platedims=active_platedims,
             all_platedims=all_platedims,
             groupvarname2Kdim=groupvarname2Kdim,
             sampling_type=sampling_type,
             split=split)
         lps.append(lp)
-
-        childsample = sample.get(childname)
-        if childsample is not None:
-            scope_P = update_scope_sample(scope_P, childname, childP, childsample)
 
     #Collect all Ks in the plate
     all_Ks = []
@@ -256,4 +225,4 @@ def lp_getter(
         else:
             assert isinstance(dist, (Plate, Data))
             
-    return lps, all_Ks, scope_P, scope_Q, active_platedims
+    return lps, all_Ks, scope, active_platedims
