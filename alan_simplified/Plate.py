@@ -264,10 +264,21 @@ class Plate():
                 
     def inputs_params(self, all_platedims:dict[str, Dim]):
         """
-        Returns all the inputs/params used in the program.  Empty
-        as these are only defined for BoundPlate.
+        Matches the interface for BoundPlate.
         """
         return empty_tree(self)
+
+    def inputs_params_flat_named(self):
+        """
+        Matches the interface for BoundPlate.
+        """
+        return {}
+
+    def inputs_params_flat_torchdim(self, all_platedims:dict[str, Dim]):
+        """
+        Matches the interface for BoundPlate.
+        """
+        return {}
 
     def groupvarname2active_platedimnames(self, active_platedimnames=None):
         """

@@ -5,7 +5,7 @@ from .Plate import Plate, tensordict2tree, flatten_tree
 from .BoundPlate import BoundPlate
 from .SamplingType import SamplingType
 from .utils import *
-from .checking import check_PQ_plate, mismatch_names
+from .checking import check_PQ_plate, check_inputs_params, mismatch_names
 from .logpq import logPQ_plate
 
 from .Sample import Sample
@@ -24,7 +24,7 @@ class Problem():
         #Check names in P matches those in Q+data, and there are no duplicates.
         #Check the structure of P matches that of Q.
         check_PQ_plate(None, P, Q, self.data)
-
+        check_inputs_params(P, Q)
 
     def sample(self, K: int, reparam:bool, sampling_type:SamplingType):
         """

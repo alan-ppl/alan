@@ -27,8 +27,6 @@ class Sample():
         self.sampling_type = sampling_type
         self.split = split
 
-        
-
     @property 
     def P(self):
         return self.problem.P
@@ -109,14 +107,17 @@ class Sample():
         #create a tree mapping
         pass
     
-    def sample_posterior_indices(self, extra_log_factors=None, num_samples=1):
+    def importance_sampled_idxs(self, num_samples=1):
+        """
+        User-facing method that returns reweighted samples.
+        """
 
-        Ndim = Dim('N', num_samples)
-        if extra_log_factors is None:
-            extra_log_factors = empty_tree(self.P)
+        #extra_log_factors doesn't make sense for posterior sampling, but is required for
+        #one of the internal methods.
+        extra_log_factors = empty_tree(self.P)
         assert isinstance(extra_log_factors, dict)
-        #extra_log_factors = named2dim_dict(extra_log_factors, self.all_platedims)
-        #extra_log_factors = tensordict2tree(self.P, extra_log_factors)
+
+        N_dim = Dim('N', num_samples)
         
         indices = logPQ_sample(
             name=None,
@@ -136,15 +137,18 @@ class Sample():
             split=self.split,
             indices={},
             num_samples=num_samples,
-            N_dim=Ndim)
+            N_dim=N_dim,
+        )
 
-        return indices
-    
-    def sample_posterior(self, extra_log_factors=None, num_samples=1):
-        '''Returns a sample from the posterior distribution.'''
-        post_idxs = self.sample_posterior_indices(extra_log_factors, num_samples)
+        return indices, N_dim
 
-        return dictdim2named_tensordict(flatten_dict(self.index_in(self.sample, post_idxs)))
+    def importance_samples(self, num_samples=1):
+        """
+        User-facing method that returns reweighted samples.
+        """
+        post_idxs, N_dim = self.importance_sampled_idxs(num_samples)
+
+        return dictdim2named_tensordict(flatten_dict(self.index_in(post_idxs, N_dim)))
     
     def marginals(self):
 

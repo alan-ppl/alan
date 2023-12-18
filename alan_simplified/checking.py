@@ -1,11 +1,25 @@
-from typing import Optional, Any
+from typing import Optional, Any, Union
 
 from .Plate import Plate, tree_branches, tree_values
+from .BoundPlate import BoundPlate
+
 from .Group import Group
 from .dist import Dist
 from .Data import Data
 
 #### Check the structure of the distributions match.
+
+PBP = Union[Plate, BoundPlate]
+def check_inputs_params(P:PBP, Q:PBP):
+    inputs_params_P = P.inputs_params_flat_named()
+    inputs_params_Q = Q.inputs_params_flat_named()
+
+    overlap = set(inputs_params_P.keys()).intersection(inputs_params_Q.keys())
+
+    for k in overlap:
+        if inputs_params_P[k] is not inputs_params_Q[k]:
+            raise Exception(f"There is an input or parameter that is shared between P and Q, and isn't the same for both")
+
 
 def check_support(name:str, distP:Dist, distQ:Dist):
     assert isinstance(distP, Dist)
