@@ -1,6 +1,5 @@
 import torch as t
-from alan_simplified import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, IndependentSample
-from alan_simplified.IndexedSample import IndexedSample
+from alan_simplified import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, IndependentSample, Data
 
 d_z = 18
 M, N = 300, 5
@@ -26,6 +25,7 @@ Q = Plate(
         z = Normal("z_loc", "z_scale"),
 
         plate_2 = Plate(
+            obs = Data()
         )
     ),
 )
@@ -70,8 +70,5 @@ for i in range(100):
     (-elbo).backward()
     opt.step()
 
-    post_idxs = sample.sample_posterior(num_samples=10)
-    isample = IndexedSample(sample, post_idxs)
-
-    ll = isample.predictive_ll(P=prob.P, all_platesizes=all_platesizes, reparam=True, all_data=all_data, all_inputs=all_covariates)
+    ll = sample.predictive_ll(all_platesizes=all_platesizes, reparam=True, all_data=all_data, all_inputs=all_covariates)
     print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")

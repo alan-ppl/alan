@@ -1,7 +1,6 @@
 import torch as t
 import torchopt
-from alan_simplified import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, IndependentSample
-from alan_simplified.IndexedSample import IndexedSample
+from alan_simplified import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, IndependentSample, Data
 import pickle
 import time
 
@@ -64,6 +63,7 @@ for num_run in range(num_runs):
                     z = Normal("z_loc", "z_scale"),
 
                     plate_2 = Plate(
+                        obs = Data()
                     )
                 ),
             )
@@ -91,10 +91,7 @@ for num_run in range(num_runs):
                 sample = prob.sample(K, True, sampling_type)
                 elbo = sample.elbo()
 
-                post_idxs = sample.sample_posterior(num_samples=10)
-                isample = IndexedSample(sample, post_idxs)
-
-                ll = isample.predictive_ll(prob.P, all_platesizes, True, all_data, all_covariates)
+                ll = sample.predictive_ll(all_platesizes, True, all_data, 10, all_covariates)
                 if i % 50 == 0:
                     print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
 
@@ -119,6 +116,6 @@ for K_idx, K in enumerate(Ks):
         print(f"p_ll: {p_lls[K_idx, lr_idx, 0,:].mean():.3f}")
         print()
 
-# breakpoint()
+breakpoint()
 with open('results/results.pkl', 'wb') as f:
     pickle.dump(to_pickle, f)

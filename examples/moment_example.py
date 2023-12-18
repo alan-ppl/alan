@@ -31,7 +31,6 @@ Q = Plate(
     ),
 )
 
-P = BoundPlate(P)
 Q = BoundPlate(Q, params={'a_mean': t.zeros(()), 'd_mean':t.zeros(3, names=('p1',))})
 
 platesizes = {'p1': 3, 'p2': 4}
@@ -41,23 +40,37 @@ prob = Problem(P, Q, platesizes, data)
 
 # Get some initial samples (with K dims)
 sampling_type = IndependentSample
-sample = prob.sample(5, True, sampling_type)
+sample = prob.sample(3, True, sampling_type)
 
-# Obtain K indices from posterior
+for K in [1,3,10,30,100]:
+    print(prob.sample(K, True, sampling_type).elbo())
+# # Obtain K indices from posterior
 # post_idxs = sample.sample_posterior(num_samples=10)
 
+def mean(x):
+    sample = x
+    dim = x.dims[0]
+    
+    w = 1/dim.size
+    return (w * sample).sum(dim)
 
-# Sample some fake test data 
-# (technically we should ensure that test_data includes the original data)
-extended_platesizes = {'p1': 5, 'p2': 6}
-test_data = {'e': t.randn(5, 6, names=('p1', 'p2'))}
+def second_moment(x):
+    return mean(t.square(x))
 
-# Compute predictive samples and predictive log likelihood
-predictive_samples = sample.predictive_sample(extended_platesizes, True, num_samples=10)
-print(predictive_samples)
+def square(x):
+    return x**2
 
-pll = sample.predictive_ll(extended_platesizes, True, test_data, num_samples=10)
-print(pll)
+def var(x):
+    return mean(square(x)) - square(mean(x))
 
-# breakpoint()
+# moments = sample.moments({'d': [mean, var], 'c': [second_moment]})
+# print(moments)
 
+# #Getting moments from posterior samples:
+
+# posterior_samples = sample.sample_posterior(num_samples=1000)
+
+# print(posterior_samples['d'].mean('N'))
+# print((posterior_samples['d']**2).mean('N') - posterior_samples['d'].mean('N')**2)
+
+# print((posterior_samples['c']**2).mean('N'))

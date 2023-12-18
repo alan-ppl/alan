@@ -1,11 +1,10 @@
 import torch as t
-from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, IndependentSample
-from alan_simplified.IndexedSample import IndexedSample
+from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, IndependentSample, Data
 
 device = t.device('cuda' if t.cuda.is_available() else 'cpu')
 
-num_runs = 500
-Ks = [1,10,100]
+num_runs = 5#00
+Ks = [1,10]#,100]
 
 platesizes = {'p1': 3, 'p2': 4}
 
@@ -42,10 +41,12 @@ for num_run in range(num_runs):
             p1 = Plate(
                 d = Normal("d_mean", 1),
                 p2 = Plate(
+                    e = Data()
                 ),
             ),
         )
 
+        P = BoundPlate(P)
         Q = BoundPlate(Q, params={'a_mean': t.zeros(()).to(device),
                                   'd_mean':t.zeros(3, names=('p1',)).to(device)})
 
@@ -97,10 +98,12 @@ for num_run in range(num_runs):
             p1 = Plate(
                 d = Normal("d_mean", t.ones((d,)).to(device)),
                 p2 = Plate(
+                    e = Data()
                 ),
             ),
         )
 
+        P = BoundPlate(P)
         Q = BoundPlate(Q, params={'a_mean': t.zeros((d,)).to(device),
                                   'd_mean':t.zeros((3,d), names=('p1',None)).to(device)})        
 

@@ -2,7 +2,7 @@ from typing import Optional
 import torch as t
 import torch.nn as nn
 from .utils import *
-from .SamplingType import SamplingType
+from .SamplingType import SamplingType, IndependentSample
 from .Plate import tensordict2tree, Plate
 
 class BoundPlate(nn.Module):
@@ -15,17 +15,6 @@ class BoundPlate(nn.Module):
     def __init__(self, plate: Plate, inputs=None, params=None):
         super().__init__()
         self.plate = plate
-        self.prog = plate.prog
-        #pass through methods on plate.
-        self.sample = plate.sample
-        self.groupvarname2Kdim = plate.groupvarname2Kdim
-        self.all_prog_names = plate.all_prog_names
-        self.varname2groupvarname = plate.varname2groupvarname 
-        self.groupvarname2active_platedimnames = plate.groupvarname2active_platedimnames
-        self.groupvarname2parents = plate.groupvarname2parents 
-        self.groupvarnames = plate.groupvarnames
-        self.varnames = plate.varnames
-
 
         if inputs is None:
             inputs = {}
@@ -112,3 +101,27 @@ class BoundPlate(nn.Module):
             reparam,
             original_data,
             extended_data)
+    
+    def check_deps(self, all_platedims:dict[str, Dim]):
+        self.sample(1, False, IndependentSample, all_platedims)
+
+    def sample(self, K: int, reparam:bool, sampling_type:SamplingType, all_platedims:dict[str, Dim]):
+        """
+        Returns: 
+            globalK_sample: sample with different K-dimension for each variable.
+            logPQ: log-prob.
+        """
+        groupvarname2Kdim = self.plate.groupvarname2Kdim(K)
+
+        sample = self.plate.sample(
+            name=None,
+            scope={},
+            inputs_params=self.inputs_params(all_platedims),
+            active_platedims=[],
+            all_platedims=all_platedims,
+            groupvarname2Kdim=groupvarname2Kdim,
+            sampling_type=sampling_type,
+            reparam=reparam,
+        )
+
+        return sample, groupvarname2Kdim

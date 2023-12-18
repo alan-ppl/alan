@@ -42,27 +42,7 @@ def sample_Ks(lps, Ks_to_sum, N_dim, num_samples):
     assert_unique_dim_iter(Ks_to_sum)
     assert set(unify_dims(lps)).issuperset(Ks_to_sum)
     
-    args, out_dims = einsum_args(lps, Ks_to_sum)
-    path = opt_einsum.contract_path(*args)[0]
-
-    
-    lps_for_sampling = [[*lps]]
-    Ks_to_sample = []
-    
-    for lp_idxs in path:
-        #Split lps into two groups: those we're going to reduce, and the rest.
-        lps_to_reduce = tuple(lps[i] for i in lp_idxs)
-        lps = [lps[i] for i in range(len(lps)) if i not in lp_idxs]
-
-        #In this step, sum over all Ks in Ks_to_sample, and not in lps (i.e. the other tensors)
-        _Ks_to_sum = tuple(set(Ks_to_sum).difference(unify_dims(lps)).intersection(unify_dims(lps_to_reduce)))
-        Ks_to_sample.append(_Ks_to_sum)
-
-        #Instantiates but doesn't save lp with _Ks_to_sample dims
-        lps.append(checkpoint(logsumexp_sum, _Ks_to_sum, *lps_to_reduce, use_reentrant=False))
-        lps_for_sampling.append([*lps])
-
-    lps_for_sampling = lps_for_sampling[:-1]
+    _, lps_for_sampling, Ks_to_sample = collect_lps(lps, Ks_to_sum)
 
     #Now that we have the list of reduced factors and which Kdims to sample from each factor we can sample from each factor in turn
     indices = {}
@@ -97,30 +77,11 @@ def sample_Ks(lps, Ks_to_sum, N_dim, num_samples):
     
 def reduce_Ks(lps, Ks_to_sum):
     """
-    Fundamental method that sums over Ks
-    opt_einsum gives an "optimization path", i.e. the indicies of lps to reduce.
-    We use this path to do our reductions, handing everything off to a simple t.einsum
-    call (which ensures a reasonably efficient implementation for each reduction).
+    Sum over Ks_to_sum, returning a single tensor.
     """
     assert_unique_dim_iter(Ks_to_sum)
 
-    args, out_dims = einsum_args(lps, Ks_to_sum)
-    path = opt_einsum.contract_path(*args)[0]
-
-    for lp_idxs in path:
-        #Split lps into two groups: those we're going to reduce, and the rest.
-        lps_to_reduce = tuple(lps[i] for i in lp_idxs)
-        lps = [lps[i] for i in range(len(lps)) if i not in lp_idxs]
-
-        #In this step, sum over all Ks in Ks_to_sum, and not in lps (i.e. the other tensors)
-        _Ks_to_sum = tuple(set(Ks_to_sum).difference(unify_dims(lps)))
-
-        #Instantiates but doesn't save lp with _Ks_to_sum dims
-        lps.append(checkpoint(logsumexp_sum, _Ks_to_sum, *lps_to_reduce, use_reentrant=False))
-        #lps.append(logsumexp_sum(_Ks_to_sum, *lps_to_reduce))
-
-    assert 1==len(lps)
-    result = lps[0]
+    result, _, _ = collect_lps(lps, Ks_to_sum)
 
     return result
 
@@ -128,3 +89,38 @@ def logsumexp_sum(_Ks_to_sum, *lps_to_reduce):
     #Needs a strange argument order, because checkpoint doesn't work with lists of lps.
     return logsumexp_dims(sum(lps_to_reduce), _Ks_to_sum, ignore_extra_dims=True)
 
+
+def collect_lps(lps, Ks_to_sum):
+    """
+    Helper method that sums over Ks and returns a list of the reduced tensors along with a list of which Ks were reduced over for each reduced tensor.
+    opt_einsum gives an "optimization path", i.e. the indicies of lps to reduce.
+    We use this path to do our reductions, handing everything off to a simple t.einsum
+    call (which ensures a reasonably efficient implementation for each reduction).
+    """
+    assert_unique_dim_iter(Ks_to_sum)
+        
+    args, out_dims = einsum_args(lps, Ks_to_sum)
+    path = opt_einsum.contract_path(*args)[0]
+    
+    all_reduced_lps = [[*lps]]
+    Ks_to_sample = []
+    
+    for lp_idxs in path:
+        #Split lps into two groups: those we're going to reduce, and the rest.
+        lps_to_reduce = tuple(lps[i] for i in lp_idxs)
+        lps = [lps[i] for i in range(len(lps)) if i not in lp_idxs]
+
+        #In this step, sum over all Ks in Ks_to_sample, and not in lps (i.e. the other tensors)
+        _Ks_to_sum = tuple(set(Ks_to_sum).difference(unify_dims(lps)).intersection(unify_dims(lps_to_reduce)))
+        Ks_to_sample.append(_Ks_to_sum)
+
+        #Instantiates but doesn't save lp with _Ks_to_sample dims
+        lps.append(checkpoint(logsumexp_sum, _Ks_to_sum, *lps_to_reduce, use_reentrant=False))
+        all_reduced_lps.append([*lps])
+
+    all_reduced_lps = all_reduced_lps[:-1]
+
+    assert 1==len(lps)
+    result = lps[0]
+    
+    return result, all_reduced_lps, Ks_to_sample
