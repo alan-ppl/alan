@@ -2,6 +2,8 @@ import torch as t
 from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, IndependentSample
 from alan_simplified.IndexedSample import IndexedSample
 
+device = t.device('cuda' if t.cuda.is_available() else 'cpu')
+
 num_runs = 500
 Ks = [1,10,100]
 
@@ -9,9 +11,9 @@ platesizes = {'p1': 3, 'p2': 4}
 
 # Scalar-valued random variable model
 print("Scalar-valued random variable model")
-elbos = t.zeros((len(Ks), num_runs))
+elbos = t.zeros((len(Ks), num_runs)).to(device)
 
-data = {'e': t.randn(3, 4, names=('p1', 'p2'))}
+data = {'e': t.randn(3, 4, names=('p1', 'p2')).to(device)}
 
 for num_run in range(num_runs):
     # if num_run % 100 == 0: 
@@ -44,7 +46,8 @@ for num_run in range(num_runs):
             ),
         )
 
-        Q = BoundPlate(Q, params={'a_mean': t.zeros(()), 'd_mean':t.zeros(3, names=('p1',))})
+        Q = BoundPlate(Q, params={'a_mean': t.zeros(()).to(device),
+                                  'd_mean':t.zeros(3, names=('p1',)).to(device)})
 
         prob = Problem(P, Q, platesizes, data)
 
@@ -62,10 +65,10 @@ print()
 
 # Vector-valued random variable model
 print("Vector-valued random variable model")
-elbos = t.zeros((len(Ks), num_runs))
+elbos = t.zeros((len(Ks), num_runs)).to(device)
 
 d = 25
-data = {'e': t.randn(3, 4, d, names=('p1', 'p2', None))}
+data = {'e': t.randn(3, 4, d, names=('p1', 'p2', None)).to(device)}
 
 for num_run in range(num_runs):
     # if num_run % 100 == 0: 
@@ -73,32 +76,33 @@ for num_run in range(num_runs):
     for K_idx, K in enumerate(Ks):
         P = Plate(
             ab = Group(
-                a = Normal(t.zeros((d,)), t.ones((d,))),
-                b = Normal("a", t.ones((d,))),
+                a = Normal(t.zeros((d,)).to(device), t.ones((d,)).to(device)),
+                b = Normal("a", t.ones((d,)).to(device)),
             ),
-            c = Normal(t.ones((d,)), lambda a: a.exp()),
+            c = Normal(t.ones((d,)).to(device), lambda a: a.exp()),
             p1 = Plate(
-                d = Normal("a", t.ones((d,))),
+                d = Normal("a", t.ones((d,)).to(device)),
                 p2 = Plate(
-                    e = Normal("d", t.ones((d,))),
+                    e = Normal("d", t.ones((d,)).to(device)),
                 ),
             ),
         )
 
         Q = Plate(
             ab = Group(
-                a = Normal("a_mean", t.ones((d,))),
-                b = Normal("a", t.ones((d,))),
+                a = Normal("a_mean", t.ones((d,)).to(device)),
+                b = Normal("a", t.ones((d,)).to(device)),
             ),
-            c = Normal(t.zeros((d,)), lambda a: a.exp()),
+            c = Normal(t.zeros((d,)).to(device), lambda a: a.exp()),
             p1 = Plate(
-                d = Normal("d_mean", t.ones((d,))),
+                d = Normal("d_mean", t.ones((d,)).to(device)),
                 p2 = Plate(
                 ),
             ),
         )
 
-        Q = BoundPlate(Q, params={'a_mean': t.zeros((d,)), 'd_mean':t.zeros((3,d), names=('p1',None))})        
+        Q = BoundPlate(Q, params={'a_mean': t.zeros((d,)).to(device),
+                                  'd_mean':t.zeros((3,d), names=('p1',None)).to(device)})        
 
         prob = Problem(P, Q, platesizes, data)
 
