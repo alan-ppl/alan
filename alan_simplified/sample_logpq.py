@@ -16,8 +16,8 @@ PBP = Union[Plate, BoundPlate]
 
 def logPQ_sample(
     name:Optional[str],
-    P: PBP, 
-    Q: PBP, 
+    P: Plate, 
+    Q: Plate, 
     sample: dict, 
     inputs_params: dict,
     data: dict,
@@ -32,8 +32,8 @@ def logPQ_sample(
     N_dim:Dim,
     num_samples:int):
 
-    assert isinstance(P, (Plate, BoundPlate))
-    assert isinstance(Q, (Plate, BoundPlate))
+    assert isinstance(P, Plate)
+    assert isinstance(Q, Plate)
     assert isinstance(sample, dict)
     assert isinstance(inputs_params, dict)
     assert isinstance(data, dict)
