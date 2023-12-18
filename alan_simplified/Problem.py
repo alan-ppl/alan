@@ -38,48 +38,12 @@ class Problem():
             globalK_sample: sample with different K-dimension for each variable.
             logPQ: log-prob.
         """
-        groupvarname2Kdim = self.Q.plate.groupvarname2Kdim(K)
+        sample, groupvarname2Kdim = self.Q.sample(K, reparam, sampling_type, self.all_platedims)
 
-        sample = self.Q.plate.sample(
-            name=None,
-            scope={},
-            inputs_params=self.Q.inputs_params(self.all_platedims),
-            active_platedims=[],
-            all_platedims=self.all_platedims,
-            groupvarname2Kdim=groupvarname2Kdim,
-            sampling_type=sampling_type,
-            reparam=reparam,
-        )
-
-        result = Sample(
+        return Sample(
             problem=self,
             sample=sample,
             groupvarname2Kdim=groupvarname2Kdim,
             sampling_type=sampling_type,
             split=None,
         )
-    
-        return result
-
-    def groupvarname2parent_groupvarnames(self):
-        """
-        Returns a dictionary giving the dependencies for each groupvar (i.e. variables
-        outside groups and groups).  Only includes those in Q, so should correspond to
-        dependencies for Ks.
-        """
-        varname2groupvarname = self.Q.varname2groupvarname()
-        groupvarnames_inQ = self.Q.groupvarnames()
-
-
-        #Has all keys, including keys for data; also maps to varname, not groupvarname
-        result = {}
-        for gvn, parents in self.P.groupvarname2parents().items():
-            #Only include groups or variables in Q.
-            if gvn in groupvarnames_inQ:
-                modified_parents = []
-                for parent in parents:
-                    #Only include parents in Q.
-                    if parent in varname2groupvarname:
-                        modified_parents.append(varname2groupvarname[parent])
-                result[gvn] = modified_parents
-        return result

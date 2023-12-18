@@ -71,16 +71,26 @@ class BoundPlate(nn.Module):
         return tensordict2tree(self.plate, self.inputs_params_flat_torchdim(all_platedims))
 
     def check_deps(self, all_platedims:dict[str, Dim]):
-        inputs_params = self.inputs_params(all_platedims)
+        self.sample(1, False, IndependentSample, all_platedims)
 
-        self.plate.sample(
+    def sample(self, K: int, reparam:bool, sampling_type:SamplingType, all_platedims:dict[str, Dim]):
+        """
+        Returns: 
+            globalK_sample: sample with different K-dimension for each variable.
+            logPQ: log-prob.
+        """
+        groupvarname2Kdim = self.plate.groupvarname2Kdim(K)
+
+        sample = self.plate.sample(
             name=None,
             scope={},
-            inputs_params=inputs_params,
+            inputs_params=self.inputs_params(all_platedims),
             active_platedims=[],
             all_platedims=all_platedims,
-            groupvarname2Kdim=self.plate.groupvarname2Kdim(K=1),
-            sampling_type=IndependentSample,
-            reparam=False,
+            groupvarname2Kdim=groupvarname2Kdim,
+            sampling_type=sampling_type,
+            reparam=reparam,
         )
-    
+
+        return sample, groupvarname2Kdim
+
