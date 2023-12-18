@@ -33,6 +33,7 @@ Q = Plate(
     ),
 )
 
+P = BoundPlate(P)
 Q = BoundPlate(Q, params={'a_mean': t.zeros(()), 'd_mean':t.zeros(3, names=('p1',))})
 
 all_platesizes = {'p1': 3, 'p2': 4}

@@ -1,5 +1,5 @@
 import math
-from typing import Optional
+from typing import Optional, Union
 
 from .Plate import Plate, tree_values, update_scope_inputs_params, update_scope_sample
 from .Group import Group
@@ -26,6 +26,9 @@ def logPQ_plate(
         groupvarname2Kdim:dict[str, Tensor],
         sampling_type:SamplingType,
         split:Optional[Split]):
+
+    assert isinstance(P, Plate)
+    assert isinstance(Q, Plate)
 
     assert isinstance(sample, dict)
     assert isinstance(inputs_params_P, dict)
@@ -62,8 +65,8 @@ def logPQ_plate(
 
 def logPQ_dist(
         name:str,
-        P:Plate, 
-        Q:Optional[Plate], 
+        P:Dist, 
+        Q:Union[Dist, Data],
         sample: OptionalTensor,
         inputs_params_P: dict,
         inputs_params_Q: dict,
@@ -76,6 +79,9 @@ def logPQ_dist(
         groupvarname2Kdim:dict[str, Tensor],
         sampling_type:SamplingType,
         split:Optional[Split]):
+
+    assert isinstance(P, Dist)
+    assert isinstance(Q, (Dist, Data))
 
     assert isinstance(sample, OptionalTensor)
     assert inputs_params_P is None
@@ -117,6 +123,9 @@ def logPQ_group(
         groupvarname2Kdim:dict[str, Tensor],
         sampling_type:SamplingType,
         split:Optional[Split]):
+
+    assert isinstance(P, Group)
+    assert isinstance(Q, Group)
 
 
     assert isinstance(sample, dict)
@@ -171,6 +180,10 @@ def lp_getter(
     """Traverses Q according to the structure of P collecting log probabilities
     
     """
+
+    assert isinstance(P, Plate)
+    assert isinstance(Q, Plate)
+
         #Push an extra plate, if not the top-layer plate (top-layer plate is signalled
     #by name=None.
     if name is not None:
@@ -183,7 +196,7 @@ def lp_getter(
     scope_P = update_scope_inputs_params(scope_P, inputs_params_P)
     scope_Q = update_scope_inputs_params(scope_Q, inputs_params_Q)
 
-    assert set(P.prog.keys()) == set([*sample.keys(), *tree_values(data).keys()])
+    assert set(P.prog.keys()) == set(Q.prog.keys())
 
     lps = list(tree_values(extra_log_factors).values())
 

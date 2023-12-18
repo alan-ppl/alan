@@ -3,7 +3,7 @@ from typing import Optional
 from functorch.dim import Dim
 
 from .utils import *
-from .SamplingType import SamplingType
+from .SamplingType import SamplingType, IndependentSample
 from .dist import Dist
 from .Group import Group
 from .Data import Data
@@ -24,7 +24,6 @@ class Plate():
         dup_names = list_duplicates(all_prog_names)
         if 0 != len(dup_names):
             raise Exception(f"Plate has duplicate names {dup_names}.")
-
 
 
     def sample(
@@ -62,7 +61,7 @@ class Plate():
                 scope = update_scope_sample(scope, childname, dgpt, childsample)
 
         return sample
-    
+
     def sample_extended(
             self,
             sample:dict,
@@ -262,24 +261,6 @@ class Plate():
                 assert isinstance(v, Data)
         return result
                 
-    def inputs_params(self, all_platedims:dict[str, Dim]):
-        """
-        Matches the interface for BoundPlate.
-        """
-        return empty_tree(self)
-
-    def inputs_params_flat_named(self):
-        """
-        Matches the interface for BoundPlate.
-        """
-        return {}
-
-    def inputs_params_flat_torchdim(self, all_platedims:dict[str, Dim]):
-        """
-        Matches the interface for BoundPlate.
-        """
-        return {}
-
     def groupvarname2active_platedimnames(self, active_platedimnames=None):
         """
         Returns a dict mapping groupvarname (corresponding to K's) to the names of the active
@@ -351,6 +332,8 @@ def update_scope_inputs_params(scope:dict[str, Tensor], inputs_params:dict):
 #### Functions to transform a flat dict to a tree, mirroring the structure of plate.
 
 def empty_tree(plate: Plate):
+    assert isinstance(plate, Plate)
+
     result = {}
     for n, v in plate.prog.items():
         if isinstance(v, Plate):
@@ -361,6 +344,8 @@ def all_platenames(plate: Plate):
     """
     Extracts all platenames from a program
     """
+    assert isinstance(plate, Plate)
+
     result = []
     for n, v in plate.prog.items():
         if isinstance(v, Plate):

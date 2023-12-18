@@ -1,7 +1,7 @@
 import torch as t
 import torch.nn as nn
 from .utils import *
-from .SamplingType import SamplingType
+from .SamplingType import SamplingType, IndependentSample
 from .Plate import tensordict2tree, Plate
 
 class BoundPlate(nn.Module):
@@ -14,17 +14,6 @@ class BoundPlate(nn.Module):
     def __init__(self, plate: Plate, inputs=None, params=None):
         super().__init__()
         self.plate = plate
-        self.prog = plate.prog
-        #pass through methods on plate.
-        self.sample = plate.sample
-        self.groupvarname2Kdim = plate.groupvarname2Kdim
-        self.all_prog_names = plate.all_prog_names
-        self.varname2groupvarname = plate.varname2groupvarname 
-        self.groupvarname2active_platedimnames = plate.groupvarname2active_platedimnames
-        self.groupvarname2parents = plate.groupvarname2parents 
-        self.groupvarnames = plate.groupvarnames
-        self.varnames = plate.varnames
-
 
         if inputs is None:
             inputs = {}
@@ -80,3 +69,18 @@ class BoundPlate(nn.Module):
         Returns a nested dict mapping from str -> torchdim tensor
         """
         return tensordict2tree(self.plate, self.inputs_params_flat_torchdim(all_platedims))
+
+    def check_deps(self, all_platedims:dict[str, Dim]):
+        inputs_params = self.inputs_params(all_platedims)
+
+        self.plate.sample(
+            name=None,
+            scope={},
+            inputs_params=inputs_params,
+            active_platedims=[],
+            all_platedims=all_platedims,
+            groupvarname2Kdim=self.plate.groupvarname2Kdim(K=1),
+            sampling_type=IndependentSample,
+            reparam=False,
+        )
+    

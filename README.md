@@ -8,6 +8,7 @@ pip install -e .
 Laurence recent changes:
   * Large to checking validity of P and Q in Problem, for Data.
   * I forced `extra_log_factors` to be empty in the sampling stuff, as it doesn't make sense in that context.
+  * I stopped the overlap between BoundPlate and Plate.  Now Problem _must_ take a BoundPlate, not a Plate, even if there's no bound inputs/params.  This has likely broken stuff.  But it simplifies things considerably in the long-run.
 
 Immanent TODOs:
   * Edits to posterior sampling:

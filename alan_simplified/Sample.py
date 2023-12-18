@@ -42,15 +42,15 @@ class Sample():
     def elbo(self, extra_log_factors=None):
 
         if extra_log_factors is None:
-            extra_log_factors = empty_tree(self.P)
+            extra_log_factors = empty_tree(self.P.plate)
         assert isinstance(extra_log_factors, dict)
         #extra_log_factors = named2dim_dict(extra_log_factors, self.all_platedims)
-        #extra_log_factors = tensordict2tree(self.P, extra_log_factors)
+        #extra_log_factors = tensordict2tree(self.P.plate, extra_log_factors)
 
         lp = logPQ_plate(
             name=None,
-            P=self.P, 
-            Q=self.Q, 
+            P=self.P.plate, 
+            Q=self.Q.plate, 
             sample=self.sample,
             inputs_params_P=self.P.inputs_params(self.all_platedims),
             inputs_params_Q=self.Q.inputs_params(self.all_platedims),
@@ -114,15 +114,15 @@ class Sample():
 
         #extra_log_factors doesn't make sense for posterior sampling, but is required for
         #one of the internal methods.
-        extra_log_factors = empty_tree(self.P)
+        extra_log_factors = empty_tree(self.P.plate)
         assert isinstance(extra_log_factors, dict)
 
         N_dim = Dim('N', num_samples)
         
         indices = logPQ_sample(
             name=None,
-            P=self.P, 
-            Q=self.Q, 
+            P=self.P.plate, 
+            Q=self.Q.plate, 
             sample=self.sample,
             inputs_params_P=self.P.inputs_params(self.all_platedims),
             inputs_params_Q=self.Q.inputs_params(self.all_platedims),
@@ -176,7 +176,7 @@ class Sample():
             #Marginals need different names from variables.
             #This is really a problem in how we're representing trees...
             Js_torchdim_dict[f"{varname}_marginal"] = J_torchdim
-        Js_torchdim_tree = tensordict2tree(self.P, Js_torchdim_dict)
+        Js_torchdim_tree = tensordict2tree(self.P.plate, Js_torchdim_dict)
 
         #Compute loss
         L = self.elbo(extra_log_factors=Js_torchdim_tree)
@@ -222,7 +222,7 @@ class Sample():
             #Marginals need different names from variables.
             #This is really a problem in how we're representing trees...
             Js_torchdim_dict[f"{varname}_conditional"] = J_torchdim
-        Js_torchdim_tree = tensordict2tree(self.P, Js_torchdim_dict)
+        Js_torchdim_tree = tensordict2tree(self.P.plate, Js_torchdim_dict)
 
         #Compute loss
         L = self.elbo(extra_log_factors=Js_torchdim_tree)
@@ -284,7 +284,7 @@ class Sample():
                 #This is really a problem in how we're representing trees...
                 Js_torchdim_dict[f"{varname}_{f.__name__}"] = J_torchdim * m
                 
-        Js_torchdim_tree = tensordict2tree(self.P, Js_torchdim_dict)
+        Js_torchdim_tree = tensordict2tree(self.P.plate, Js_torchdim_dict)
         #Compute loss
         L = self.elbo(extra_log_factors=Js_torchdim_tree)
         #marginals as a list
@@ -341,7 +341,7 @@ class Sample():
     def _predictive(self, all_platesizes: dict[str, int], reparam: bool, all_data: dict[str, Tensor], num_samples):
         '''Samples from the predictive distribution of P and, if given all_data, returns the
         log-likelihood of the original data under the predictive distribution of P.'''
-        assert isinstance(self.P, (Plate, BoundPlate))
+        assert isinstance(self.P, BoundPlate)
         assert isinstance(all_platesizes, dict)
 
         self.Ndim = Dim('N', num_samples)
@@ -363,11 +363,11 @@ class Sample():
         # We have to work on a copy of the sample so that self.sample's own dimensions 
         # aren't changed.
         indexed_sample = self.index_in(self.clone_sample(self.sample), post_idxs)
-        pred_sample, original_ll, extended_ll = self.P.sample_extended(
+        pred_sample, original_ll, extended_ll = self.P.plate.sample_extended(
             sample=indexed_sample,
             name=None,
             scope={},
-            inputs_params=self.P.inputs_params(self.all_platedims),
+            inputs_params=self.P.plate.inputs_params(self.all_platedims),
             original_platedims=self.all_platedims,
             extended_platedims=all_platedims,
             active_original_platedims=[],

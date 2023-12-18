@@ -9,8 +9,10 @@ from .Data import Data
 
 #### Check the structure of the distributions match.
 
-PBP = Union[Plate, BoundPlate]
-def check_inputs_params(P:PBP, Q:PBP):
+def check_inputs_params(P:BoundPlate, Q:BoundPlate):
+    assert isinstance(P, BoundPlate)
+    assert isinstance(Q, BoundPlate)
+
     inputs_params_P = P.inputs_params_flat_named()
     inputs_params_Q = Q.inputs_params_flat_named()
 
