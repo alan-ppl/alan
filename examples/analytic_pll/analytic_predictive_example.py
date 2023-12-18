@@ -2,8 +2,7 @@ import torch as t
 import functorch.dim
 from functorch.dim import Dim, dims
 
-from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, IndependentSample
-from alan_simplified.IndexedSample import IndexedSample
+from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, IndependentSample, Data
 
 t.manual_seed(127)
 
@@ -27,8 +26,9 @@ P_simple = Plate(mu = Normal(0, 1),
                         p1 = Plate(obs = Normal("mu", 1)))
         
 Q_simple = Plate(mu = Normal("mu_mean", 1),
-                 p1 = Plate())
+                 p1 = Plate(obs = Data()))
 
+P_simple = BoundPlate(P_simple)
 Q_simple = BoundPlate(Q_simple, params={'mu_mean': t.zeros(())})
 platesizes_simple = {'p1': 3}
 data_simple = {'obs': data.refine_names('p1')}
@@ -45,10 +45,7 @@ for i, K in enumerate(Ks):
         for k in range(num_runs):
             sample_simple = prob_simple.sample(K, True, sampling_type)
 
-            post_idxs_simple = sample_simple.sample_posterior(num_samples=num_samples)
-            isample_simple = IndexedSample(sample_simple, post_idxs_simple)
-
-            ll = isample_simple.predictive_ll(prob_simple.P, extended_platesizes, True, extended_data)
+            ll = sample_simple.predictive_ll(extended_platesizes, True, extended_data, 10, {})
 
             print(f"K={K}, N={num_samples}, run {k}: {ll['obs']}")
             results[i,j,k] = ll['obs']

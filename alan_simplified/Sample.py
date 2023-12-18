@@ -334,14 +334,15 @@ class Sample():
 
         return result
     
-    def _predictive(self, all_platesizes: dict[str, int], reparam: bool, all_data: dict[str, Tensor], num_samples):
+    def _predictive(self, all_platesizes: dict[str, int], reparam: bool, all_data: dict[str, Tensor], num_samples: int, all_inputs: dict[str, Tensor]):
         '''Samples from the predictive distribution of P and, if given all_data, returns the
         log-likelihood of the original data under the predictive distribution of P.'''
         assert isinstance(self.P, BoundPlate)
         assert isinstance(all_platesizes, dict)
 
-        self.Ndim = Dim('N', num_samples)
-        post_idxs = self.sample_posterior_indices(num_samples=num_samples)
+        # self.Ndim = Dim('N', num_samples)
+        post_idxs, Ndim = self.importance_sampled_idxs(num_samples=num_samples)
+        # post_idxs = self.sample_posterior_indices(num_samples=num_samples)
         
         
         # If all_platesizes is missing some plates from self.all_platedims,
@@ -356,6 +357,9 @@ class Sample():
         # Create the new platedims from the platesizes.
         all_platedims = {name: Dim(name, size) for name, size in all_platesizes.items()}
 
+        # # Will need to add the extended inputs to the scope
+        all_inputs_params = tensordict2tree(self.P.plate, named2dim_dict(all_inputs, all_platedims))
+
         # We have to work on a copy of the sample so that self.sample's own dimensions 
         # aren't changed.
         indexed_sample = self.index_in(self.clone_sample(self.sample), post_idxs)
@@ -363,37 +367,39 @@ class Sample():
             sample=indexed_sample,
             name=None,
             scope={},
-            inputs_params=self.problem.inputs_params(self.all_platedims),
+            inputs_params=all_inputs_params,
             original_platedims=self.all_platedims,
             extended_platedims=all_platedims,
             active_original_platedims=[],
             active_extended_platedims=[],
-            Ndim=self.Ndim,
+            Ndim=Ndim,
             reparam=reparam,
             original_data=self.problem.data,
             extended_data=all_data
         )
 
-        return pred_sample, original_ll, extended_ll
+        return pred_sample, original_ll, extended_ll, Ndim
 
-    def predictive_sample(self, all_platesizes: dict[str, int], reparam: bool, num_samples=1):
+    def predictive_sample(self, all_platesizes: dict[str, int], reparam: bool, num_samples=1, all_inputs={}):
         '''Returns a dictionary of samples from the predictive distribution.'''
-        pred_sample, _, _ = self._predictive(
+        pred_sample, _, _, _ = self._predictive(
             all_platesizes=all_platesizes,
             reparam=reparam, 
             all_data=None,
-            num_samples=num_samples)
+            num_samples=num_samples,
+            all_inputs=all_inputs)
 
         return flatten_dict(pred_sample)
 
-    def predictive_ll(self, all_platesizes: dict[str, int], reparam: bool, all_data: dict[str, Tensor], num_samples=1):
+    def predictive_ll(self, all_platesizes: dict[str, int], reparam: bool, all_data: dict[str, Tensor], num_samples=1, all_inputs={}):
         '''This function returns the predictive log-likelihood of the test data (all_data - train_data), given 
         the training samples and the predictive samples.'''        
-        _, lls_train, lls_all = self._predictive(
+        _, lls_train, lls_all, Ndim = self._predictive(
             all_platesizes=all_platesizes,
             reparam=reparam, 
             all_data=all_data,
-            num_samples=num_samples)
+            num_samples=num_samples,
+            all_inputs=all_inputs)
 
         # If we have lls for a variable in the training data, we should also have lls
         # for it in the all (training+test) data.
@@ -404,8 +410,8 @@ class Sample():
             ll_all   = lls_all[varname]
             ll_train = lls_train[varname]
 
-            dims_all   = [dim for dim in ll_all.dims   if dim is not self.Ndim]
-            dims_train = [dim for dim in ll_train.dims if dim is not self.Ndim]
+            dims_all   = [dim for dim in ll_all.dims   if dim is not Ndim]
+            dims_train = [dim for dim in ll_train.dims if dim is not Ndim]
             assert len(dims_all) == len(dims_train)
 
             if 0 < len(dims_all):
@@ -414,7 +420,7 @@ class Sample():
                 ll_train = ll_train.sum(dims_train)
 
             # Take mean over Ndim
-            result[varname] = logmeanexp_dims(ll_all - ll_train, (self.Ndim,))
+            result[varname] = logmeanexp_dims(ll_all - ll_train, (Ndim,))
 
         return result
         
