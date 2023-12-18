@@ -26,6 +26,7 @@ class Plate():
             raise Exception(f"Plate has duplicate names {dup_names}.")
 
 
+
     def sample(
             self,
             name:Optional[str],
@@ -35,7 +36,8 @@ class Plate():
             all_platedims:dict[str, Dim],
             groupvarname2Kdim:dict[str, Dim],
             sampling_type:SamplingType,
-            reparam:bool):
+            reparam:bool
+        ):
 
         if name is not None:
             active_platedims = [*active_platedims, all_platedims[name]]
@@ -43,9 +45,9 @@ class Plate():
         scope = update_scope_inputs_params(scope, inputs_params)
         sample = {}
         
-        for childname, childP in self.prog.items():
-            if not isinstance(childP, (Data)):
-                childsample = childP.sample(
+        for childname, dgpt in self.prog.items():
+            if not isinstance(dgpt, Data):
+                childsample = dgpt.sample(
                     name=childname,
                     scope=scope, 
                     inputs_params=inputs_params.get(childname),
@@ -57,7 +59,7 @@ class Plate():
                 )
 
                 sample[childname] = childsample
-                scope = update_scope_sample(scope, childname, childP, childsample)
+                scope = update_scope_sample(scope, childname, dgpt, childsample)
 
         return sample
     
