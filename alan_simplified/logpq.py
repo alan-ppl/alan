@@ -33,7 +33,15 @@ def logPQ_plate(
     assert isinstance(data, dict)
     assert isinstance(extra_log_factors, dict)
 
-    lps, all_Ks, scope, active_platedims = lp_getter(
+
+    #Push an extra plate, if not the top-layer plate (top-layer plate is signalled
+    #by name=None.
+    if name is not None:
+        active_platedims = [*active_platedims, all_platedims[name]]
+
+    scope = update_scope(scope, Q, sample, inputs_params)
+
+    lps, all_Ks, = lp_getter(
         name=name,
         P=P, 
         Q=Q, 
@@ -126,10 +134,6 @@ def logPQ_group(
     Kdim = groupvarname2Kdim[name]
     all_Kdims = set(groupvarname2Kdim.values())
 
-    #Don't need to copy or update scope_Q, as we have already dumped every variable
-    #in the plate into that scope.
-    scope = {**scope}
-
     total_logP = 0.
     total_logQ = 0.
     for childname, childP in P.prog.items():
@@ -169,16 +173,9 @@ def lp_getter(
     assert isinstance(P, Plate)
     assert isinstance(Q, Plate)
 
-        #Push an extra plate, if not the top-layer plate (top-layer plate is signalled
-    #by name=None.
-    if name is not None:
-        active_platedims = [*active_platedims, all_platedims[name]]
-
-
     #We want to pass back just the incoming scope, as nothing outside the plate can see
     #variables inside the plate.  So `scope` is the internal scope, and `parent_scope`
     #is the external scope we will pass back.
-    scope = update_scope(scope, Q, sample, inputs_params)
 
     assert set(P.prog.keys()) == set(Q.prog.keys())
 
@@ -225,4 +222,4 @@ def lp_getter(
         else:
             assert isinstance(dist, (Plate, Data))
             
-    return lps, all_Ks, scope, active_platedims
+    return lps, all_Ks

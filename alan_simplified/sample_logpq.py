@@ -1,7 +1,7 @@
 import math
 from typing import Optional, Union
 
-from .Plate import Plate, tree_values, update_scope_inputs_params, update_scope_samples
+from .Plate import Plate, tree_values, update_scope
 from .BoundPlate import BoundPlate
 from .Group import Group
 from .utils import *
@@ -40,8 +40,14 @@ def logPQ_sample(
     assert isinstance(extra_log_factors, dict)
     assert isinstance(indices, dict)
 
+    #Push an extra plate, if not the top-layer plate (top-layer plate is signalled
+    #by name=None.
+    if name is not None:
+        active_platedims = [*active_platedims, all_platedims[name]]
+
+    scope = update_scope(scope, Q, sample, inputs_params)
     
-    lps, all_Ks, scope, active_platedims = lp_getter(
+    lps, all_Ks = lp_getter(
         name=name,
         P=P, 
         Q=Q, 
@@ -77,7 +83,7 @@ def logPQ_sample(
             data=data.get(childname),
             inputs_params=inputs_params.get(childname),
             extra_log_factors=extra_log_factors.get(childname),
-            scope=scope, 
+            scope=scope,
             active_platedims=active_platedims,
             all_platedims=all_platedims,
             groupvarname2Kdim=groupvarname2Kdim,
