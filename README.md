@@ -13,9 +13,9 @@ Immanent TODOs:
   * Edits to posterior sampling:
     - I got rid of the mutable `N_dim` on `Sample`, which is really bad; instead that function (now `importance_sampled_idxs`) returns `N_dim`.
     - `sample.index_in` should take `post_idxs, N_dim` as inputs (it knows the sample as it lives inside the object).  You can define this method in terms of a separate function if you like.
-    - logPQ_sample should return a dict[str, Tensor], with str representing variable name (mainly because we can always map from str to Dim, but we can't easily go back).
+    - logPQ_sample should return a dict[str, Tensor], with str representing variable name (mainly because we can always map from str to Dim, but we can't reliably go back).
   * Unify scope and input_params.
-    - Check input_params has no clashes for P+Q.
+    - Check input_params has no clashes for P+Q (Done).
     - Check that the dependencies in P make sense.
 
 TODO:
