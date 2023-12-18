@@ -2,7 +2,7 @@ import torch as t
 from typing import Union
 
 from .Plate import Plate, tensordict2tree, flatten_tree
-from .BoundPlate import BoundPlate
+from .BoundPlate import BoundPlate, named2torchdim_flat2tree
 from .SamplingType import SamplingType
 from .utils import *
 from .checking import check_PQ_plate, check_inputs_params, mismatch_names
@@ -49,4 +49,8 @@ class Problem():
         )
 
     def inputs_params(self):
-        return {**self.P.inputs_params(self.all_platedims), **self.Q.inputs_params(self.all_platedims)}
+        flat_named = {
+            **self.P.inputs_params_flat_named(), 
+            **self.Q.inputs_params_flat_named()
+        }
+        return named2torchdim_flat2tree(flat_named, self.all_platedims, self.P.plate)

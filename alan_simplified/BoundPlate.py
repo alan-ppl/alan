@@ -5,6 +5,10 @@ from .utils import *
 from .SamplingType import SamplingType, IndependentSample
 from .Plate import tensordict2tree, Plate
 
+def named2torchdim_flat2tree(flat_named:dict, all_platedims, plate):
+    flat_torchdim = named2dim_dict(flat_named, all_platedims)
+    return tensordict2tree(plate, flat_torchdim)
+
 class BoundPlate(nn.Module):
     """
     Binds a Plate to inputs (e.g. film features in MovieLens) and learned parameters
@@ -59,17 +63,8 @@ class BoundPlate(nn.Module):
         """
         return {**self.inputs(), **self.params()}
 
-    def inputs_params_flat_torchdim(self, all_platedims:dict[str, Dim]):
-        """
-        Returns a flat dict mapping from str -> torchdim tensor
-        """
-        return named2dim_dict(self.inputs_params_flat_named(), all_platedims)
-
     def inputs_params(self, all_platedims:dict[str, Dim]):
-        """
-        Returns a nested dict mapping from str -> torchdim tensor
-        """
-        return tensordict2tree(self.plate, self.inputs_params_flat_torchdim(all_platedims))
+        return named2torchdim_flat2tree(self.inputs_params_flat_named(), all_platedims, self.plate)
 
     def sample_extended(
             self,
