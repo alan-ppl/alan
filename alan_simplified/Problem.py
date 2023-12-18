@@ -16,10 +16,6 @@ PBP = Union[Plate, BoundPlate]
 
 class Problem():
     def __init__(self, P: PBP, Q: PBP, all_platesizes: dict[str, int], data: dict[str, t.Tensor]):
-        all_names_P     =   P.all_prog_names()
-        all_names_Qdata = [*Q.all_prog_names(), *data.keys()]
-        mismatch_names("", all_names_P, all_names_Qdata)
-
         self.P = P
         self.Q = Q
         self.all_platedims = {name: Dim(name, size) for name, size in all_platesizes.items()}
