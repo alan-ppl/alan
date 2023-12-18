@@ -41,7 +41,7 @@ def logPQ_plate(
 
     scope = update_scope(scope, Q, sample, inputs_params)
 
-    lps, all_Ks, = lp_getter(
+    lps, all_Ks = lp_getter(
         name=name,
         P=P, 
         Q=Q, 
@@ -82,19 +82,22 @@ def logPQ_dist(
         split:Optional[Split]):
 
     assert isinstance(P, Dist)
-    assert isinstance(Q, (Dist, Data))
 
     assert isinstance(sample, OptionalTensor)
     assert inputs_params is None
     assert isinstance(data, OptionalTensor)
     assert extra_log_factors is None
 
-    #we must have either sample or data, but not both.
-    assert (sample is None) != (data is None)
-    sample_data = sample if sample is not None else data
-    #if we have a sample, we must have a Q
-    if sample is not None:
-        assert Q is not None
+    #Either sample or data is None.
+    if sample is None:
+        assert data is not None
+        assert isinstance(Q, Data)
+        sample_data = data
+    else: 
+        #sample is not None
+        assert data is None
+        assert isinstance(Q, Dist)
+        sample_data = sample
 
     lpq = P.log_prob(sample=sample_data, scope=scope)
 
