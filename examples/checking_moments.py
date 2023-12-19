@@ -30,7 +30,7 @@ Q = Plate(
         ),
     ),
 )
-
+P = BoundPlate(P)
 Q = BoundPlate(Q, params={'a_mean': t.zeros(()), 'd_mean':t.zeros(3, names=('p1',))})
 
 platesizes = {'p1': 3, 'p2': 4}
@@ -40,10 +40,10 @@ prob = Problem(P, Q, platesizes, data)
 
 # Get some initial samples (with K dims)
 sampling_type = IndependentSample
-sample = prob.sample(3, True, sampling_type)
+sample = prob.sample(20, True, sampling_type)
 
-for K in [1,3,10,30,100]:
-    print(prob.sample(K, True, sampling_type).elbo())
+# for K in [1,3,10,30,100]:
+#     print(prob.sample(K, True, sampling_type).elbo())
 # # Obtain K indices from posterior
 # post_idxs = sample.sample_posterior(num_samples=10)
 
@@ -68,7 +68,7 @@ print(moments)
 
 #Getting moments from posterior samples:
 
-posterior_samples = sample.sample_posterior(num_samples=1000)
+posterior_samples = sample.importance_samples(num_samples=1000)
 
 print(posterior_samples['d'].mean('N'))
 print((posterior_samples['d']**2).mean('N') - posterior_samples['d'].mean('N')**2)
