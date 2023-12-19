@@ -32,6 +32,7 @@ Q = Plate(
         ),
     ),
 )
+P = BoundPlate(P)
 Q = BoundPlate(Q, params={'a_mean': t.zeros(()), 'd_mean':t.zeros(3, names=('p1',))})
 
 all_platesizes = {'p1': 3, 'p2': 4}
@@ -43,6 +44,6 @@ sampling_type = IndependentSample
 sample = prob.sample(3, True, sampling_type)
 
 
-K_samples = sample.sample_posterior(num_samples=10)
+K_samples = sample.importance_samples(num_samples=10)
 
 print(K_samples)

@@ -106,6 +106,7 @@ class TestSample_index_in(unittest.TestCase):
                 ),
             ),
         )
+        P = BoundPlate(P)
         Q = BoundPlate(Q, params={'a_mean': t.zeros(()), 'd_mean':t.zeros(3, names=('p1',))})
 
         self.platesizes = {'p1': 3, 'p2': 4}
@@ -116,18 +117,18 @@ class TestSample_index_in(unittest.TestCase):
         sampling_type = IndependentSample
         self.sample = self.prob.sample(3, True, sampling_type)
 
-        self.post_idxs = self.sample.sample_posterior_indices(num_samples=10)
+        self.importance_samples = self.sample.importance_samples(num_samples=10)
+        self.post_idxs, _ = self.sample.importance_sampled_idxs(num_samples=10)
 
     def test_index_in(self):
-        isample = self.sample.index_in(self.sample.sample, self.post_idxs)
 
-        # Check isample has Ndims rather than Kdims
-        nested_tensor_dict_assert(isample, lambda x: isinstance(x, Tensor))
-        nested_tensor_dict_assert(isample, lambda x: self.sample.Ndim in set(x.dims))
-        nested_tensor_dict_assert(isample, lambda x: not any([Kdim in set(x.dims) for Kdim in self.post_idxs.keys()]))
+        # Check importance_sample has Ndims rather than Kdims
+        nested_tensor_dict_assert(self.importance_samples, lambda x: isinstance(x, Tensor))
+        nested_tensor_dict_assert(self.importance_samples, lambda x: 'N' in set(x.names))
+        nested_tensor_dict_assert(self.importance_samples, lambda x: not any([str(Kdim) in set(x.names) for Kdim in self.post_idxs.keys()]))
 
-        # Check isample has the same structure as self.sample.sample
-        tensor_dict_structure_eq(isample, self.sample.sample)
+        # Check importance_sample has the same structure as self.sample.sample
+        tensor_dict_structure_eq(self.importance_samples, self.sample.sample)
         
 
 class TestSample_predictive(unittest.TestCase):
@@ -172,22 +173,22 @@ class TestSample_predictive(unittest.TestCase):
 
         sampling_type = IndependentSample
         self.sample = self.prob.sample(3, True, sampling_type)
-        self.post_idxs = self.sample.sample_posterior_indices(num_samples=10)
+        self.post_idxs, _ = self.sample.importance_sampled_idxs(num_samples=10)
 
 
 
     def test_predictive_no_extended_data(self):
         extended_platesizes = {'p1': 5, 'p2': 6}
 
-        predictive_samples, ll_train, ll_all = self.sample._predictive(extended_platesizes, True, None, num_samples=10)
+        predictive_samples, ll_train, ll_all, _ = self.sample._predictive(extended_platesizes, True, None, num_samples=10, all_inputs = {})
 
         assert ll_train == {}
         assert ll_all == {}
 
         # Check predictive_samples has Ndims rather than Kdims
         nested_tensor_dict_assert(predictive_samples, lambda x: isinstance(x, Tensor))
-        nested_tensor_dict_assert(predictive_samples, lambda x: self.sample.Ndim in set(x.dims))
-        nested_tensor_dict_assert(predictive_samples, lambda x: not any([Kdim in set(x.dims) for Kdim in self.post_idxs.keys()]))
+        nested_tensor_dict_assert(predictive_samples, lambda x: 'N' in set(x.names))
+        nested_tensor_dict_assert(predictive_samples, lambda x: not any([str(Kdim) in set(x.names) for Kdim in self.post_idxs.keys()]))
 
         # Check predictive_samples has the same structure as self.sample.sample
         tensor_dict_structure_eq(predictive_samples, self.sample.sample)
@@ -196,7 +197,7 @@ class TestSample_predictive(unittest.TestCase):
         extended_platesizes = {'p1': 5, 'p2': 6}
         extended_data = {'e': t.randn(5, 6, names=('p1', 'p2'))}
 
-        predictive_samples, ll_train, ll_all = self.sample._predictive(extended_platesizes, True, extended_data, num_samples=10)
+        predictive_samples, ll_train, ll_all, _ = self.sample._predictive(extended_platesizes, True, extended_data, num_samples=10, all_inputs = {})
 
         nested_tensor_dict_assert(predictive_samples, lambda x: isinstance(x, Tensor))
 
@@ -204,8 +205,8 @@ class TestSample_predictive(unittest.TestCase):
         # (First take out data which won't have an Ndim)
         pred_samples_no_data = predictive_samples.copy()
         pred_samples_no_data['p1']['p2'] = {}
-        nested_tensor_dict_assert(pred_samples_no_data, lambda x: not any([Kdim in set(x.dims) for Kdim in self.post_idxs.keys()]))
-        nested_tensor_dict_assert(pred_samples_no_data, lambda x: self.sample.Ndim in set(x.dims))
+        nested_tensor_dict_assert(predictive_samples, lambda x: 'N' in set(x.names))
+        nested_tensor_dict_assert(predictive_samples, lambda x: not any([str(Kdim) in set(x.names) for Kdim in self.post_idxs.keys()]))
 
         # Check predictive_samples has the same structure as self.sample.sample
         tensor_dict_structure_eq(predictive_samples, self.sample.sample)
@@ -225,12 +226,12 @@ class TestSample_predictive(unittest.TestCase):
     def test_predictive_sample(self):
         extended_platesizes = {'p1': 5, 'p2': 6}
 
-        predictive_samples = self.sample.predictive_sample(extended_platesizes, True, num_samples=10)
+        predictive_samples = self.sample.predictive_sample(extended_platesizes, True, num_samples=10, all_inputs = {})
 
         # Check predictive_samples has Ndims rather than Kdims
         nested_tensor_dict_assert(predictive_samples, lambda x: isinstance(x, Tensor))
-        nested_tensor_dict_assert(predictive_samples, lambda x: self.sample.Ndim in set(x.dims))
-        nested_tensor_dict_assert(predictive_samples, lambda x: not any([Kdim in set(x.dims) for Kdim in self.post_idxs.keys()]))
+        nested_tensor_dict_assert(predictive_samples, lambda x: 'N' in set(x.names))
+        nested_tensor_dict_assert(predictive_samples, lambda x: not any([str(Kdim) in set(x.names) for Kdim in self.post_idxs.keys()]))
 
         # Check predictive_samples has the same structure as self.sample.sample
         tensor_dict_structure_eq(predictive_samples, self.sample.sample)
@@ -239,7 +240,7 @@ class TestSample_predictive(unittest.TestCase):
         extended_platesizes = {'p1': 5, 'p2': 6}
         extended_data = {'e': t.randn(5, 6, names=('p1', 'p2'))}
 
-        ll = self.sample.predictive_ll(extended_platesizes, True, extended_data, num_samples=10)
+        ll = self.sample.predictive_ll(extended_platesizes, True, extended_data, num_samples=10, all_inputs = {})
 
         # Check ll_train and ll_all contain the same variables as self.data
         assert set(ll.keys()) == set(self.data.keys())

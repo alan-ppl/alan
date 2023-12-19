@@ -102,6 +102,7 @@ class TestSampleKs(unittest.TestCase):
                 ),
             ),
         )
+        P = BoundPlate(P)
         Q = BoundPlate(Q, params={'a_mean': t.zeros(()), 'd_mean':t.zeros(3, names=('p1',))})
 
         all_platesizes = {'p1': 3, 'p2': 4}
@@ -115,7 +116,8 @@ class TestSampleKs(unittest.TestCase):
 
         sample = prob.sample(K, True, sampling_type)
 
-        posterior_samples = list(sample.sample_posterior_indices(num_samples=N).values())
+        importance_indices, _ = sample.importance_sampled_idxs(num_samples=N)
+        posterior_samples = list(importance_indices.values())
 
         marginals = sample.marginals()
 

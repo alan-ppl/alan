@@ -31,6 +31,7 @@ Q = Plate(
         ),
     ),
 )
+P = BoundPlate(P)
 Q = BoundPlate(Q, params={'a_mean': t.zeros(()), 'd_mean':t.zeros(3, names=('p1',))})
 
 all_platesizes = {'p1': 3, 'p2': 4}
@@ -43,5 +44,5 @@ sample = prob.sample(3, True, sampling_type)
 L = sample.elbo()
 
 marginals = sample.marginals()
-conditionals = sample.conditionals()
+
 

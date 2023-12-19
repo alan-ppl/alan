@@ -29,6 +29,7 @@ Q = Plate(
         ),
     ),
 )
+P = BoundPlate(P)
 Q = BoundPlate(Q, params={'a_mean': t.zeros(()), 'd_mean':t.zeros(3, names=('p1',))})
 
 all_platesizes = {'p1': 3, 'p2': 4}
@@ -47,7 +48,7 @@ print(L)
 # print(marginals)
 # print(conditionals)
 
-post_idxs = sample.sample_posterior(num_samples=10)
+post_idxs = sample.importance_samples(num_samples=10)
 print(post_idxs)
 
 
