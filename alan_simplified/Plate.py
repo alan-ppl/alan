@@ -118,69 +118,6 @@ class Plate():
 
         return sample, original_ll, extended_ll
 
-    def posterior_sample(
-            self,
-            conditionals:dict,
-            Kdim2sample_scope:dict[str, Dim],
-            groupvarname2Kdim:dict[str, Dim],
-        ):
-        """
-        To do the permutations, mirror the SamplingType code.
-        The resampling indices have active_platedims, but no explicit torchdim positional dimension.
-        Instead, there is one _positional_ dimension of length N (we don't have to have K samples).
-        Then, when we apply the resampling indices to a sampled value, there's only one K-dimension, so things are easy.
-          use tensor.order to bring the relevant K-dimension to the first positional dimension.
-          apply the permutation.
-          Give it an "N" torchdim dimension.
-
-        For log-prob tensors, things are a bit more complex.
-        The basic idea is to remember that you can extra the diagonal using:
-          a = t.randn(3,3)
-          a[[0,1,2], [0,1,2]]
-        So we:
-          Take the conditional tensor.
-          Convert all the parent Kdims to positional.
-          index with conditional[sampled_K_a, sampled_K_b]
-          gives a tensor with one K-dimension, corresponding to the variable + N as a positional dimension.
-        """
-        result = {}
-
-        all_Kdims = set(groupvarname2Kdim.values())
-
-        for childname, childP in self.prog.items():
-
-            if isinstance(childP, (Dist, Group)):
-                assert isinstance(conditionals, Tensor)
-                varKdim = groupvarname2Kdim[childname]
-                all_dims = set(generic_dims(conditionals))
-
-                active_platedims = all_dims.difference(all_Kdims)
-                all_varKdims = all_dims.intersection(all_Kdims)
-
-                parent_Kdims = all_varKdims.difference({varKdim})
-
-
-                conditionals = generic_order(conditionals, parent_Kdims)
-                Ksamples = [Kdim2sample_scope[Kdim] for Kdim in parent_Kdims]
-                conditionals = generic_getitem(conditionals, Ksamples)
-
-                #If we haven't done any sampling before, then 
-                if 0 == len(parent_Kdims):
-                    assert 0 == conditionals.ndim
-                else:
-                    assert 1 == conditionals.ndim
-                assert set(generic_dims(conditionals)) == set()
-
-            elif isinstance(childP, Plate):
-                #add sub-plate as a tree/nested dict to result, but not to scope. 
-                result[childname] = childP.sample(
-                    conditionals=conditionals.get(childname),
-                    groupvarname2Ksample=groupvarname2Ksample_scope,
-                    groupvarname2Kdim=groupvarname2Kdim,
-                )
-
-        return result
-
 
     def groupvarname2Kdim(self, K):
         """
