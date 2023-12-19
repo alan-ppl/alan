@@ -10,9 +10,6 @@ from .logpq import logPQ_plate
 
 from .Sample import Sample
 
-PBP = Union[Plate, BoundPlate]
-
-
 
 class Problem():
     def __init__(self, P: BoundPlate, Q: BoundPlate, all_platesizes: dict[str, int], data: dict[str, t.Tensor]):

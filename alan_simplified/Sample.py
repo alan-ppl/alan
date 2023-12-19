@@ -295,29 +295,12 @@ class Sample():
         return moments_dict
         
         
-    def index_in(self, sample: dict, post_idxs: dict[Dim, Tensor]):
+    def index_in(self, post_idxs: dict[Dim, Tensor], Ndim: Dim):
         '''Takes a sample (nested dict of tensors with Kdims) and a dictionary of Kdims to indices.
         Returns a new sample (nested dict of tensors with Ndims instead of Kdims) with the indices
         applied to the sample.'''
 
-        result = {}
-        
-        
-        for name, value in sample.items():
-            if isinstance(value, dict):
-                result[name] = self.index_in(value, post_idxs)
-            elif isinstance(value, Tensor):
-                assert isinstance(value, Tensor)
-
-                temp = value
-
-                for dim in list(set(generic_dims(value)).intersection(set(post_idxs.keys()))):
-                    temp = temp.order(dim)[post_idxs[dim]]
- 
-                result[name] = temp
-
-        # print(post_idxs)
-        return result
+        return index_into_sample(self.sample, post_idxs, Ndim)
     
     def clone_sample(self, sample: dict):
         '''Takes a sample (nested dict of tensors) and returns a new dict with the same structure
@@ -362,7 +345,8 @@ class Sample():
 
         # We have to work on a copy of the sample so that self.sample's own dimensions 
         # aren't changed.
-        indexed_sample = self.index_in(self.clone_sample(self.sample), post_idxs)
+        indexed_sample = self.index_in(post_idxs, Ndim)
+
         pred_sample, original_ll, extended_ll = self.P.plate.sample_extended(
             sample=indexed_sample,
             name=None,
@@ -424,3 +408,28 @@ class Sample():
 
         return result
         
+def index_into_sample(sample: dict, indices: dict[Dim, Tensor], Ndim: Dim):
+    '''Takes a sample (nested dict of tensors with Kdims) and a dictionary of Kdims to indices.
+    Returns a new sample (nested dict of tensors with Ndims instead of Kdims) with the indices
+    applied to the sample.'''
+
+    result = {}
+    
+    for name, value in sample.items():
+        if isinstance(value, dict):
+            result[name] = index_into_sample(value, indices, Ndim)
+        elif isinstance(value, Tensor):
+            assert isinstance(value, Tensor)
+            assert Ndim not in set(generic_dims(value))
+
+            temp = value
+
+            for dim in list(set(generic_dims(value)).intersection(set(indices.keys()))):
+                assert Ndim in set(generic_dims(indices[dim]))
+
+                temp = temp.order(dim)[indices[dim]]
+
+
+            result[name] = temp
+
+    return result
