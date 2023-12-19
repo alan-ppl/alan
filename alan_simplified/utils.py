@@ -281,6 +281,7 @@ def dim2named_tensor(x):
     """
     dims = generic_dims(x)
     names = [repr(dim) for dim in dims]
+
     return generic_order(x, dims).rename(*names, ...)
 
 def dictdim2named_tensordict(d):

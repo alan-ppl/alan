@@ -270,17 +270,18 @@ class Sample():
 
             shape = [dim.size for dim in dims]
             for m,f in zip(ms,latent_to_moment[varname]):
-                dimnames = [*[str(dim) for dim in active_platedims]]
+                dimnames = [*[str(dim) for dim in active_platedims], Ellipsis]
                 dimnamess.append(dimnames)
                 J_named = t.zeros(shape, requires_grad=True)
                 Js_named_list.append(J_named)
-                if len(dims) > 0:
-                    J_torchdim = J_named.rename(None)[dims]
-                else:
-                    J_torchdim = J_named.rename(None)
+                dimss = [*dims, Ellipsis]
+
+                J_torchdim = J_named.rename(None)[dimss]
+
+
                 #Moments need different names from variables.
                 #This is really a problem in how we're representing trees...
-                Js_torchdim_dict[f"{varname}_{f.__name__}"] = J_torchdim * m
+                Js_torchdim_dict[f"{varname}_{f.__name__}"] = m*J_torchdim 
                 
         Js_torchdim_tree = tensordict2tree(self.P.plate, Js_torchdim_dict)
         #Compute loss

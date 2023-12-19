@@ -64,6 +64,7 @@ def logPQ_plate(
     if name is not None:
         lp = lp.sum(active_platedims[-1])
 
+
     return lp
 
 def logPQ_dist(
@@ -107,6 +108,7 @@ def logPQ_dist(
         lq = sampling_type.reduce_logQ(lq, active_platedims, Kdim)
 
         lpq = lpq - lq - math.log(Kdim.size)
+        
     return lpq
 
 
