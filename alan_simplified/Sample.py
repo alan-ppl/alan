@@ -155,11 +155,26 @@ class Sample():
         #dimension names
         dimnamess = []
 
-        flat_sample = flatten_dict(self.sample)
+        #flatten plates but leave groups nested
+        flat_sample = {}
+        for name, sample in self.sample.items():
+            if isinstance(sample, dict) and name not in self.groupvarname2Kdim:
+                flat_sample = {**flat_sample, **flatten_dict(sample)}
+            else:
+                flat_sample[name] = sample
 
-        for (varname, sample) in flat_sample.items():
-            active_platedims = [self.all_platedims[str(name)] for name in sample.dims if str(name) in self.all_platedims]
-            Kdim = self.groupvarname2Kdim[varname]
+        
+        for groupname in self.groupvarname2Kdim.keys():
+            if isinstance(flat_sample[groupname], dict):
+                active_platedims = []
+                for sample in flat_sample[groupname].values():
+                    for name in sample.dims:
+                        if str(name) in self.all_platedims:
+                            active_platedims.append(self.all_platedims[str(name)])
+            else:
+                active_platedims = [self.all_platedims[str(name)] for name in flat_sample[groupname].dims if str(name) in self.all_platedims]
+                        
+            Kdim = self.groupvarname2Kdim[groupname]
             dims = [*active_platedims, Kdim]
 
             shape = [dim.size for dim in dims]
@@ -170,7 +185,7 @@ class Sample():
             J_torchdim = J_named.rename(None)[dims]
             #Marginals need different names from variables.
             #This is really a problem in how we're representing trees...
-            Js_torchdim_dict[f"{varname}_marginal"] = J_torchdim
+            Js_torchdim_dict[f"{groupname}_marginal"] = J_torchdim
         Js_torchdim_tree = tensordict2tree(self.P.plate, Js_torchdim_dict)
 
         #Compute loss
@@ -242,8 +257,6 @@ class Sample():
         #dimension names
         dimnamess = []
         
-
-
         flat_sample = flatten_dict(self.sample)
         
         for (varname, sample) in flat_sample.items():

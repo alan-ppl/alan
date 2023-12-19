@@ -40,7 +40,7 @@ prob = Problem(P, Q, platesizes, data)
 
 # Get some initial samples (with K dims)
 sampling_type = IndependentSample
-sample = prob.sample(20, True, sampling_type)
+sample = prob.sample(2000, True, sampling_type)
 
 # for K in [1,3,10,30,100]:
 #     print(prob.sample(K, True, sampling_type).elbo())
@@ -55,6 +55,7 @@ def mean(x):
     return (w * sample).sum(dim)
 
 def second_moment(x):
+    print(t.square(x))
     return mean(t.square(x))
 
 def square(x):
@@ -65,7 +66,8 @@ def var(x):
 
 moments = sample.moments({'d': [mean, var], 'c': [second_moment]})
 print(moments)
-
+marginals = sample.marginals()
+print(marginals)
 #Getting moments from posterior samples:
 
 posterior_samples = sample.importance_samples(num_samples=1000)
