@@ -5,7 +5,7 @@ To install, navigate to usual directory, and use,
 pip install -e .
 ```
 
-TODO (long run):
+### Long-run TODOs:
   * Device (set on Problem).
     - Problem is an nn.Module.
     - Problem has a "dummy" tensor (when you call problem.to('cuda') this dummy tensor gets the same device).
@@ -21,7 +21,7 @@ TODO (long run):
   * Timeseries.
   * A better name for BoundPlate.
 
-Interface design:
+### Overall workflow design, in terms of user-accessible classes:
   * `Plate` 
     - contains just the definition of P or Q.
     - doesn't contain any inputs or parameters.
@@ -69,7 +69,7 @@ Interface design:
      - methods including:
        - `marginals.moments`
 
-#### Interface for moments:
+### Interface for moments:
 See `moments.py`.  The basic idea is that we should have a uniform way of calling:
  - `sample.moments`
  - `marginals.moments`
