@@ -10,9 +10,18 @@ from .logpq import logPQ_plate
 
 from .Sample import Sample
 
+PBP = Union[Plate, BoundPlate]
+
 
 class Problem():
-    def __init__(self, P: BoundPlate, Q: BoundPlate, all_platesizes: dict[str, int], data: dict[str, t.Tensor]):
+    def __init__(self, P:PBP, Q:PBP, all_platesizes: dict[str, int], data: dict[str, t.Tensor]):
+
+        #Convert any P+Q Plate to BoundPlate
+        if isinstance(P, Plate):
+            P = BoundPlate(P)
+        if isinstance(Q, Plate):
+            Q = BoundPlate(Q)
+
         assert isinstance(P, BoundPlate)
         assert isinstance(Q, BoundPlate)
 
