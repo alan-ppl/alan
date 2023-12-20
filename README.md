@@ -36,18 +36,23 @@ Interface design:
   * `Sample`
     - created using `problem.sample(K=10)`
     - contains a sample from the approximate posterior.
-    - methods include:
-      - `sample.marginals`
+    - user-facing methods include:
       - `sample.moments`
-      - `sample.importance_resample`
       - `sample.elbo`
-      - `sample.dump` (gives a user-readable flat dict of samples).
+      - `sample.importance_sample`
+      - no `dump` method, at this stage, as samples here stage aren't user-interpretable.
+    - non-user-facing methods:
+      - `sample._marginals`
+      - `sample._importance_sample_idxs(N:int, repeats=1)`
   * `ImportanceSample`
-    - created using `sample.importance_resample(N)`.
-    - contains a reference to `sample`.
+    - created using `sample.importance_resample(N, repeats=1)`.
+    - `repeats` runs a for loop to collect more samples.
+    - contains a reference to `Problem`, _not_ `Sample`.
+    - has already done `index_in`: just has samples, not indicies to samples.  This is nice because it means that `ImportanceSample`s arising from different `Sample`s can easily be combined, and its what we need for `ExtendedImportanceSample`.
     - methods including:
       - `importance_sample.extend`
       - `importance_sample.dump` (gives a user-readable flat dict of samples)
+      - `importance_sample.moments`
   * `ExtendedImportanceSample`
     - created using `importance_sample.extend(all_extended_platedims)`
     - samples the extra stuff from the prior, but doesn't (yet) compute e.g. predicted LL.
@@ -55,5 +60,9 @@ Interface design:
     - methods including:
       - `extended_importance_sample.predictive_ll`
       - `extended_importance_sample.dump` (gives a user-readable flat dict of samples).
+      - `extended_importance_sample.moments`
 
-
+Question: how to get a nice interface for moments?
+* We need flexible methods (e.g. to compute any moment, or the marginal for any combination of variables).
+* We also methods with sensible defaults (e.g. compute all the univariate marginals).
+* Need to work with `Sample` (where we're doing analytic calculations) and `ImportanceSample` (where we're doing 
