@@ -27,12 +27,12 @@ def func_args(something):
     return (args, func)
 
 
-def convert_device_dtype(dist, param_name, param, tensor_format):
+def convert_device_dtype(dist, param_name, param, device):
     assert isinstance(param, (Tensor, Number))
 
     if isinstance(param, Tensor):
         #If its a tensor, check its got the right device, and return it
-        assert extract_tensor_format(param)['device'] == tensor_format['device']
+        assert param.device == device
         #We don't check dtype, as we might want different dtypes (e.g. for integer params)
         return param
     else:
@@ -40,11 +40,8 @@ def convert_device_dtype(dist, param_name, param, tensor_format):
         float_param = not dist.arg_constraints[param_name].is_discrete
 
         if float_param:
-            #if float param, force use of the expected floating point type.
-            return t.tensor(param, **tensor_format)
-        else:
-            #otherwise, just enforce the device, not the datatype.
-            return t.tensor(param, device=tensor_format['device'])
+            param=float(param)
+        return t.tensor(param, device=device)
 
 
 
@@ -94,9 +91,9 @@ class Dist():
     def filter_scope(self, scope: dict[str, Tensor]):
         return {k: v for (k,v) in scope.items() if k in self.all_args}
 
-    def tdd(self, scope: dict[str, Tensor], tensor_format):
+    def tdd(self, scope: dict[str, Tensor], device):
         paramname2val = {paramname: func(scope) for (paramname, func) in self.paramname2func.items()}
-        paramname2val = {paramname: convert_device_dtype(self.dist, paramname, val, tensor_format) for (paramname, val) in paramname2val.items()}
+        paramname2val = {paramname: convert_device_dtype(self.dist, paramname, val, device) for (paramname, val) in paramname2val.items()}
 
         return TorchDimDist(self.dist, **paramname2val)
 
@@ -110,7 +107,7 @@ class Dist():
             groupvarname2Kdim:dict[str, Dim],
             sampling_type:SamplingType,
             reparam:bool,
-            tensor_format:dict
+            device:torch.device,
             ):
 
         Kdim = groupvarname2Kdim[name]
@@ -119,7 +116,7 @@ class Dist():
         filtered_scope = self.filter_scope(scope)
         resampled_scope = sampling_type.resample_scope(filtered_scope, active_platedims, Kdim)
 
-        sample = self.tdd(resampled_scope, tensor_format).sample(reparam, sample_dims, self.sample_shape)
+        sample = self.tdd(resampled_scope, device=device).sample(reparam, sample_dims, self.sample_shape)
 
         return sample
     
@@ -151,7 +148,7 @@ class Dist():
             sample_dims = [*active_extended_platedims, Ndim]
                         
             original_sample = sample if sample is not None else original_data[name]
-            tdd = self.tdd(filtered_scope, tensor_format(original_sample))
+            tdd = self.tdd(filtered_scope, device=original_sample.device)
             extended_sample = tdd.sample(reparam, sample_dims, self.sample_shape)
 
             # Need to ensure that we work with lists of platedims in corresponding orders for original and extended samples.
@@ -178,7 +175,7 @@ class Dist():
             # Note that original_data already has the correct Dims due to it being passed through Problem()
             extended_data_with_dims = extended_data[name].rename(None)[active_extended_platedims]
 
-            tdd = self.tdd(filtered_scope, extract_tensor_format(original_sample))
+            tdd = self.tdd(filtered_scope, original_sample.device)
             extended_ll[name] = tdd.log_prob(extended_data_with_dims)
 
             original_dims, extended_dims = corresponding_plates(original_platedims, extended_platedims, original_data[name], extended_data_with_dims) 
@@ -194,7 +191,7 @@ class Dist():
     def log_prob(self, 
                  sample: Tensor, 
                  scope: dict[any, Tensor]):
-        return self.tdd(scope, extract_tensor_format(sample)).log_prob(sample)
+        return self.tdd(scope, sample.device).log_prob(sample)
 
 
 

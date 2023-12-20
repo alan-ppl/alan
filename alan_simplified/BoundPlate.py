@@ -58,10 +58,6 @@ class BoundPlate(nn.Module):
     def device(self):
         return self._device_tensor.device
 
-    @property
-    def dtype(self):
-        return self._device_tensor.dtype
-
     def inputs(self):
         return {k: v for (k, v) in self.named_buffers() if k != "_device_tensor"}
 
@@ -128,7 +124,7 @@ class BoundPlate(nn.Module):
             groupvarname2Kdim=groupvarname2Kdim,
             sampling_type=sampling_type,
             reparam=reparam,
-            tensor_format=extract_tensor_format(self),
+            device=self.device,
         )
 
         return sample, groupvarname2Kdim

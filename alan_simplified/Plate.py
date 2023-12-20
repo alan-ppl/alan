@@ -37,7 +37,7 @@ class Plate():
             groupvarname2Kdim:dict[str, Dim],
             sampling_type:SamplingType,
             reparam:bool,
-            tensor_format:dict,
+            device:t.device,
         ):
 
         if name is not None:
@@ -57,7 +57,7 @@ class Plate():
                     groupvarname2Kdim=groupvarname2Kdim,
                     sampling_type=sampling_type,
                     reparam=reparam,
-                    tensor_format=tensor_format,
+                    device=device,
                 )
 
                 sample[childname] = childsample

@@ -47,10 +47,6 @@ class Problem(nn.Module):
     def device(self):
         return self._device_tensor.device
 
-    @property
-    def dtype(self):
-        return self._device_tensor.dtype
-
     def check_device(self):
         if not (self.device == self.P.device and self.device == self.Q.device):
             raise Exception("Device issue: Problem, P and/or Q aren't all on the same device.  The easiest way to make sure everything works is to call e.g. problem.to('cuda'), rather than e.g. P.to('cuda').")
