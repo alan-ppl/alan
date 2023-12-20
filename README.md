@@ -75,14 +75,14 @@ See `moments.py`.  The basic idea is that we should have a uniform way of callin
  - `marginals.moments`
  - `importance_sample.moments`
 
-Specifically, each of these methods can be called as, with variable name(s) as a string/tuple of strings, and moments as a class/tuple of classes:
+Specifically, each of these methods can be called, with variable name(s) as a string/tuple of strings, and moments as a class/tuple of classes:
   - `sample.moments("a", Mean)`
   - `sample.moments("a", (Mean, Var))`
   - `sample.moments(("a", "b"), Cov)`
 
 For multiple moments, we provide a dict, mapping variable name(s) to moment(s).
 ```
-extended_importance_sample.moments({
+sample.moments({
     "a": Mean,
     "b": (Mean, Var),
     ("a", "b"): Cov
