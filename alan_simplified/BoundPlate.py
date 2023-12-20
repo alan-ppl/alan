@@ -123,6 +123,7 @@ class BoundPlate(nn.Module):
             groupvarname2Kdim=groupvarname2Kdim,
             sampling_type=sampling_type,
             reparam=reparam,
+            device=self.device,
         )
 
         return sample, groupvarname2Kdim

@@ -1,3 +1,5 @@
+import torch as t
+
 from typing import Optional
 from .dist import Dist
 from .utils import *
@@ -29,7 +31,9 @@ class Group():
             all_platedims:dict[str, Dim],
             groupvarname2Kdim:dict[str, Dim],
             sampling_type:SamplingType,
-            reparam:bool):
+            reparam:bool,
+            device:t.device,
+            ):
 
         result = {}       #This is the sample returned.
 

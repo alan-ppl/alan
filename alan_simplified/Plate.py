@@ -1,3 +1,4 @@
+import torch as t
 from typing import Optional
 
 from functorch.dim import Dim
@@ -35,7 +36,8 @@ class Plate():
             all_platedims:dict[str, Dim],
             groupvarname2Kdim:dict[str, Dim],
             sampling_type:SamplingType,
-            reparam:bool
+            reparam:bool,
+            device:t.device,
         ):
 
         if name is not None:
@@ -55,6 +57,7 @@ class Plate():
                     groupvarname2Kdim=groupvarname2Kdim,
                     sampling_type=sampling_type,
                     reparam=reparam,
+                    device=device,
                 )
 
                 sample[childname] = childsample

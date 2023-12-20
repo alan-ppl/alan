@@ -76,7 +76,9 @@ class Dist():
             all_platedims:dict[str, Dim],
             groupvarname2Kdim:dict[str, Dim],
             sampling_type:SamplingType,
-            reparam:bool):
+            reparam:bool,
+            device:torch.device,
+            ):
 
         Kdim = groupvarname2Kdim[name]
         sample_dims = [Kdim, *active_platedims]
