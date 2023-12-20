@@ -69,11 +69,17 @@ Interface design:
      - methods including:
        - `marginals.moments`
 
-Interface for moments:
-* Nice, uniform interface for `moments`.  The basic idea is that we have variable name(s) as a string/tuple of strings, and moments as a class/tuple of classes:
+#### Interface for moments:
+See `moments.py`.  The basic idea is that we should have a uniform way of calling:
+ - `sample.moments`
+ - `marginals.moments`
+ - `importance_sample.moments`
+
+Specifically, each of these methods can be called as, with variable name(s) as a string/tuple of strings, and moments as a class/tuple of classes:
   - `sample.moments("a", Mean)`
   - `sample.moments("a", (Mean, Var))`
   - `sample.moments(("a", "b"), Cov)`
+
 For multiple moments, we provide a dict, mapping variable name(s) to moment(s).
 ```
 extended_importance_sample.moments({
