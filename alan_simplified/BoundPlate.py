@@ -159,5 +159,10 @@ class BoundPlate(nn.Module):
 
         return dim2named_dict(torchdim_flatdict_noK)
 
+    def groupvarname2active_platedimnames(self):
+        return self.plate.groupvarname2active_platedimnames([])
+
+    def varname2groupvarname(self):
+        return self.plate.varname2groupvarname()
 
 

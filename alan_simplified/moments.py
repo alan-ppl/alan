@@ -13,7 +13,7 @@ class RawMoment(Moment):
         return t.mean(self.f(*samples), Ndim)
 
     @staticmethod
-    def from_marginals(samples:tuple[Tensor], weights:Tensor, all_platedims:dict[str, Dim])
+    def from_marginals(samples:tuple[Tensor], weights:Tensor, all_platedims:dict[str, Dim]):
         set_all_platedims = set(all_platedims.values())
         f = self.f(*sample)
         f_Kdims = set(generic_dims(f)).difference(set_all_platedims)

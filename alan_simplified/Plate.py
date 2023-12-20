@@ -150,25 +150,38 @@ class Plate():
                 assert isinstance(v, (Dist, Data))
         return result
 
-#    def varname2groupvarname(self):
-#        """
-#        Returns a dictionary mapping the variable name to the groupvarname
-#        i.e. for standard random variables, this is an identity mapping, but
-#        for variables in a group, it takes the name of the variable, and
-#        returns the name of the group.
-#        """
+#    def groupvarname2varnames(self):
 #        result = {}
 #        for k, v in self.prog.items():
 #            if isinstance(v, Dist):
-#                result[k] = k
+#                result[k] = (k,)
 #            elif isinstance(v, Group):
-#                for gk, gv in v.prog.items():
-#                    result[gk] = k
+#                result[k] = tuple(v.prog.keys())
 #            elif isinstance(v, Plate):
-#                result = {**result, **v.varname2groupvarname()}
+#                result = {**result, **v.groupvarname2varnames()}
 #            else:
 #                assert isinstance(v, Data)
 #        return result
+#
+    def varname2groupvarname(self):
+        """
+        Returns a dictionary mapping the variable name to the groupvarname
+        i.e. for standard random variables, this is an identity mapping, but
+        for variables in a group, it takes the name of the variable, and
+        returns the name of the group.
+        """
+        result = {}
+        for k, v in self.prog.items():
+            if isinstance(v, Dist):
+                result[k] = k
+            elif isinstance(v, Group):
+                for gk, gv in v.prog.items():
+                    result[gk] = k
+            elif isinstance(v, Plate):
+                result = {**result, **v.varname2groupvarname()}
+            else:
+                assert isinstance(v, Data)
+        return result
 #
 #    def varnames(self):
 #        """
@@ -201,26 +214,23 @@ class Plate():
 #                assert isinstance(v, Data)
 #        return result
 #                
-#    def groupvarname2active_platedimnames(self, active_platedimnames=None):
-#        """
-#        Returns a dict mapping groupvarname (corresponding to K's) to the names of the active
-#        plates for that groupvar.
-#
-#        Used for constructing Js for marginals + posterior sampling
-#        """
-#        if active_platedimnames is None:
-#            active_platedimnames = []
-#
-#        result = {}
-#        for name, dgpt in self.prog.items():
-#            if isinstance(dgpt, (Dist, Group)):
-#                result[name] = active_platedimnames
-#            elif isinstance(dgpt, Plate):
-#                active_platedimnames = [*active_platedimnames, name]
-#                result = {**result, **dgpt.groupvarname2active_platedimnames(active_platedimnames)}
-#            else:
-#                assert isinstance(dgpt, Data)
-#        return result
+    def groupvarname2active_platedimnames(self, active_platedimnames:list[str]):
+        """
+        Returns a dict mapping groupvarname (corresponding to K's) to the names of the active
+        plates for that groupvar.
+
+        Used for constructing Js for marginals + posterior sampling
+        """
+        result = {}
+        for name, dgpt in self.prog.items():
+            if isinstance(dgpt, (Dist, Group)):
+                result[name] = active_platedimnames
+            elif isinstance(dgpt, Plate):
+                active_platedimnames = [*active_platedimnames, name]
+                result = {**result, **dgpt.groupvarname2active_platedimnames(active_platedimnames)}
+            else:
+                assert isinstance(dgpt, Data)
+        return result
 #
 #    def groupvarname2parents(self):
 #        """

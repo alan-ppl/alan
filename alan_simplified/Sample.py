@@ -10,6 +10,7 @@ from .utils import *
 from .logpq import logPQ_plate
 from .sample_logpq import logPQ_sample
 from .BoundPlate import BoundPlate
+from .Marginals import Marginals
 
 
 class Sample():
@@ -26,6 +27,10 @@ class Sample():
         self.groupvarname2Kdim = groupvarname2Kdim
         self.sampling_type = sampling_type
         self.split = split
+
+    @property
+    def device(self):
+        return self.problem.device
 
     @property 
     def P(self):
@@ -64,41 +69,6 @@ class Sample():
 
         return lp
     
-#    def marginals(self):
-#        #This is an ordered dict.
-#        samples = flatten_tree(self.sample) 
-#
-#        #List of named Js to go into torch.autograd.grad
-#        Js_named_list = []
-#        #Flat dict of torchdim tensors to go into elbo as extra_log_factors
-#        Js_torchdim_dict = {}
-#        #dimension names
-#        dimnamess = []
-#        for (varname, sample) in samples.items():
-#            dims = generic_dims(sample)
-#            shape = [dim.size for dim in dims]
-#            dimnames = [str(dim) for dim in dims]
-#            dimnamess.append(dimnames)
-#            J_named = t.zeros(*shape, device=sample.device, requires_grad=True, names=dimnames)
-#            Js_named_list.append(J_named)
-#            J_torchdim = J_named.rename(None)[dims]
-#            #Marginals need different names from variables.
-#            #This is really a problem in how we're representing trees...
-#            Js_torchdim_dict[f"{varname}_marginal"] = J_torchdim
-#        Js_torchdim_tree = tensordict2tree(self.P, Js_torchdim_dict)
-#
-#        #Compute loss
-#        L = self.elbo(extra_log_factors=Js_torchdim_tree)
-#        #marginals as a list
-#        marginals_list = grad(L, Js_named_list)
-#
-#        #marginals as a flat dict
-#        marginals_dict = {}
-#        for varname, marginal, dimnames in zip(samples.keys(), marginals_list, dimnamess):
-#            marginals_dict[varname] = marginal.refine_names(*dimnames)
-#
-#        return marginals_dict
-
     def resample(self):
         #map Kdimname -> active_platedims
         #map Kdimname -> parent Kdimnames (using all_args on the dist)
@@ -145,60 +115,155 @@ class Sample():
         post_idxs, N_dim = self.importance_sampled_idxs(num_samples)
 
         return dim2named_dict(flatten_dict(self.index_in(post_idxs, N_dim)))
-    
-    def marginals(self):
 
+    def _marginal_idxs(self):
+        """
+        Internal method that returns a flat dict of marginals over K-indices.
+
+        TODO: take a list of tuples of groupvarnames to compute the joint marginals over.
+        """
         #List of named Js to go into torch.autograd.grad
-        Js_named_list = []
+        J_tensor_list = []
         #Flat dict of torchdim tensors to go into elbo as extra_log_factors
-        Js_torchdim_dict = {}
+        J_torchdim_dict = {}
         #dimension names
-        dimnamess = []
+        dimss = []
+        groupvarnames = []
 
-        #flatten plates but leave groups nested
-        flat_sample = {}
-        for name, sample in self.sample.items():
-            if isinstance(sample, dict) and name not in self.groupvarname2Kdim:
-                flat_sample = {**flat_sample, **flatten_dict(sample)}
-            else:
-                flat_sample[name] = sample
+        groupvarname2active_platedimnames = self.problem.P.groupvarname2active_platedimnames()
 
-        
-        for groupname in self.groupvarname2Kdim.keys():
-            if isinstance(flat_sample[groupname], dict):
-                active_platedims = []
-                for sample in flat_sample[groupname].values():
-                    for name in sample.dims:
-                        if str(name) in self.all_platedims:
-                            active_platedims.append(self.all_platedims[str(name)])
-            else:
-                active_platedims = [self.all_platedims[str(name)] for name in flat_sample[groupname].dims if str(name) in self.all_platedims]
-                        
-            Kdim = self.groupvarname2Kdim[groupname]
-            dims = [*active_platedims, Kdim]
+        for groupvarname, Kdim in self.groupvarname2Kdim.items():
+            active_platedimnames = groupvarname2active_platedimnames[groupvarname]
+            active_platedims = [self.all_platedims[dimname] for dimname in active_platedimnames]
 
+            dims = [Kdim, *active_platedims]
+            dimss.append(dims)
             shape = [dim.size for dim in dims]
-            dimnames = [*[str(dim) for dim in active_platedims], 'K']
-            dimnamess.append(dimnames)
-            J_named = t.zeros(shape, requires_grad=True)
-            Js_named_list.append(J_named)
-            J_torchdim = J_named.rename(None)[dims]
-            #Marginals need different names from variables.
-            #This is really a problem in how we're representing trees...
-            Js_torchdim_dict[f"{groupname}_marginal"] = J_torchdim
-        Js_torchdim_tree = tensordict2tree(self.P.plate, Js_torchdim_dict)
+
+            J_tensor = t.zeros(*shape, device=self.device, requires_grad=True)
+            J_tensor_list.append(J_tensor)
+            J_torchdim = J_tensor[dims]
+            J_torchdim_dict[f"{groupvarname}_marginal"] = J_torchdim
+
+        J_torchdim_tree = tensordict2tree(self.P.plate, J_torchdim_dict)
 
         #Compute loss
-        L = self.elbo(extra_log_factors=Js_torchdim_tree)
+        L = self.elbo(extra_log_factors=J_torchdim_tree)
         #marginals as a list
-        marginals_list = grad(L, Js_named_list)
+        marginals_list = grad(L, J_tensor_list)
 
-        #marginals as a flat dict
-        marginals_dict = {}
-        for varname, marginal, dimnames in zip(flat_sample.keys(), marginals_list, dimnamess):
-            marginals_dict[varname] = marginal.refine_names(*dimnames)
+        result = {}
+        for groupvarname, dims, marginals in zip(self.groupvarname2Kdim.keys(), dimss, marginals_list):
+            result[frozenset([groupvarname])] = marginals[dims]
 
-        return marginals_dict
+        return result
+
+    def marginals(self):
+        """
+        User-facing method that returns a marginals object
+        """
+        #marginal_idxs has keys which are tuples of groupvarnames.
+        #needs to be converted to just tuples of varnames.
+
+        marginals = self._marginal_idxs()
+        samples = flatten_tree(self.sample)
+        varname2groupvarname = self.P.varname2groupvarname()
+        return Marginals(marginals, samples, self.all_platedims, varname2groupvarname)
+
+
+
+
+
+
+#    def marginals(self):
+#        #This is an ordered dict.
+#        samples = flatten_tree(self.sample) 
+#
+#        #List of named Js to go into torch.autograd.grad
+#        Js_named_list = []
+#        #Flat dict of torchdim tensors to go into elbo as extra_log_factors
+#        Js_torchdim_dict = {}
+#        #dimension names
+#        dimnamess = []
+#        for (varname, sample) in samples.items():
+#            dims = generic_dims(sample)
+#            shape = [dim.size for dim in dims]
+#            dimnames = [str(dim) for dim in dims]
+#            dimnamess.append(dimnames)
+#            J_named = t.zeros(*shape, device=sample.device, requires_grad=True, names=dimnames)
+#            Js_named_list.append(J_named)
+#            J_torchdim = J_named.rename(None)[dims]
+#            #Marginals need different names from variables.
+#            #This is really a problem in how we're representing trees...
+#            Js_torchdim_dict[f"{varname}_marginal"] = J_torchdim
+#        Js_torchdim_tree = tensordict2tree(self.P, Js_torchdim_dict)
+#
+#        #Compute loss
+#        L = self.elbo(extra_log_factors=Js_torchdim_tree)
+#        #marginals as a list
+#        marginals_list = grad(L, Js_named_list)
+#
+#        #marginals as a flat dict
+#        marginals_dict = {}
+#        for varname, marginal, dimnames in zip(samples.keys(), marginals_list, dimnamess):
+#            marginals_dict[varname] = marginal.refine_names(*dimnames)
+#
+#        return marginals_dict
+
+    
+#    def marginals(self):
+#
+#        #List of named Js to go into torch.autograd.grad
+#        Js_named_list = []
+#        #Flat dict of torchdim tensors to go into elbo as extra_log_factors
+#        Js_torchdim_dict = {}
+#        #dimension names
+#        dimnamess = []
+#
+#        #flatten plates but leave groups nested
+#        flat_sample = {}
+#        for name, sample in self.sample.items():
+#            if isinstance(sample, dict) and name not in self.groupvarname2Kdim:
+#                flat_sample = {**flat_sample, **flatten_dict(sample)}
+#            else:
+#                flat_sample[name] = sample
+#
+#        
+#        for groupname in self.groupvarname2Kdim.keys():
+#            if isinstance(flat_sample[groupname], dict):
+#                active_platedims = []
+#                for sample in flat_sample[groupname].values():
+#                    for name in sample.dims:
+#                        if str(name) in self.all_platedims:
+#                            active_platedims.append(self.all_platedims[str(name)])
+#            else:
+#                active_platedims = [self.all_platedims[str(name)] for name in flat_sample[groupname].dims if str(name) in self.all_platedims]
+#                        
+#            Kdim = self.groupvarname2Kdim[groupname]
+#            dims = [*active_platedims, Kdim]
+#
+#            shape = [dim.size for dim in dims]
+#            dimnames = [*[str(dim) for dim in active_platedims], 'K']
+#            dimnamess.append(dimnames)
+#            J_named = t.zeros(shape, requires_grad=True)
+#            Js_named_list.append(J_named)
+#            J_torchdim = J_named.rename(None)[dims]
+#            #Marginals need different names from variables.
+#            #This is really a problem in how we're representing trees...
+#            Js_torchdim_dict[f"{groupname}_marginal"] = J_torchdim
+#        Js_torchdim_tree = tensordict2tree(self.P.plate, Js_torchdim_dict)
+#
+#        #Compute loss
+#        L = self.elbo(extra_log_factors=Js_torchdim_tree)
+#        #marginals as a list
+#        marginals_list = grad(L, Js_named_list)
+#
+#        #marginals as a flat dict
+#        marginals_dict = {}
+#        for varname, marginal, dimnames in zip(flat_sample.keys(), marginals_list, dimnamess):
+#            marginals_dict[varname] = marginal.refine_names(*dimnames)
+#
+#        return marginals_dict
 
     # def conditionals(self):
     #     """

@@ -1,30 +1,42 @@
 from .utils import *
 from .moments import uniformise_moment_args
 
-class Marginals
-    def __init__(self, samples:dict[str, Tensor], weights:dict[tuple(str), Tensor], all_platedims: dict[str, Dim]):
+class Marginals:
+    def __init__(
+            self, 
+            samples:dict[str, Tensor], 
+            weights:dict[tuple[str], Tensor], 
+            all_platedims: dict[str, Dim],
+            varname2groupvarname: dict[str, tuple[str]]):
         """
-        samples and weights are flat dicts of torchdims
-        samples is indexed just by the variable name as a string.
-        weights could in principle be indexed by a tuple of variable names (because we could have a joint distribution).
-        likewise, moms (argument to .moments) is a dict that could be indexed by a tuple of variable names.
+        samples and weights are flat dicts of torchdim Tensors.
+        
+        But there's some subtlety as to the keys.
+        samples is indexed by a single varname.
+        weights is indexed by frozenset[groupvarname] (frozenset so its hashable, and we don't care about ordering).
+
+        That's because weights really depends on the K-dimensions, not the underlying variables.
+        Moreover, we could compute the joint marginal over multiple K-dimensions, not just one.
         """
         self.samples = samples
         self.weights = weights
         self.all_platedims = all_platedims
+        self.varname2groupvarname = varname2groupvarname
 
     def moments(self, *moms):
         moms = uniformise_moment_args(moms)
 
-        for k in moms.keys():
-            assert isinstance(k, tuple)
-            assert 1 == len(k)
-            assert isinstance(k[0], str)
+        for varnames in moms.keys():
+            assert isinstance(varnames, tuple)
+            assert 1 == len(varnames)
+            assert isinstance(varnames[0], str)
 
         result = {}
-        for argnames, moment_specs in moms:
-            samples = [self.samples[argname] for argname in argnames]
-            weights = self.weights[argnames]
+        for varnames, moment_specs in moms:
+            samples = [self.samples[varname] for varname in varnames]
+            groupvarnames = frozenset([self.varname2groupvarname[varname] for varname in varnames])
+
+            weights = self.weights[groupvarnames]
 
             moments = [] 
             for moment_spec in moment_specs:
@@ -32,9 +44,3 @@ class Marginals
             result[argnames] = moments
 
         return result
-        
-
-
-
-
-
