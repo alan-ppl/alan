@@ -39,11 +39,11 @@ Interface design:
     - user-facing methods include:
       - `sample.moments`
       - `sample.elbo`
-      - `sample.importance_sample`
+      - `sample.importance_sample` (creates a `ImportanceSample` class)
+      - `sample.marginals` (creates a `Marginals` class)
       - no `dump` method, at this stage, as samples here stage aren't user-interpretable.
     - non-user-facing methods:
-      - `sample._marginals`
-      - `sample._importance_sample_idxs(N:int, repeats=1)`
+      - `sample._importance_sample_idxs(N:int, repeats=1)` (Gets the importance-sampled indices).
   * `ImportanceSample`
     - created using `sample.importance_resample(N, repeats=1)`.
     - `repeats` runs a for loop to collect more samples.
@@ -61,8 +61,18 @@ Interface design:
       - `extended_importance_sample.predictive_ll`
       - `extended_importance_sample.dump` (gives a user-readable flat dict of samples).
       - `extended_importance_sample.moments`
+  * `Marginals`
+     - created using `sample.marginals`.
+     - By default contains all univariate marginals.  But may also contain multivariate marginals.
+     - Marginals stored as joint distributions over `K` computed using the source-term trick.
+     - Makes it efficient to compute one moment at a time (whereas e.g. for `Sample`, we need to compute all the log-probs and backprop to compute a moment, so it is better to compute lots of moments together).
+     - methods including:
+       - `marginals.moments`
 
-Question: how to get a nice interface for moments?
+Random other thoughts:
+* Nice, uniform interface for `moments`:
+  - dict mapping moment_name to a function.
+  - Fairly straightforward for "raw" moments.  But what about stuff like a variance?
 * We need flexible methods (e.g. to compute any moment, or the marginal for any combination of variables).
 * We also methods with sensible defaults (e.g. compute all the univariate marginals).
 * Need to work with `Sample` (where we're doing analytic calculations) and `ImportanceSample` (where we're doing 
