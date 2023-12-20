@@ -6,9 +6,6 @@ pip install -e .
 ```
 
 ### Long-run TODOs:
-  * Device (set on Problem).
-    - Problem is an nn.Module.
-    - Problem has a "dummy" tensor (when you call problem.to('cuda') this dummy tensor gets the same device).
   * Friendly error messages:
     - For mismatching dimension names / plate names for data / inputs / params.
     - Make sure inputs_params have separate names for P and Q.
@@ -87,3 +84,7 @@ sample.moments({
     ("a", "b"): Cov
 })
 ```
+
+### Recent updates
+
+*Devices should now work.  Just do `problem.to(device='cuda')`, and everything should work without modification.  (Though I have only extensively test sampling).
