@@ -83,6 +83,20 @@ def check_name(name:str):
         if (len(prefix) <= len(name)) and (prefix == name[:len(prefix)]):
             raise Exception(f"You can't use the prefix {prefix} in {name} in Alan")
 
+def dim2named_tensor(x):
+    """
+    Converts a torchdim to a named tensor.
+    """
+    dims = generic_dims(x)
+    names = [repr(dim) for dim in dims]
+
+    return generic_order(x, dims).rename(*names, ...)
+
+def dim2named_dict(d):
+    """
+    Converts a dict of torchdims to a dict of named tensors.
+    """
+    return {k: dim2named_tensor(v) for (k, v) in d.items()}
 
 
 
@@ -105,6 +119,8 @@ def named2dim_dict(tensors: dict[str, t.Tensor], all_platedims: dict[str, Dim], 
         result[varname] = generic_getitem(tensor.rename(None), torchdims)
 
     return result
+
+
 
 
 #### Utilities for working with torchdims
@@ -275,21 +291,6 @@ def singleton_order(x, dims):
     x = generic_getitem(x, idxs)
 
     return x
-
-def dim2named_tensor(x):
-    """
-    Converts a torchdim to a named tensor.
-    """
-    dims = generic_dims(x)
-    names = [repr(dim) for dim in dims]
-
-    return generic_order(x, dims).rename(*names, ...)
-
-def dictdim2named_tensordict(d):
-    """
-    Converts a dict of torchdims to a dict of named tensors.
-    """
-    return {k: dim2named_tensor(v) for (k, v) in d.items()}
 #### Utilities for working with dictionaries of plates
 
 def named2dim_tensor(d, x):

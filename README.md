@@ -5,9 +5,6 @@ To install, navigate to usual directory, and use,
 pip install -e .
 ```
 
-### Minor TODOs:
-  * Have a sensible public `bound_plate.sample`, which returns a flat dict (e.g. for conditioning on samples from the generative).
-
 ### Long-run TODOs:
   * Friendly error messages:
     - For mismatching dimension names / plate names for data / inputs / params.
@@ -94,3 +91,4 @@ sample.moments({
 ### Recent updates
 
 *Devices should now work.  Just do `problem.to(device='cuda')`, and everything should work without modification.  (Though I have only extensively test sampling).
+*User-facing BoundPlate.sample method.

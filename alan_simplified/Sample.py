@@ -144,7 +144,7 @@ class Sample():
         """
         post_idxs, N_dim = self.importance_sampled_idxs(num_samples)
 
-        return dictdim2named_tensordict(flatten_dict(self.index_in(post_idxs, N_dim)))
+        return dim2named_dict(flatten_dict(self.index_in(post_idxs, N_dim)))
     
     def marginals(self):
 

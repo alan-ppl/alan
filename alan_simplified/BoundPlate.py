@@ -3,7 +3,7 @@ import torch as t
 import torch.nn as nn
 from .utils import *
 from .SamplingType import SamplingType, IndependentSample
-from .Plate import tensordict2tree, Plate
+from .Plate import tensordict2tree, Plate, flatten_tree
 
 def named2torchdim_flat2tree(flat_named:dict, all_platedims, plate):
     flat_torchdim = named2dim_dict(flat_named, all_platedims)
@@ -105,6 +105,12 @@ class BoundPlate(nn.Module):
             extended_data)
     
     def check_deps(self, all_platedims:dict[str, Dim]):
+        """
+        This is run as we enter Problem, and checks that we can sample from P and Q, and hence
+        that P and Q make sense.  For instance, checks that dependency structure is valid and
+        sizes of tensors are consistent.  Note that this isn't obvious for P, as we never actually
+        sample from P, we just evaluate log-probabilities under P.
+        """
         self._sample(1, False, IndependentSample, all_platedims)
 
     def _sample(self, K: int, reparam:bool, sampling_type:SamplingType, all_platedims:dict[str, Dim]):
@@ -137,5 +143,21 @@ class BoundPlate(nn.Module):
 
     def sample(self, all_platesizes:dict[str, int]):
         """
-        sfd
+        User-facing sample method, so it should return flat-dict of named Tensors, with no K or N dimensions.
         """
+        all_platedims = {platename: Dim(platename, size) for (platename, size) in all_platesizes.items()}
+        set_platedims = list(all_platedims.values())
+        torchdim_tree_withK, _ = self._sample(1, False, IndependentSample, all_platedims)
+        torchdim_flatdict_withK = flatten_tree(torchdim_tree_withK)
+
+        torchdim_flatdict_noK = {}
+        for k, v in torchdim_flatdict_withK.items():
+            K_dims = list(set(generic_dims(v)).difference(set_platedims))
+            v = v.order(K_dims)
+            v = v.squeeze(tuple(range(len(K_dims))))
+            torchdim_flatdict_noK[k] = v
+
+        return dim2named_dict(torchdim_flatdict_noK)
+
+
+
