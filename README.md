@@ -26,7 +26,7 @@ pip install -e .
     - created using `BoundPlate(plate)`
     - binds `Plate`, defining P or Q, to parameters or inputs.
   * `Problem`
-    - created using `Problem(P, Q, data, all_platedims)`
+    - created using `Problem(P, Q, data, all_platesizes)`
     - `P` and `Q` are `Plate`/`BoundPlate`s (any `Plate`s are converted to `BoundPlate` inside Problem).
     - `data: dict[str, torch named Tensor]` (any platedims are named).
     - `all_platedims: dict[str, int]` (size of all platedims).
