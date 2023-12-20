@@ -1,4 +1,5 @@
 import torch as t
+import torch.nn as nn
 from typing import Union
 
 from .Plate import Plate, tensordict2tree, flatten_tree
@@ -13,8 +14,9 @@ from .Sample import Sample
 PBP = Union[Plate, BoundPlate]
 
 
-class Problem():
+class Problem(nn.Module):
     def __init__(self, P:PBP, Q:PBP, all_platesizes: dict[str, int], data: dict[str, t.Tensor]):
+        super().__init__()
 
         #Convert any P+Q Plate to BoundPlate
         if isinstance(P, Plate):
@@ -24,6 +26,9 @@ class Problem():
 
         assert isinstance(P, BoundPlate)
         assert isinstance(Q, BoundPlate)
+
+        #A tensor that e.g. moves to GPU when we call `problem.to(device='cuda')`.
+        self.register_buffer("_device_tensor", t.zeros(()))
 
         self.P = P
         self.Q = Q
@@ -38,12 +43,22 @@ class Problem():
         P.check_deps(self.all_platedims)
         Q.check_deps(self.all_platedims)
 
+    @property
+    def device(self):
+        return self._device_tensor.device
+
+    def check_device(self):
+        if not (self.device == self.P.device and self.device == self.Q.device):
+            raise Exception("Device issue: Problem, P and/or Q aren't all on the same device.  The easiest way to make sure everything works is to call e.g. problem.to('cuda'), rather than e.g. P.to('cuda').")
+
     def sample(self, K: int, reparam:bool, sampling_type:SamplingType):
         """
         Returns: 
             globalK_sample: sample with different K-dimension for each variable.
             logPQ: log-prob.
         """
+        self.check_device()
+
         sample, groupvarname2Kdim = self.Q.sample(K, reparam, sampling_type, self.all_platedims)
 
         return Sample(

@@ -20,6 +20,9 @@ class BoundPlate(nn.Module):
         super().__init__()
         self.plate = plate
 
+        #A tensor that e.g. moves to GPU when we call `problem.to(device='cuda')`.
+        self.register_buffer("_device_tensor", t.zeros(()))
+
         if inputs is None:
             inputs = {}
         if params is None:
@@ -50,9 +53,12 @@ class BoundPlate(nn.Module):
             assert isinstance(param, t.Tensor)
             self.register_parameter(name, nn.Parameter(param))
 
+    @property
+    def device(self):
+        return self._device_tensor.device
 
     def inputs(self):
-        return {k: v for (k, v) in self.named_buffers()}
+        return {k: v for (k, v) in self.named_buffers() if k != "_device_tensor"}
 
     def params(self):
         return {k: v for (k, v) in self.named_parameters()}
