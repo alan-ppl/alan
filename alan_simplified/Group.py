@@ -32,7 +32,7 @@ class Group():
             groupvarname2Kdim:dict[str, Dim],
             sampling_type:SamplingType,
             reparam:bool,
-            device:t.device,
+            tensor_format:dict,
             ):
 
         result = {}       #This is the sample returned.
@@ -45,7 +45,7 @@ class Group():
         scope = sampling_type.resample_scope(scope, active_platedims, Kdim)
 
         for name, dist in self.prog.items():
-            tdd = dist.tdd(scope)
+            tdd = dist.tdd(scope, tensor_format)
             sample = tdd.sample(reparam, sample_dims, dist.sample_shape)
 
             scope[name]  = sample

@@ -26,6 +26,14 @@ def func_args(something):
         func = lambda scope: something
     return (args, func)
 
+#def convert_device_dtype(rv_name, arg_name, x, device, dtype):
+#
+#    if isinstance(x, Tensor) and ((device != x.device) or (dtype != x.dtype)):
+#        raise Exception(f"{arg_name} on {rv_name} is a Tensor on the wrong device")
+#
+#    if not isinstance(x, Tensor):
+
+
 
 class Dist():
     """
@@ -64,7 +72,7 @@ class Dist():
     def filter_scope(self, scope: dict[str, Tensor]):
         return {k: v for (k,v) in scope.items() if k in self.all_args}
 
-    def tdd(self, scope: dict[str, Tensor]):
+    def tdd(self, scope: dict[str, Tensor], tensor_format):
         paramname2val = {paramname: func(scope) for (paramname, func) in self.paramname2func.items()}
         return TorchDimDist(self.dist, **paramname2val)
 
@@ -78,7 +86,7 @@ class Dist():
             groupvarname2Kdim:dict[str, Dim],
             sampling_type:SamplingType,
             reparam:bool,
-            device:torch.device,
+            tensor_format:dict
             ):
 
         Kdim = groupvarname2Kdim[name]
@@ -87,11 +95,7 @@ class Dist():
         filtered_scope = self.filter_scope(scope)
         resampled_scope = sampling_type.resample_scope(filtered_scope, active_platedims, Kdim)
 
-        sample = self.tdd(resampled_scope).sample(reparam, sample_dims, self.sample_shape)
-
-        if sample.device != device:
-            warnings.warn(f"{name} is sampled on {sample.device}, while it should be sampled on {device}.  This is correct (we do the conversion internally), but may result in a slower running program")
-            sample = sample.to(device)
+        sample = self.tdd(resampled_scope, tensor_format).sample(reparam, sample_dims, self.sample_shape)
 
         return sample
     
@@ -123,7 +127,8 @@ class Dist():
             sample_dims = [*active_extended_platedims, Ndim]
                         
             original_sample = sample if sample is not None else original_data[name]
-            extended_sample = self.tdd(filtered_scope).sample(reparam, sample_dims, self.sample_shape)
+            tdd = self.tdd(filtered_scope, tensor_format(original_sample))
+            extended_sample = tdd.sample(reparam, sample_dims, self.sample_shape)
 
             # Need to ensure that we work with lists of platedims in corresponding orders for original and extended samples.
             original_dims, extended_dims = corresponding_plates(original_platedims, extended_platedims, original_sample, extended_sample)
@@ -149,7 +154,8 @@ class Dist():
             # Note that original_data already has the correct Dims due to it being passed through Problem()
             extended_data_with_dims = extended_data[name].rename(None)[active_extended_platedims]
 
-            extended_ll[name] = self.tdd(filtered_scope).log_prob(extended_data_with_dims)
+            tdd = self.tdd(filtered_scope, tensor_format(original_sample))
+            extended_ll[name] = tdd.log_prob(extended_data_with_dims)
 
             original_dims, extended_dims = corresponding_plates(original_platedims, extended_platedims, original_data[name], extended_data_with_dims) 
 
@@ -164,7 +170,7 @@ class Dist():
     def log_prob(self, 
                  sample: Tensor, 
                  scope: dict[any, Tensor]):
-        return self.tdd(scope).log_prob(sample)
+        return self.tdd(scope, tensor_format(sample)).log_prob(sample)
 
 
 

@@ -9,6 +9,7 @@ def named2torchdim_flat2tree(flat_named:dict, all_platedims, plate):
     flat_torchdim = named2dim_dict(flat_named, all_platedims)
     return tensordict2tree(plate, flat_torchdim)
 
+
 class BoundPlate(nn.Module):
     """
     Binds a Plate to inputs (e.g. film features in MovieLens) and learned parameters
@@ -56,6 +57,10 @@ class BoundPlate(nn.Module):
     @property
     def device(self):
         return self._device_tensor.device
+
+    @property
+    def dtype(self):
+        return self._device_tensor.dtype
 
     def inputs(self):
         return {k: v for (k, v) in self.named_buffers() if k != "_device_tensor"}
@@ -123,7 +128,7 @@ class BoundPlate(nn.Module):
             groupvarname2Kdim=groupvarname2Kdim,
             sampling_type=sampling_type,
             reparam=reparam,
-            device=self.device,
+            tensor_format=tensor_format(self),
         )
 
         return sample, groupvarname2Kdim
