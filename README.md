@@ -69,10 +69,16 @@ Interface design:
      - methods including:
        - `marginals.moments`
 
-Random other thoughts:
-* Nice, uniform interface for `moments`:
-  - dict mapping moment_name to a function.
-  - Fairly straightforward for "raw" moments.  But what about stuff like a variance?
-* We need flexible methods (e.g. to compute any moment, or the marginal for any combination of variables).
-* We also methods with sensible defaults (e.g. compute all the univariate marginals).
-* Need to work with `Sample` (where we're doing analytic calculations) and `ImportanceSample` (where we're doing 
+Interface for moments:
+* Nice, uniform interface for `moments`.  The basic idea is that we have variable name(s) as a string/tuple of strings, and moments as a class/tuple of classes:
+  - `sample.moments("a", Mean)`
+  - `sample.moments("a", (Mean, Var))`
+  - `sample.moments(("a", "b"), Cov)`
+For multiple moments, we provide a dict, mapping variable name(s) to moment(s).
+```
+extended_importance_sample.moments({
+    "a": Mean,
+    "b": (Mean, Var),
+    ("a", "b"): Cov
+})
+```
