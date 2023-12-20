@@ -62,13 +62,13 @@ def uniformise_moment_args(*args):
     """
     moment can be called in a bunch of different ways.  For a single variable/set of variables:
     * `sample.moments("a", Mean)`
-    * `sample.moments("a", (Mean, Var))`
+    * `sample.moments("b", Var)`
     * `sample.moments(("a", "b"), Cov)`
 
     For multiple variables:
     sample.moments({
         "a": Mean,
-        "b": (Mean, Var),
+        "b": Var,
         ("a", "b"): Cov
     })
 
@@ -89,13 +89,11 @@ def uniformise_moment_args(*args):
     for k, v in args.items():
         if not isinstance(k, (tuple, str)):
             raise mom_args_exception
-        if not isinstance(v, (tuple, Moment)):
+        if not isinstance(v, Moment):
             raise mom_args_exception
 
         if not isinstance(k, tuple):
             k = (k,)
-        if not isinstance(v, tuple):
-            v = (v,)
 
         uniform_arg_dict[k] = v
 
