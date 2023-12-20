@@ -155,7 +155,7 @@ class BoundPlate(nn.Module):
             K_dims = list(set(generic_dims(v)).difference(set_platedims))
             v = v.order(K_dims)
             v = v.squeeze(tuple(range(len(K_dims))))
-            torchdim_flatdict_noK[k] = v
+            torchdim_flatdict_noK[k] = v.detach()
 
         return dim2named_dict(torchdim_flatdict_noK)
 
