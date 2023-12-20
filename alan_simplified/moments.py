@@ -1,3 +1,5 @@
+from .utils import *
+
 class Moment:
     def __init__(self):
         raise Exception("Moment objects should be used directly, and not instantiated")
@@ -7,12 +9,17 @@ class RawMoment(Moment):
     Must be overwritten with self.f as a static method.
     """
     @staticmethod
-    def from_sample(sample, Ndim):
-        return t.mean(self.f(sample), Ndim)
+    def from_sample(samples:tuple[Tensor], Ndim:Dim):
+        return t.mean(self.f(*samples), Ndim)
 
     @staticmethod
-    def from_marginals(sample, weights, Kdim):
-        return t.sum(self.f(sample) * weights, Kdim)
+    def from_marginals(samples:tuple[Tensor], weights:Tensor, all_platedims:dict[str, Dim])
+        set_all_platedims = set(all_platedims.values())
+        f = self.f(*sample)
+        f_Kdims = set(generic_dims(f)).difference(set_all_platedims)
+        w_Kdims = set(generic_dims(weights)).difference(set_all_platedims)
+        assert f_Kdims.issubset(w_Kdims)
+        return t.sum(self.f(*sample) * weights, w_Kdims)
 
     @classmethod
     def all_raw_moments(cls):
@@ -27,13 +34,13 @@ class CompoundMoment(Moment):
     combiner as a function that combines the raw moments
     """
     @classmethod
-    def from_sample(cls, sample, Ndim):
-        moments = [raw_moment.from_sample(sample, Ndim) for raw_moment in cls.raw_moments]
+    def from_sample(cls, samples:tuple[Tensor], Ndim):
+        moments = [raw_moment.from_sample(samples, Ndim) for raw_moment in cls.raw_moments]
         return cls.combiner(*moments)
 
     @classmethod
-    def from_marginals(cls, sample, weights, Kdim):
-        moments = [raw_moment.from_marginals(sample, weights, Kdim) for raw_moment in cls.raw_moments]
+    def from_marginals(cls, samples:tuple[Tensor], weights:Tensor, all_platedims:dict[str, Dim]):
+        moments = [raw_moment.from_marginals(samples, weights, all_platedims) for raw_moment in cls.raw_moments]
         return cls.combiner(*moments)
 
     @classmethod
