@@ -128,7 +128,7 @@ class BoundPlate(nn.Module):
             groupvarname2Kdim=groupvarname2Kdim,
             sampling_type=sampling_type,
             reparam=reparam,
-            tensor_format=tensor_format(self),
+            tensor_format=extract_tensor_format(self),
         )
 
         return sample, groupvarname2Kdim

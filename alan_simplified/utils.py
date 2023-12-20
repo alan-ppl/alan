@@ -13,7 +13,7 @@ Number = (int, float)
 TensorNumber = (*Tensor, *Number)
 
 #New and definitely used.
-def tensor_format(x):
+def extract_tensor_format(x):
     return {'device': x.device, 'dtype': x.dtype}
 
 def function_arguments(f):

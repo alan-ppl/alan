@@ -26,12 +26,34 @@ def func_args(something):
         func = lambda scope: something
     return (args, func)
 
-#def convert_device_dtype(rv_name, arg_name, x, device, dtype):
-#
-#    if isinstance(x, Tensor) and ((device != x.device) or (dtype != x.dtype)):
-#        raise Exception(f"{arg_name} on {rv_name} is a Tensor on the wrong device")
-#
-#    if not isinstance(x, Tensor):
+
+def convert_device_dtype(dist, param_name, param, tensor_format):
+    assert isinstance(param, (Tensor, Number))
+
+    if isinstance(param, Tensor):
+        #If its a tensor, check its got the right device, and return it
+        assert extract_tensor_format(param)['device'] == tensor_format['device']
+        #We don't check dtype, as we might want different dtypes (e.g. for integer params)
+        return param
+    else:
+        #If its not a tensor, check with dist is expecting a float param
+        float_param = not dist.arg_constraints[param_name].is_discrete
+
+        if float_param:
+            #if float param, force use of the expected floating point type.
+            return t.tensor(param, **tensor_format)
+        else:
+            #otherwise, just enforce the device, not the datatype.
+            return t.tensor(param, device=tensor_format['device'])
+
+
+
+
+
+
+
+
+
 
 
 
@@ -74,6 +96,8 @@ class Dist():
 
     def tdd(self, scope: dict[str, Tensor], tensor_format):
         paramname2val = {paramname: func(scope) for (paramname, func) in self.paramname2func.items()}
+        paramname2val = {paramname: convert_device_dtype(self.dist, paramname, val, tensor_format) for (paramname, val) in paramname2val.items()}
+
         return TorchDimDist(self.dist, **paramname2val)
 
     def sample(
@@ -154,7 +178,7 @@ class Dist():
             # Note that original_data already has the correct Dims due to it being passed through Problem()
             extended_data_with_dims = extended_data[name].rename(None)[active_extended_platedims]
 
-            tdd = self.tdd(filtered_scope, tensor_format(original_sample))
+            tdd = self.tdd(filtered_scope, extract_tensor_format(original_sample))
             extended_ll[name] = tdd.log_prob(extended_data_with_dims)
 
             original_dims, extended_dims = corresponding_plates(original_platedims, extended_platedims, original_data[name], extended_data_with_dims) 
@@ -170,7 +194,7 @@ class Dist():
     def log_prob(self, 
                  sample: Tensor, 
                  scope: dict[any, Tensor]):
-        return self.tdd(scope, tensor_format(sample)).log_prob(sample)
+        return self.tdd(scope, extract_tensor_format(sample)).log_prob(sample)
 
 
 
