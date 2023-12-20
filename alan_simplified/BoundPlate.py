@@ -105,14 +105,20 @@ class BoundPlate(nn.Module):
             extended_data)
     
     def check_deps(self, all_platedims:dict[str, Dim]):
-        self.sample(1, False, IndependentSample, all_platedims)
+        self._sample(1, False, IndependentSample, all_platedims)
 
-    def sample(self, K: int, reparam:bool, sampling_type:SamplingType, all_platedims:dict[str, Dim]):
+    def _sample(self, K: int, reparam:bool, sampling_type:SamplingType, all_platedims:dict[str, Dim]):
         """
+        Internal sampling method.
         Returns: 
             globalK_sample: sample with different K-dimension for each variable.
             logPQ: log-prob.
         """
+        assert isinstance(K, int)
+        assert isinstance(reparam, bool)
+        assert issubclass(sampling_type, SamplingType)
+        assert isinstance(next(iter(all_platedims.values())), Dim)
+
         groupvarname2Kdim = self.plate.groupvarname2Kdim(K)
 
         sample = self.plate.sample(
@@ -128,3 +134,8 @@ class BoundPlate(nn.Module):
         )
 
         return sample, groupvarname2Kdim
+
+    def sample(self, all_platesizes:dict[str, int]):
+        """
+        sfd
+        """

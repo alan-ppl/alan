@@ -59,7 +59,7 @@ class Problem(nn.Module):
         """
         self.check_device()
 
-        sample, groupvarname2Kdim = self.Q.sample(K, reparam, sampling_type, self.all_platedims)
+        sample, groupvarname2Kdim = self.Q._sample(K, reparam, sampling_type, self.all_platedims)
 
         return Sample(
             problem=self,

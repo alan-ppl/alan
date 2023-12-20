@@ -5,6 +5,9 @@ To install, navigate to usual directory, and use,
 pip install -e .
 ```
 
+### Minor TODOs:
+  * Have a sensible public `bound_plate.sample`, which returns a flat dict (e.g. for conditioning on samples from the generative).
+
 ### Long-run TODOs:
   * Friendly error messages:
     - For mismatching dimension names / plate names for data / inputs / params.
@@ -25,6 +28,8 @@ pip install -e .
   * `BoundPlate`
     - created using `BoundPlate(plate)`
     - binds `Plate`, defining P or Q, to parameters or inputs.
+    - user-facing methods include:
+      - `bound_plate.sample`
   * `Problem`
     - created using `Problem(P, Q, data, all_platesizes)`
     - `P` and `Q` are `Plate`/`BoundPlate`s (any `Plate`s are converted to `BoundPlate` inside Problem).
