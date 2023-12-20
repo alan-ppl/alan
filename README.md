@@ -74,13 +74,14 @@ See `moments.py`.  The basic idea is that we should have a uniform way of callin
 
 Specifically, each of these methods can be called, with variable name(s) as a string/tuple of strings, and moments as a class:
   - `sample.moments("a", Mean)`
-  - `sample.moments("b", Var)`
+  - `sample.moments("b", (Mean, Var))`
   - `sample.moments(("a", "b"), Cov)`
 
 For multiple moments, we provide a dict, mapping variable name(s) to moment(s).
 ```
 sample.moments({
     "a": Mean,
+    "b": (Mean, Var),
     ("a", "b"): Cov
 })
 ```
