@@ -1,6 +1,7 @@
 import types
 from typing import Optional
 import inspect
+import warnings
 
 import torch
 
@@ -87,6 +88,10 @@ class Dist():
         resampled_scope = sampling_type.resample_scope(filtered_scope, active_platedims, Kdim)
 
         sample = self.tdd(resampled_scope).sample(reparam, sample_dims, self.sample_shape)
+
+        if sample.device != device:
+            warnings.warn(f"{name} is sampled on {sample.device}, while it should be sampled on {device}.  This is correct (we do the conversion internally), but may result in a slower running program")
+            sample = sample.to(device)
 
         return sample
     
