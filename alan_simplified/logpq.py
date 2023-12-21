@@ -25,6 +25,48 @@ def logPQ_plate(
         sampling_type:SamplingType,
         split:Optional[Split]):
 
+    #Returns a tuple of dicts, with split samples, inputs_params, extra_log_factors, data and all_platedims.
+    siedas = split.split_args(
+        name=name, 
+        sample=sample, 
+        inputs_params=inputs_params, 
+        extra_log_factors=extra_log_factors, 
+        data=data,
+        all_platedims=all_platedims,
+    )
+
+    lps = []
+    for sieda in siedas:
+        lps.append(_logPQ_plate(
+            name=name,
+            P=P,
+            Q=Q,
+            scope=scope,
+            active_platedims=active_platedims,
+            groupvarname2Kdim=groupvarname2Kdim,
+            sampling_type=sampling_type,
+            split=split,
+            **sieda
+        ))
+
+    return sum(lps)
+
+
+def _logPQ_plate(
+        name:Optional[str],
+        P:Plate, 
+        Q:Plate, 
+        sample: dict, 
+        inputs_params: dict,
+        data: dict,
+        extra_log_factors: dict, 
+        scope: dict[str, Tensor], 
+        active_platedims:list[Dim],
+        all_platedims:dict[str: Dim],
+        groupvarname2Kdim:dict[str, Tensor],
+        sampling_type:SamplingType,
+        split:Optional[Split]):
+
     assert isinstance(P, Plate)
     assert isinstance(Q, Plate)
 

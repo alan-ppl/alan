@@ -15,6 +15,7 @@ from .sample_logpq import logPQ_sample
 from .BoundPlate import BoundPlate
 from .Marginals import Marginals
 from .ImportanceSample import ImportanceSample
+from .Split import Split, nosplit
 
 
 class Sample():
@@ -46,7 +47,7 @@ class Sample():
     def all_platedims(self):
         return self.problem.all_platedims
 
-    def elbo(self, extra_log_factors=None, split=None):
+    def elbo(self, extra_log_factors=None, split=nosplit):
 
         if extra_log_factors is None:
             extra_log_factors = empty_tree(self.P.plate)
@@ -108,7 +109,7 @@ class Sample():
         indices = {Kdim2groupvarname[k]: v for (k, v) in indices.items()}
         return indices, N_dim
 
-    def importance_sample(self, num_samples:int, split=None):
+    def importance_sample(self, num_samples:int, split=nosplit):
         """
         User-facing method that returns reweighted samples.
         """
