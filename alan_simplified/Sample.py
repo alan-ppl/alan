@@ -171,9 +171,7 @@ class Sample():
             J_tensor_list.append(J_tensor)
             J_torchdim = J_tensor[dims]
             
-            #Names for extra_log_factors must be unique, and not clash with any in the underlying program
-            randstr = ''.join(random.choices(string.ascii_lowercase, k=10))
-            J_torchdim_dict[f"{groupvarnames_frozenset}_marginal_{randstr}"] = J_torchdim
+            J_torchdim_dict[str(groupvarnames_frozenset)] = J_torchdim
 
         J_torchdim_tree = tensordict2tree(self.P.plate, J_torchdim_dict)
 
