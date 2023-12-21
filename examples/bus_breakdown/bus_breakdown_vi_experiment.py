@@ -3,7 +3,7 @@ import torchopt
 from alan_simplified import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, IndependentSample, Data
 import pickle
 import time
-from movielens import load_data_covariates, generate_problem
+from bus_breakdown import load_data_covariates, generate_problem
 
 device = t.device('cuda' if t.cuda.is_available() else 'cpu')
 print(device)
@@ -49,7 +49,7 @@ for num_run in range(num_runs):
                 extended_importance_sample = importance_sample.extend(all_platesizes, False, all_covariates)
                 ll = extended_importance_sample.predictive_ll(all_data)
 
-                if i % 50 == 0:
+                if i % 50 == 0 or True:
                     print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
 
                 elbos[K_idx, lr_idx, i, num_run] = elbo.item()

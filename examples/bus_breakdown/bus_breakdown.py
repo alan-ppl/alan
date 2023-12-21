@@ -1,16 +1,11 @@
 import torch as t
 from alan_simplified import Normal, Binomial, Plate, BoundPlate, Group, Problem, IndependentSample, Data
 
-
-def generate_model(device, run=0):
-    M = 3
-    J = 3
-    I = 30
-
+def load_data_covariates(device, run=0):
+    M, J, I = 3, 3, 30
     platesizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
     all_platesizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':2*I}
 
-    
     data = {'obs':t.load(f'data/delay_train_{run}.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...)}
     test_data = {'obs':t.load(f'data/delay_test_{run}.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...)}
     all_data = {'obs': t.cat([data['obs'],test_data['obs']],-1)}
@@ -21,6 +16,20 @@ def generate_model(device, run=0):
         'bus_company_name': t.load(f'data/bus_company_name_test_{run}.pt').rename('plate_Year', 'plate_Borough', 'plate_ID',...).float()}
     all_covariates = {'run_type': t.cat((covariates['run_type'],test_covariates['run_type']),2),
         'bus_company_name': t.cat([covariates['bus_company_name'],test_covariates['bus_company_name']],2)}
+    
+
+    data['obs'] = data['obs'].to(device)
+    covariates['run_type'] = covariates['run_type'].to(device)
+    covariates['bus_company_name'] = covariates['bus_company_name'].to(device)
+
+    all_data['obs'] = all_data['obs'].to(device)
+    all_covariates['run_type'] = all_covariates['run_type'].to(device)
+    all_covariates['bus_company_name'] = all_covariates['bus_company_name'].to(device)
+
+    return platesizes, all_platesizes, data, all_data, covariates, all_covariates
+
+def generate_problem(device, platesizes, data, covariates):
+    M, J, I = 3, 3, 30
 
     bus_company_name_dim = covariates['bus_company_name'].shape[-1]
     run_type_dim = covariates['run_type'].shape[-1]
@@ -99,13 +108,22 @@ def generate_model(device, run=0):
                                 "alpha_loc":         t.zeros((M,J,), names=('plate_Year','plate_Borough')),
                                 "alpha_scale":       t.ones((M,J,),  names=('plate_Year','plate_Borough'))})
 
+    prob = Problem(P, Q, platesizes, data)
+    prob.to(device)
 
-    return Problem(P, Q, platesizes, data), all_data, all_covariates, all_platesizes
+    return prob
+
+def load_and_generate_problem(device, run=0):
+    platesizes, all_platesizes, data, all_data, covariates, all_covariates = load_data_covariates(device, run)
+    problem = generate_problem(device, platesizes, data, covariates)
+    return problem, all_data, all_covariates, all_platesizes
 
 if __name__ == "__main__":
-    prob, all_data, all_covariates, all_platesizes = generate_model('cpu')
+    device = t.device('cuda' if t.cuda.is_available() else 'cpu')
+    prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device)
 
     sampling_type = IndependentSample
+
     K = 3
     opt = t.optim.Adam(prob.Q.parameters(), lr=0.01)
     for i in range(100):
