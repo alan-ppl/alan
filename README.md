@@ -1,27 +1,30 @@
 # alan_simplified
-
-To install, clone repo, navigate to repo directory, and use,
+To install, clone repo, navigate to repo root directory, and use,
 ```
 pip install -e .
 ```
 
+### Recent updates
+
+* Devices should now work.  Just do `problem.to(device='cuda')`, and everything should work without modification.  (Though I have only extensively test sampling).
+* Split (an argument to e.g. `sample.elbo`)
+* Most of "Overall workflow design" should now be functional
+
 ### Minor TODOs:
   * Marginals make sense for variables on different plates if they're in the same heirarchy.
-  * `importance_sample.dump` should output tensors with the N dimension first.
-  * Implement `sample.moments`
-    - Annoying because of distinction between raw moments (e.g. mean) and combined moments (e.g. variance).
-    - Need to get a dict of the raw moments; compute them; then put them together.
-    - This functionality lives in `moments.py`.
-  * repeats for `sample.importance_sample`
-
+  * `importance_sample.dump` should output tensors with the `N` dimension first.
+  * Implement `sample.moments` for `CompoundMoment`.
+  * `repeats` kwarg for `sample.importance_sample`.
+  * use `PermutationMixtureSample` as the default `SamplingType`.
 
 ### Long-run TODOs:
   * Friendly error messages:
     - For mismatching dimension names / plate names for data / inputs / params.
     - Make sure inputs_params have separate names for P and Q.
   * Natural RWS: Bound plate has two extra arguments:
-    - a dict of moments + scalar moment initializers {"moment_name": (lambda a, b: a*b, 0.)}
-    - a dict telling us how param init + how to convert moments to param {"param_name": lambda mom: mom-3}
+    - should be able to implement it in terms of `sample.moments`
+    - provide a dict to `BoundPlate`, mapping variable name {'a': NaturalRWS(init_mean = 0., init_scale=1.)}
+    - assume (and check) that variables for which we're doing natural RWS are written as `a = Normal('a_mean', 'a_scale')` (i.e. the parameters are specified as strings).
   * Enumeration:
     - Enumeration is a class in Q (like Data), not P.
   * Timeseries.
@@ -100,9 +103,4 @@ sample.moments({
 })
 ```
 
-### Recent updates
 
-* Devices should now work.  Just do `problem.to(device='cuda')`, and everything should work without modification.  (Though I have only extensively test sampling).
-* User-facing BoundPlate.sample method.
-* Marginal + ImportanceSample classes.
-* Split (an argument to e.g. `sample.elbo`)
