@@ -84,24 +84,25 @@ class Sample():
 
         N_dim = Dim('N', num_samples)
         
-        indices = logPQ_sample(
-            name=None,
-            P=self.P.plate, 
-            Q=self.Q.plate, 
-            sample=self.sample,
-            inputs_params=self.problem.inputs_params(),
-            data=self.problem.data,
-            extra_log_factors=extra_log_factors,
-            scope={}, 
-            active_platedims=[],
-            all_platedims=self.all_platedims,
-            groupvarname2Kdim=self.groupvarname2Kdim,
-            sampling_type=self.sampling_type,
-            split=split,
-            indices={},
-            num_samples=num_samples,
-            N_dim=N_dim,
-        )
+        with t.no_grad():
+            indices = logPQ_sample(
+                name=None,
+                P=self.P.plate, 
+                Q=self.Q.plate, 
+                sample=self.sample,
+                inputs_params=self.problem.inputs_params(),
+                data=self.problem.data,
+                extra_log_factors=extra_log_factors,
+                scope={}, 
+                active_platedims=[],
+                all_platedims=self.all_platedims,
+                groupvarname2Kdim=self.groupvarname2Kdim,
+                sampling_type=self.sampling_type,
+                split=split,
+                indices={},
+                num_samples=num_samples,
+                N_dim=N_dim,
+            )
 
         Kdim2groupvarname = {v: k for (k, v) in self.groupvarname2Kdim.items()}
         assert len(Kdim2groupvarname) == len(self.groupvarname2Kdim)
@@ -379,6 +380,6 @@ def index_into_sample(
             groupvarname = varname2groupvarname[name]
             Kdim = groupvarname2Kdim[groupvarname]
 
-            result[name] = value.order(Kdim)[indices[groupvarname]]
+            result[name] = value.detach().order(Kdim)[indices[groupvarname]]
 
     return result
