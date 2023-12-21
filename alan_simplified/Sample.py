@@ -1,3 +1,6 @@
+import random 
+import string
+
 from typing import Optional, Union, List
 
 from torch.autograd import grad
@@ -116,34 +119,57 @@ class Sample():
 
         return dim2named_dict(flatten_dict(self.index_in(post_idxs, N_dim)))
 
-    def _marginal_idxs(self):
+    def _marginal_idxs(self, *joints):
         """
         Internal method that returns a flat dict of marginals over K-indices.
-
-        TODO: take a list of tuples of groupvarnames to compute the joint marginals over.
         """
+
+        for joint in joints:
+            if not isinstance(joint, tuple):
+                raise Exception("Arguments to marginals must be a tuple of groupvarnames, representing joint marginal to evaluate")
+
+            if 2 <= len(joints):
+                raise Exception("Arguments to marginals must be a tuple of groupvarnames of length 2 or above (as we're doing all the univariate marginals anyway")
+
+        univariates = tuple(frozenset([varname]) for varname in self.groupvarname2Kdim.keys())
+        joints = tuple(frozenset(joint) for joint in joints)
+
+        joints = univariates + joints
+
         #List of named Js to go into torch.autograd.grad
         J_tensor_list = []
         #Flat dict of torchdim tensors to go into elbo as extra_log_factors
         J_torchdim_dict = {}
         #dimension names
         dimss = []
-        groupvarnames = []
 
         groupvarname2active_platedimnames = self.problem.P.groupvarname2active_platedimnames()
 
-        for groupvarname, Kdim in self.groupvarname2Kdim.items():
-            active_platedimnames = groupvarname2active_platedimnames[groupvarname]
-            active_platedims = [self.all_platedims[dimname] for dimname in active_platedimnames]
+        for groupvarnames_frozenset in joints:
+            #Convert frozenset groupvarnames to tuple.
+            groupvarnames = tuple(groupvarnames_frozenset)
 
-            dims = [Kdim, *active_platedims]
+            #Check that all variables are part of the same plate.
+            active_platedimnames = groupvarname2active_platedimnames[groupvarnames[0]]
+            set_active_platedimnames = set(active_platedimnames)
+            for groupvarname in groupvarnames[:1]:
+                if set_active_platedimnames != set(groupvarname2active_platedimnames[groupvarname]):
+                    raise Exception("Trying to compute marginal for variables at different plates; not sure this makes sense")
+
+            active_platedims = [self.all_platedims[dimname] for dimname in active_platedimnames]
+            
+            Kdims = [self.groupvarname2Kdim[groupvarname] for groupvarname in groupvarnames]
+
+            dims = [*Kdims, *active_platedims]
             dimss.append(dims)
             shape = [dim.size for dim in dims]
 
             J_tensor = t.zeros(*shape, device=self.device, requires_grad=True)
             J_tensor_list.append(J_tensor)
             J_torchdim = J_tensor[dims]
-            J_torchdim_dict[f"{groupvarname}_marginal"] = J_torchdim
+            
+            randstr = ''.join(random.choices(string.ascii_lowercase, k=10))
+            J_torchdim_dict[f"{groupvarnames_frozenset}_marginal_{randstr}"] = J_torchdim
 
         J_torchdim_tree = tensordict2tree(self.P.plate, J_torchdim_dict)
 
@@ -153,19 +179,19 @@ class Sample():
         marginals_list = grad(L, J_tensor_list)
 
         result = {}
-        for groupvarname, dims, marginals in zip(self.groupvarname2Kdim.keys(), dimss, marginals_list):
-            result[frozenset([groupvarname])] = marginals[dims]
+        for gvn, dims, marginals in zip(joints, dimss, marginals_list):
+            result[gvn] = marginals[dims]
 
         return result
 
-    def marginals(self):
+    def marginals(self, *joints):
         """
         User-facing method that returns a marginals object
         """
         #marginal_idxs has keys which are tuples of groupvarnames.
         #needs to be converted to just tuples of varnames.
 
-        marginals = self._marginal_idxs()
+        marginals = self._marginal_idxs(*joints)
         samples = flatten_tree(self.sample)
         samples = {k:v.detach() for (k, v) in samples.items()}
         varname2groupvarname = self.P.varname2groupvarname()
