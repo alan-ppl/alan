@@ -5,6 +5,9 @@ To install, navigate to usual directory, and use,
 pip install -e .
 ```
 
+### Minor TODOs:
+  * Think about multivariate marginals.
+
 ### Long-run TODOs:
   * Friendly error messages:
     - For mismatching dimension names / plate names for data / inputs / params.
