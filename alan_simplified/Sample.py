@@ -167,8 +167,9 @@ class Sample():
 
         marginals = self._marginal_idxs()
         samples = flatten_tree(self.sample)
+        samples = {k:v.detach() for (k, v) in samples.items()}
         varname2groupvarname = self.P.varname2groupvarname()
-        return Marginals(marginals, samples, self.all_platedims, varname2groupvarname)
+        return Marginals(samples, marginals, self.all_platedims, varname2groupvarname)
 
 
 

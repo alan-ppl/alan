@@ -8,18 +8,23 @@ class RawMoment(Moment):
     """
     Must be overwritten with self.f as a static method.
     """
-    @staticmethod
-    def from_sample(samples:tuple[Tensor], Ndim:Dim):
-        return t.mean(self.f(*samples), Ndim)
+    @classmethod
+    def from_sample(cls, samples:tuple[Tensor], Ndim:Dim):
+        return cls.f(*samples).mean(Ndim)
 
-    @staticmethod
-    def from_marginals(samples:tuple[Tensor], weights:Tensor, all_platedims:dict[str, Dim]):
+    @classmethod
+    def from_marginals(cls, samples:tuple[Tensor], weights:Tensor, all_platedims:dict[str, Dim]):
+        assert isinstance(samples, tuple)
+        assert isinstance(weights, Tensor)
+
         set_all_platedims = set(all_platedims.values())
-        f = self.f(*sample)
+        f = cls.f(*samples)
         f_Kdims = set(generic_dims(f)).difference(set_all_platedims)
         w_Kdims = set(generic_dims(weights)).difference(set_all_platedims)
         assert f_Kdims.issubset(w_Kdims)
-        return t.sum(self.f(*sample) * weights, w_Kdims)
+        tuple_w_Kdims = tuple(w_Kdims)
+        assert 0 < len(tuple_w_Kdims)
+        return (f * weights).sum(tuple_w_Kdims)
 
     @classmethod
     def all_raw_moments(cls):
@@ -65,7 +70,7 @@ class Var(CompoundMoment):
     def combiner(mean, mean2):
         return mean2 - mean**2
 
-def uniformise_moment_args(*args):
+def uniformise_moment_args(args):
     """
     moment can be called in a bunch of different ways.  For a single variable/set of variables:
     * `sample.moments("a", Mean)`
@@ -81,6 +86,8 @@ def uniformise_moment_args(*args):
 
     This function converts all these argument formats into a uniform dictionary, mapping tuples of input variables to tuples of moments.
     """
+    assert isinstance(args, tuple)
+
     mom_args_exception = Exception(".moment must be called as ...")
 
     #Converts everthing to a dict.
@@ -96,7 +103,7 @@ def uniformise_moment_args(*args):
     for k, v in args.items():
         if not isinstance(k, (tuple, str)):
             raise mom_args_exception
-        if not isinstance(v, (tuple, Moment)):
+        if not (isinstance(v, tuple) or issubclass(v, Moment)):
             raise mom_args_exception
 
         if not isinstance(k, tuple):
@@ -107,3 +114,16 @@ def uniformise_moment_args(*args):
         uniform_arg_dict[k] = v
 
     return uniform_arg_dict
+
+
+def postproc_moment_outputs(result, raw_moms):
+    #If we weren't given a dict, we should just return a value, _not_ a dict.
+    if 2==len(raw_moms):
+        result = next(iter(result.values()))
+        assert isinstance(result, tuple)
+
+        #If we weren't given a tuple of moments, just a single moment, we should return a single tensor
+        if not isinstance(raw_moms[1], tuple):
+            assert len(result) == 1
+            result = result[0]
+    return result

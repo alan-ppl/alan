@@ -1,5 +1,5 @@
 from .utils import *
-from .moments import uniformise_moment_args
+from .moments import uniformise_moment_args, postproc_moment_outputs
 
 class Marginals:
     def __init__(
@@ -23,8 +23,8 @@ class Marginals:
         self.all_platedims = all_platedims
         self.varname2groupvarname = varname2groupvarname
 
-    def moments(self, *moms):
-        moms = uniformise_moment_args(moms)
+    def moments(self, *raw_moms):
+        moms = uniformise_moment_args(raw_moms)
 
         for varnames in moms.keys():
             assert isinstance(varnames, tuple)
@@ -32,8 +32,8 @@ class Marginals:
             assert isinstance(varnames[0], str)
 
         result = {}
-        for varnames, moment_specs in moms:
-            samples = [self.samples[varname] for varname in varnames]
+        for varnames, moment_specs in moms.items():
+            samples = tuple(self.samples[varname] for varname in varnames)
             groupvarnames = frozenset([self.varname2groupvarname[varname] for varname in varnames])
 
             weights = self.weights[groupvarnames]
@@ -41,6 +41,6 @@ class Marginals:
             moments = [] 
             for moment_spec in moment_specs:
                 moments.append(moment_spec.from_marginals(samples, weights, self.all_platedims))
-            result[argnames] = moments
+            result[varnames] = tuple(moments)
 
-        return result
+        return postproc_moment_outputs(result, raw_moms)

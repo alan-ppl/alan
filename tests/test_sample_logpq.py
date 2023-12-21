@@ -2,7 +2,7 @@ import torch as t
 import torch.distributions as td
 from functorch.dim import Dim
 
-from alan_simplified import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, IndependentSample, Data
+from alan_simplified import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, IndependentSample, Data, Mean, Var
 
 t.manual_seed(0)
 
