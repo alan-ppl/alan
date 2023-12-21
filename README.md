@@ -8,7 +8,6 @@ pip install -e .
 ### Minor TODOs:
   * Marginals make sense for variables on different plates if they're in the same heirarchy.
   * `importance_sample.dump` should output tensors with the N dimension first.
-  * `index_in` should be a function in utils?
 
 ### Long-run TODOs:
   * Friendly error messages:
@@ -95,5 +94,6 @@ sample.moments({
 
 ### Recent updates
 
-*Devices should now work.  Just do `problem.to(device='cuda')`, and everything should work without modification.  (Though I have only extensively test sampling).
-*User-facing BoundPlate.sample method.
+* Devices should now work.  Just do `problem.to(device='cuda')`, and everything should work without modification.  (Though I have only extensively test sampling).
+* User-facing BoundPlate.sample method.
+* Marginal + ImportanceSample classes.
