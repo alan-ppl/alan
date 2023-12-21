@@ -95,5 +95,6 @@ sample.moments({
 
 ### Recent updates
 
-*Devices should now work.  Just do `problem.to(device='cuda')`, and everything should work without modification.  (Though I have only extensively test sampling).
-*User-facing BoundPlate.sample method.
+* Devices should now work.  Just do `problem.to(device='cuda')`, and everything should work without modification.  (Though I have only extensively test sampling).
+* User-facing BoundPlate.sample method.
+* Marginal + ImportanceSample classes.
