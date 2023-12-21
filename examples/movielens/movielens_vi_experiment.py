@@ -91,7 +91,10 @@ for num_run in range(num_runs):
                 sample = prob.sample(K, True, sampling_type)
                 elbo = sample.elbo()
 
-                ll = sample.predictive_ll(all_platesizes, True, all_data, 10, all_covariates)
+                importance_sample = sample.importance_sample(num_samples=10)
+                extended_importance_sample = importance_sample.extend(all_platesizes, False, all_covariates)
+                ll = extended_importance_sample.predictive_ll(all_data)
+
                 if i % 50 == 0:
                     print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
 

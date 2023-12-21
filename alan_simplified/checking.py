@@ -79,7 +79,7 @@ def check_PQ_plate(platename: Optional[str], P: Plate, Q: Plate, data: dict):
     data_names      = tree_values(data).keys()
     mismatch_names(
         data_names_in_Q, data_names,
-        prefix=f"There is a mismatch in the names for data in Q and in the provided data in plate {platename}, with.",
+        prefix=f"There is a mismatch in the names for data in Q and in the provided data in plate {platename}, with",
         AnotB_msg=f"present in Q but not in data",
         BnotA_msg=f"present in data but not in Q",
     )

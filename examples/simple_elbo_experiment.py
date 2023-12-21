@@ -3,8 +3,8 @@ from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, Independe
 
 device = t.device('cuda' if t.cuda.is_available() else 'cpu')
 
-num_runs = 5#00
-Ks = [1,10]#,100]
+num_runs = 100
+Ks = [1,10,100]
 
 platesizes = {'p1': 3, 'p2': 4}
 

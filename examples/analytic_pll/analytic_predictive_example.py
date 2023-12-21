@@ -22,17 +22,17 @@ true_pred_lik = pred_dist.log_prob(t.tensor([3.0])).sum()
 
 sampling_type = IndependentSample
 
-P_simple = Plate(mu = Normal(0, 1), 
+P = Plate(mu = Normal(0, 1), 
                         p1 = Plate(obs = Normal("mu", 1)))
         
-Q_simple = Plate(mu = Normal("mu_mean", 1),
+Q = Plate(mu = Normal("mu_mean", 1),
                  p1 = Plate(obs = Data()))
 
-P_simple = BoundPlate(P_simple)
-Q_simple = BoundPlate(Q_simple, params={'mu_mean': t.zeros(())})
-platesizes_simple = {'p1': 3}
-data_simple = {'obs': data.refine_names('p1')}
-prob_simple = Problem(P_simple, Q_simple, platesizes_simple, data_simple)
+P = BoundPlate(P)
+Q = BoundPlate(Q, params={'mu_mean': t.zeros(())})
+platesizes = {'p1': 3}
+data = {'obs': data.refine_names('p1')}
+prob = Problem(P, Q, platesizes, data)
 
 Ks = [1,3,10,30,100,300]
 Ns = [1,10,100,1000,10000,100000,1000000,10000000]
@@ -43,9 +43,10 @@ results = t.zeros((len(Ks), len(Ns), num_runs))
 for i, K in enumerate(Ks):
     for j, num_samples in enumerate(Ns):
         for k in range(num_runs):
-            sample_simple = prob_simple.sample(K, True, sampling_type)
-
-            ll = sample_simple.predictive_ll(extended_platesizes, True, extended_data, 10, {})
+            sample = prob.sample(K, True, sampling_type)
+            importance_sample = sample.importance_sample(num_samples)
+            predictive_samples = importance_sample.extend(extended_platesizes, True, None)
+            ll = predictive_samples.predictive_ll(extended_data)
 
             print(f"K={K}, N={num_samples}, run {k}: {ll['obs']}")
             results[i,j,k] = ll['obs']
@@ -65,5 +66,5 @@ plt.ylabel('Predictive log likelihood')
 plt.xscale('log')
 plt.title('Simple model predictive log likelihood')
 
-plt.savefig('examples/analytic_pll/pred_ll_quick_test.png')
-plt.show()
+plt.savefig('pred_ll_quick_test.png')
+# plt.show()

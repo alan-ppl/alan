@@ -67,8 +67,10 @@ for i in range(100):
     sample = prob.sample(K, True, sampling_type)
     elbo = sample.elbo()
 
+    importance_sample = sample.importance_sample(num_samples=10)
+    extended_importance_sample = importance_sample.extend(all_platesizes, False, extended_inputs=all_covariates)
+    ll = extended_importance_sample.predictive_ll(all_data)
+    print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
+
     (-elbo).backward()
     opt.step()
-
-    ll = sample.predictive_ll(all_platesizes=all_platesizes, reparam=True, all_data=all_data, all_inputs=all_covariates)
-    print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")

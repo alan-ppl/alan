@@ -43,20 +43,19 @@ prob = Problem(P, Q, platesizes, data)
 sampling_type = IndependentSample
 sample = prob.sample(5, True, sampling_type)
 
-# Obtain K indices from posterior
-# post_idxs = sample.sample_posterior(num_samples=10)
+# Get importance samples (with N dims)
+importance_sample = sample.importance_sample(num_samples=10)
 
-
-# Sample some fake test data 
-# (technically we should ensure that test_data includes the original data)
+# Get predictive (extended) samples (with N dims)
 extended_platesizes = {'p1': 5, 'p2': 6}
+predictive_samples = importance_sample.extend(extended_platesizes, True, None)
+print(predictive_samples.dump())
+
+# Sample fake extended data (really the first (3,4) of this should be the same as the original data)
 test_data = {'e': t.randn(5, 6, names=('p1', 'p2'))}
 
-# Compute predictive samples and predictive log likelihood
-predictive_samples = sample.predictive_sample(extended_platesizes, True, num_samples=10)
-print(predictive_samples)
-
-pll = sample.predictive_ll(extended_platesizes, True, test_data, num_samples=10)
+# Get predictive log likelihood of the extended data
+pll = predictive_samples.predictive_ll(test_data)
 print(pll)
 
 # breakpoint()
