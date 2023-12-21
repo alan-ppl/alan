@@ -9,6 +9,7 @@ pip install -e .
   * Marginals make sense for variables on different plates if they're in the same heirarchy.
   * `importance_sample.dump` should output tensors with the N dimension first.
   * Implement `sample.moments`
+  * Make sure there are no gradients when sampling indicies.  Probably easiest to use t.no_grad() (as gradients will propagate from parameters to log-probs whatever we do).
 
 ### Long-run TODOs:
   * Friendly error messages:
