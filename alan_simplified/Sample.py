@@ -24,13 +24,11 @@ class Sample():
             sample: dict,
             groupvarname2Kdim: dict[str, Dim],
             sampling_type: SamplingType,
-            split:Split
         ):
         self.problem = problem
         self.sample = sample
         self.groupvarname2Kdim = groupvarname2Kdim
         self.sampling_type = sampling_type
-        self.split = split
 
     @property
     def device(self):
@@ -48,7 +46,7 @@ class Sample():
     def all_platedims(self):
         return self.problem.all_platedims
 
-    def elbo(self, extra_log_factors=None):
+    def elbo(self, extra_log_factors=None, split=None):
 
         if extra_log_factors is None:
             extra_log_factors = empty_tree(self.P.plate)
@@ -69,11 +67,11 @@ class Sample():
             all_platedims=self.all_platedims,
             groupvarname2Kdim=self.groupvarname2Kdim,
             sampling_type=self.sampling_type,
-            split=self.split)
+            split=split)
 
         return lp
     
-    def _importance_sample_idxs(self, num_samples:int):
+    def _importance_sample_idxs(self, num_samples:int, split):
         """
         User-facing method that returns reweighted samples.
         """
@@ -98,7 +96,7 @@ class Sample():
             all_platedims=self.all_platedims,
             groupvarname2Kdim=self.groupvarname2Kdim,
             sampling_type=self.sampling_type,
-            split=self.split,
+            split=split,
             indices={},
             num_samples=num_samples,
             N_dim=N_dim,
@@ -110,17 +108,17 @@ class Sample():
         indices = {Kdim2groupvarname[k]: v for (k, v) in indices.items()}
         return indices, N_dim
 
-    def importance_sample(self, num_samples:int):
+    def importance_sample(self, num_samples:int, split=None):
         """
         User-facing method that returns reweighted samples.
         """
-        indices, N_dim = self._importance_sample_idxs(num_samples)
+        indices, N_dim = self._importance_sample_idxs(num_samples=num_samples, split=split)
 
         samples = index_into_sample(self.sample, indices, self.groupvarname2Kdim, self.P.varname2groupvarname())
 
         return ImportanceSample(self.problem, samples, N_dim)
 
-    def _marginal_idxs(self, *joints):
+    def _marginal_idxs(self, *joints, split=None):
         """
         Internal method that returns a flat dict mapping frozenset describing the K-dimensions in the marginal to a Tensor.
         """
@@ -190,7 +188,7 @@ class Sample():
 
         return result
 
-    def marginals(self, *joints):
+    def marginals(self, *joints, split=None):
         """
         User-facing method that returns a marginals object
         Computes all univariate marginals + any multivariate marginals specified in the arguments.
@@ -199,7 +197,7 @@ class Sample():
 
         Note that these are groupvarnames, not varnames.
         """
-        marginals = self._marginal_idxs(*joints)
+        marginals = self._marginal_idxs(*joints, split=split)
         samples = flatten_tree(self.sample)
         samples = {k:v.detach() for (k, v) in samples.items()}
         return Marginals(samples, marginals, self.all_platedims, self.P.varname2groupvarname())

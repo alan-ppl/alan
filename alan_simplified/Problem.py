@@ -66,7 +66,6 @@ class Problem(nn.Module):
             sample=sample,
             groupvarname2Kdim=groupvarname2Kdim,
             sampling_type=sampling_type,
-            split=None,
         )
 
     def inputs_params(self):
