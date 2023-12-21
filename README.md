@@ -1,6 +1,6 @@
 # alan_simplified
 
-To install, navigate to usual directory, and use,
+To install, clone repo, navigate to repo directory, and use,
 ```
 pip install -e .
 ```
@@ -9,13 +9,16 @@ pip install -e .
   * Marginals make sense for variables on different plates if they're in the same heirarchy.
   * `importance_sample.dump` should output tensors with the N dimension first.
   * Implement `sample.moments`
-  * Make sure there are no gradients when sampling indicies.  Probably easiest to use t.no_grad() (as gradients will propagate from parameters to log-probs whatever we do).
+    - Annoying because of distinction between raw moments (e.g. mean) and combined moments (e.g. variance).
+    - Need to get a dict of the raw moments; compute them; then put them together.
+    - This functionality lives in `moments.py`.
+  * repeats for `sample.importance_sample`
+
 
 ### Long-run TODOs:
   * Friendly error messages:
     - For mismatching dimension names / plate names for data / inputs / params.
     - Make sure inputs_params have separate names for P and Q.
-  * Split for efficient computation.
   * Natural RWS: Bound plate has two extra arguments:
     - a dict of moments + scalar moment initializers {"moment_name": (lambda a, b: a*b, 0.)}
     - a dict telling us how param init + how to convert moments to param {"param_name": lambda mom: mom-3}
@@ -23,6 +26,9 @@ pip install -e .
     - Enumeration is a class in Q (like Data), not P.
   * Timeseries.
   * A better name for BoundPlate.
+  * A `Samples` class that aggregates over multiple `Sample` in a memory efficient way.
+    - Acts like it contains a list of e.g. 10 `Sample`s, but doesn't actually.
+    - Instead, it generates the `Sample`s as necessary by using frozen random seed.
 
 ### Overall workflow design, in terms of user-accessible classes:
   * `Plate` 
@@ -99,3 +105,4 @@ sample.moments({
 * Devices should now work.  Just do `problem.to(device='cuda')`, and everything should work without modification.  (Though I have only extensively test sampling).
 * User-facing BoundPlate.sample method.
 * Marginal + ImportanceSample classes.
+* Split (an argument to e.g. `sample.elbo`)

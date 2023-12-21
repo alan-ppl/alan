@@ -16,6 +16,7 @@ from .BoundPlate import BoundPlate
 from .Marginals import Marginals
 from .ImportanceSample import ImportanceSample
 from .Split import Split, nosplit
+from .moments import uniformise_moment_args, postproc_moment_outputs, RawMoment
 
 
 class Sample():
@@ -202,56 +203,63 @@ class Sample():
         samples = {k:v.detach() for (k, v) in samples.items()}
         return Marginals(samples, marginals, self.all_platedims, self.P.varname2groupvarname())
 
+    def moments(self, *raw_moms):
+        moms = uniformise_moment_args(raw_moms)
 
-    def moments(self, latent_to_moment: dict[Dim, List]):
-        """latent_to_moment should be a dict mapping from latent varname to a list of functions that takes a sample and returns a moment"""
-        
-        #List of named Js to go into torch.autograd.grad
-        Js_named_list = []
-        #Flat dict of torchdim tensors to go into elbo as extra_log_factors
-        Js_torchdim_dict = {}
-        #dimension names
-        dimnamess = []
-        
+        for ms in moms.values():
+            for m in ms:
+                if not issubclass(m, RawMoment):
+                    raise Exception("Moments in sample must be `RawMoment`s (i.e. you must be able to compute them as E[f(x)])")
+
         flat_sample = flatten_dict(self.sample)
-        
-        for (varname, sample) in flat_sample.items():
-            if varname not in latent_to_moment:
-                continue
-            
-            active_platedims = [self.all_platedims[str(name)] for name in sample.dims if str(name) in self.all_platedims]
-            dims = [*active_platedims]
-            
-            ms = [f(sample) for f in latent_to_moment[varname]]
 
-            shape = [dim.size for dim in dims]
-            for m,f in zip(ms,latent_to_moment[varname]):
-                dimnames = [*[str(dim) for dim in active_platedims], Ellipsis]
-                dimnamess.append(dimnames)
-                J_named = t.zeros(shape, requires_grad=True)
-                Js_named_list.append(J_named)
-                dimss = [*dims, Ellipsis]
+        #List of named Js to go into torch.autograd.grad
+        J_tensor_list = []
+        #Flat dict of torchdim tensors to go into elbo as extra_log_factors
+        J_torchdim_dict = {}
+        #dimension names
+        dimss = []
 
-                J_torchdim = J_named.rename(None)[dimss]
+        for varnames, ms in moms.items():
+            samples = [flat_sample[varname] for varname in varnames]
 
+            #Check that the variables are heirachically nested within plates.
+            platedimss = [set(generic_dims(sample)).intersection(self.all_platedims) for sample in samples]
+            longest_platedims = sorted(platedimss, key=len)[-1]
+            for platedims in platedimss:
+                assert set(platedims).issubset(longest_platedims)
 
-                #Moments need different names from variables.
-                #This is really a problem in how we're representing trees...
-                Js_torchdim_dict[f"{varname}_{f.__name__}"] = m*J_torchdim 
+            for m in ms:
+                f = m.f(*samples)
+                assert set(generic_dims(f)).intersection(self.all_platedims) == set(longest_platedims)
+
+                dims = tuple(longest_platedims)
+                dim_sizes = [dim.size for dim in dims]
+                sizes = [*dim_sizes, *f.shape]
+
+                J_tensor = t.zeros(sizes, requires_grad=True)
+                J_tensor_list.append(J_tensor)
+                J_torchdim = f*generic_getitem(J_tensor, dims)
                 
-        Js_torchdim_tree = tensordict2tree(self.P.plate, Js_torchdim_dict)
+                J_torchdim_dict[(varnames, m)] = J_torchdim
+
+        J_torchdim_tree = tensordict2tree(self.P.plate, J_torchdim_dict)
+
         #Compute loss
-        L = self.elbo(extra_log_factors=Js_torchdim_tree)
+        L = self.elbo(extra_log_factors=J_torchdim_tree)
         #marginals as a list
-        moments_list = grad(L, Js_named_list)
+        moments_list = grad(L, J_tensor_list)
 
+        result = {}
+        i = 0
+        for varnames, ms in moms.items():
+            result[varnames] = []
+            for m in ms:
+                result[varnames].append(moments_list[i])
+                i = i + 1
+            result[varnames] = tuple(result[varnames])
 
-        #moments as a flat dict
-        moments_dict = {}
-        for varname, moment, dimnames in zip(Js_torchdim_dict.keys(), moments_list, dimnamess):
-            moments_dict[varname] = moment.refine_names(*dimnames)
-
-        return moments_dict
+        return postproc_moment_outputs(result, raw_moms)
         
         
     def clone_sample(self, sample: dict):

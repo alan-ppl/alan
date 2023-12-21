@@ -62,6 +62,7 @@ reserved_names = [
     "inputs", 
     "params", 
     "inputs_params_named",
+    "N",
 ]
 reserved_prefixes = [
     "K_",

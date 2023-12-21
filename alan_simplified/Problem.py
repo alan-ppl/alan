@@ -15,17 +15,11 @@ PBP = Union[Plate, BoundPlate]
 
 
 class Problem(nn.Module):
-    def __init__(self, P:PBP, Q:PBP, all_platesizes: dict[str, int], data: dict[str, t.Tensor]):
+    def __init__(self, P:BoundPlate, Q:BoundPlate, all_platesizes: dict[str, int], data: dict[str, t.Tensor]):
         super().__init__()
 
-        #Convert any P+Q Plate to BoundPlate
-        if isinstance(P, Plate):
-            P = BoundPlate(P)
-        if isinstance(Q, Plate):
-            Q = BoundPlate(Q)
-
-        assert isinstance(P, BoundPlate)
-        assert isinstance(Q, BoundPlate)
+        if (not isinstance(P, BoundPlate)) or (not isinstance(Q, BoundPlate)):
+            raise Exception("P and Q must be `BoundPlate`s, not e.g. `Plate`s.  You can convert just using `bound_plate_P = BoundPlate(plate_P)` if it doesn't have any inputs or parameters")
 
         #A tensor that e.g. moves to GPU when we call `problem.to(device='cuda')`.
         self.register_buffer("_device_tensor", t.zeros(()))

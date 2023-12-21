@@ -92,6 +92,7 @@ def uniformise_moment_args(args):
 
     #Converts everthing to a dict.
     if   1 == len(args):
+        args = args[0]
         if not isinstance(args, dict):
             raise mom_args_exception
     elif 2 == len(args):
