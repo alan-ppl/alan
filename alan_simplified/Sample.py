@@ -73,7 +73,7 @@ class Sample():
 
         return lp
     
-    def _importance_sample_idxs(self, num_samples=1):
+    def _importance_sample_idxs(self, num_samples:int):
         """
         User-facing method that returns reweighted samples.
         """
@@ -104,14 +104,19 @@ class Sample():
             N_dim=N_dim,
         )
 
+        Kdim2groupvarname = {v: k for (k, v) in self.groupvarname2Kdim.items()}
+        assert len(Kdim2groupvarname) == len(self.groupvarname2Kdim)
+
+        indices = {Kdim2groupvarname[k]: v for (k, v) in indices.items()}
         return indices, N_dim
 
     def importance_sample(self, num_samples:int):
         """
         User-facing method that returns reweighted samples.
         """
-        post_idxs, N_dim = self._importance_sample_idxs(num_samples)
-        samples = self.index_in(post_idxs, N_dim)
+        indices, N_dim = self._importance_sample_idxs(num_samples)
+
+        samples = index_into_sample(self.sample, indices, self.groupvarname2Kdim, self.P.varname2groupvarname())
 
         return ImportanceSample(self.problem, samples, N_dim)
 
@@ -251,13 +256,6 @@ class Sample():
         return moments_dict
         
         
-    def index_in(self, post_idxs: dict[Dim, Tensor], Ndim: Dim):
-        '''Takes a sample (nested dict of tensors with Kdims) and a dictionary of Kdims to indices.
-        Returns a new sample (nested dict of tensors with Ndims instead of Kdims) with the indices
-        applied to the sample.'''
-
-        return index_into_sample(self.sample, post_idxs, Ndim)
-    
     def clone_sample(self, sample: dict):
         '''Takes a sample (nested dict of tensors) and returns a new dict with the same structure
         but with copies of the tensors.'''
@@ -364,7 +362,11 @@ class Sample():
 
         return result
         
-def index_into_sample(sample: dict, indices: dict[Dim, Tensor], Ndim: Dim):
+def index_into_sample(
+        sample: dict, 
+        indices: dict[str, Tensor], 
+        groupvarname2Kdim:dict[str, Dim], 
+        varname2groupvarname:dict[str, str]):
     '''Takes a sample (nested dict of tensors with Kdims) and a dictionary of Kdims to indices.
     Returns a new sample (nested dict of tensors with Ndims instead of Kdims) with the indices
     applied to the sample.'''
@@ -372,20 +374,14 @@ def index_into_sample(sample: dict, indices: dict[Dim, Tensor], Ndim: Dim):
     result = {}
     
     for name, value in sample.items():
+        assert isinstance(value, (dict, Tensor))
+
         if isinstance(value, dict):
-            result[name] = index_into_sample(value, indices, Ndim)
+            result[name] = index_into_sample(value, indices, groupvarname2Kdim, varname2groupvarname)
         elif isinstance(value, Tensor):
-            assert isinstance(value, Tensor)
-            assert Ndim not in set(generic_dims(value))
+            groupvarname = varname2groupvarname[name]
+            Kdim = groupvarname2Kdim[groupvarname]
 
-            temp = value
-
-            for dim in list(set(generic_dims(value)).intersection(set(indices.keys()))):
-                assert Ndim in set(generic_dims(indices[dim]))
-
-                temp = temp.order(dim)[indices[dim]]
-
-
-            result[name] = temp
+            result[name] = value.order(Kdim)[indices[groupvarname]]
 
     return result
