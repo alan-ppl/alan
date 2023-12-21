@@ -119,6 +119,6 @@ for K_idx, K in enumerate(Ks):
         print(f"p_ll: {p_lls[K_idx, lr_idx, 0,:].mean():.3f}")
         print()
 
-breakpoint()
+# breakpoint()
 with open('results/results.pkl', 'wb') as f:
     pickle.dump(to_pickle, f)
