@@ -6,7 +6,7 @@ pip install -e .
 ```
 
 ### Minor TODOs:
-  * Think about multivariate marginals.
+  * Marginals make sense for variables on different plates if they're in the same heirarchy.
 
 ### Long-run TODOs:
   * Friendly error messages:

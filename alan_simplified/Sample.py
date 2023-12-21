@@ -121,15 +121,19 @@ class Sample():
 
     def _marginal_idxs(self, *joints):
         """
-        Internal method that returns a flat dict of marginals over K-indices.
+        Internal method that returns a flat dict mapping frozenset describing the K-dimensions in the marginal to a Tensor.
         """
 
         for joint in joints:
             if not isinstance(joint, tuple):
                 raise Exception("Arguments to marginals must be a tuple of groupvarnames, representing joint marginal to evaluate")
 
-            if 2 <= len(joints):
+            if len(joint) < 2:
                 raise Exception("Arguments to marginals must be a tuple of groupvarnames of length 2 or above (as we're doing all the univariate marginals anyway")
+
+            for groupvarname in joint:
+                if not groupvarname in self.groupvarname2Kdim:
+                    raise Exception("Arguments provided to marginals must be groupvarnames, not varnames.  Specifically, if there's a variable in a Group, you should provide the name of the Group, not the name of the variable")
 
         univariates = tuple(frozenset([varname]) for varname in self.groupvarname2Kdim.keys())
         joints = tuple(frozenset(joint) for joint in joints)
@@ -168,6 +172,7 @@ class Sample():
             J_tensor_list.append(J_tensor)
             J_torchdim = J_tensor[dims]
             
+            #Names for extra_log_factors must be unique, and not clash with any in the underlying program
             randstr = ''.join(random.choices(string.ascii_lowercase, k=10))
             J_torchdim_dict[f"{groupvarnames_frozenset}_marginal_{randstr}"] = J_torchdim
 
@@ -187,15 +192,16 @@ class Sample():
     def marginals(self, *joints):
         """
         User-facing method that returns a marginals object
-        """
-        #marginal_idxs has keys which are tuples of groupvarnames.
-        #needs to be converted to just tuples of varnames.
+        Computes all univariate marginals + any multivariate marginals specified in the arguments.
+        For instance, to compute the multivariate marginals for (a, b) and (b, c), we'd use:
+        sample.marginals(("a", "b"), ("b", "c"))
 
+        Note that these are groupvarnames, not varnames.
+        """
         marginals = self._marginal_idxs(*joints)
         samples = flatten_tree(self.sample)
         samples = {k:v.detach() for (k, v) in samples.items()}
-        varname2groupvarname = self.P.varname2groupvarname()
-        return Marginals(samples, marginals, self.all_platedims, varname2groupvarname)
+        return Marginals(samples, marginals, self.all_platedims, self.P.varname2groupvarname())
 
 
     def moments(self, latent_to_moment: dict[Dim, List]):
