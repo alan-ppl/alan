@@ -379,6 +379,6 @@ def index_into_sample(
             groupvarname = varname2groupvarname[name]
             Kdim = groupvarname2Kdim[groupvarname]
 
-            result[name] = value.order(Kdim)[indices[groupvarname]]
+            result[name] = value.order(Kdim)[indices[groupvarname]].detach()
 
     return result
