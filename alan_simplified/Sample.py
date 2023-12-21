@@ -171,7 +171,7 @@ class Sample():
             J_tensor_list.append(J_tensor)
             J_torchdim = J_tensor[dims]
             
-            J_torchdim_dict[str(groupvarnames_frozenset)] = J_torchdim
+            J_torchdim_dict[groupvarnames_frozenset] = J_torchdim
 
         J_torchdim_tree = tensordict2tree(self.P.plate, J_torchdim_dict)
 
