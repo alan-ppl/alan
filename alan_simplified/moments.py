@@ -9,7 +9,7 @@ class RawMoment(Moment):
     Must be overwritten with self.f as a static method.
     """
     @classmethod
-    def from_sample(cls, samples:tuple[Tensor], Ndim:Dim):
+    def from_samples(cls, samples:tuple[Tensor], Ndim:Dim):
         return cls.f(*samples).mean(Ndim)
 
     @classmethod
@@ -39,8 +39,8 @@ class CompoundMoment(Moment):
     combiner as a function that combines the raw moments
     """
     @classmethod
-    def from_sample(cls, samples:tuple[Tensor], Ndim):
-        moments = [raw_moment.from_sample(samples, Ndim) for raw_moment in cls.raw_moments]
+    def from_samples(cls, samples:tuple[Tensor], Ndim):
+        moments = [raw_moment.from_samples(samples, Ndim) for raw_moment in cls.raw_moments]
         return cls.combiner(*moments)
 
     @classmethod

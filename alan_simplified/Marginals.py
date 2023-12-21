@@ -26,11 +26,6 @@ class Marginals:
     def moments(self, *raw_moms):
         moms = uniformise_moment_args(raw_moms)
 
-        for varnames in moms.keys():
-            assert isinstance(varnames, tuple)
-            assert 1 == len(varnames)
-            assert isinstance(varnames[0], str)
-
         result = {}
         for varnames, moment_specs in moms.items():
             samples = tuple(self.samples[varname] for varname in varnames)

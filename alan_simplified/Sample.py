@@ -14,6 +14,7 @@ from .logpq import logPQ_plate
 from .sample_logpq import logPQ_sample
 from .BoundPlate import BoundPlate
 from .Marginals import Marginals
+from .ImportanceSample import ImportanceSample
 
 
 class Sample():
@@ -72,13 +73,7 @@ class Sample():
 
         return lp
     
-    def resample(self):
-        #map Kdimname -> active_platedims
-        #map Kdimname -> parent Kdimnames (using all_args on the dist)
-        #create a tree mapping
-        pass
-    
-    def importance_sampled_idxs(self, num_samples=1):
+    def _importance_sample_idxs(self, num_samples=1):
         """
         User-facing method that returns reweighted samples.
         """
@@ -111,13 +106,14 @@ class Sample():
 
         return indices, N_dim
 
-    def importance_samples(self, num_samples=1):
+    def importance_sample(self, num_samples:int):
         """
         User-facing method that returns reweighted samples.
         """
-        post_idxs, N_dim = self.importance_sampled_idxs(num_samples)
+        post_idxs, N_dim = self._importance_sample_idxs(num_samples)
+        samples = self.index_in(post_idxs, N_dim)
 
-        return dim2named_dict(flatten_dict(self.index_in(post_idxs, N_dim)))
+        return ImportanceSample(self.problem, samples, N_dim)
 
     def _marginal_idxs(self, *joints):
         """

@@ -7,6 +7,7 @@ pip install -e .
 
 ### Minor TODOs:
   * Marginals make sense for variables on different plates if they're in the same heirarchy.
+  * `importance_sample.dump` should put the N dimension first.
 
 ### Long-run TODOs:
   * Friendly error messages:

@@ -46,8 +46,8 @@ prob = Problem(P, Q, all_platesizes, data)
 sampling_type = IndependentSample
 sample = prob.sample(3, True, sampling_type)
 
+marginals = sample.marginals(("ab", "c"))
+importance_sample = sample.importance_sample(1000)
 
-#K_samples = sample.sample_posterior(num_samples=10)
-K_samples = sample.importance_sampled_idxs(num_samples=10)
-
-print(K_samples)
+print(marginals.moments("a", Mean))
+print(importance_sample.moments("a", Mean))
