@@ -37,7 +37,7 @@ def logPQ_plate(
 
     lps = []
     for sieda in siedas:
-        lps.append(_logPQ_plate(
+        lps.append(_logPQ_plate_checkpointed(
             name=name,
             P=P,
             Q=Q,
@@ -51,6 +51,11 @@ def logPQ_plate(
 
     return sum(lps)
 
+def _logPQ_plate_checkpointed(*args, **kwargs):
+    return t.utils.checkpoint.checkpoint(_logPQ_plate_args_kwargs, args, kwargs, use_reentrant=False)
+
+def _logPQ_plate_args_kwargs(args, kwargs):
+    return _logPQ_plate(*args, **kwargs)
 
 def _logPQ_plate(
         name:Optional[str],
