@@ -8,6 +8,7 @@ pip install -e .
 ### Minor TODOs:
   * Marginals make sense for variables on different plates if they're in the same heirarchy.
   * `importance_sample.dump` should output tensors with the N dimension first.
+  * Implement `sample.moments`
 
 ### Long-run TODOs:
   * Friendly error messages:
