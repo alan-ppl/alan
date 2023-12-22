@@ -4,7 +4,7 @@ from functorch.dim import Dim
 
 from alan_simplified import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, IndependentSample, Data, Mean, Mean2, Var, Split
 
-t.manual_seed(0)
+#t.manual_seed(0)
 
 
 P = Plate(
@@ -41,12 +41,13 @@ all_platesizes = {'p1': 3, 'p2': 4}
 data = {'e': t.randn(3, 4, names=('p1', 'p2'))}
 
 prob = Problem(P, Q, all_platesizes, data)
+prob.to('mps')
 
 sampling_type = IndependentSample
 sample = prob.sample(3, True, sampling_type)
 
 marginals = sample.marginals(("ab", "c"))
-importance_sample = sample.importance_sample(1000)
+importance_sample = sample.importance_sample(100000)
 
 a_mean = ("a", Mean)
 print(sample.moments(*a_mean))

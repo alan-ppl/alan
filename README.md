@@ -9,6 +9,10 @@ pip install -e .
 * Devices should now work.  Just do `problem.to(device='cuda')`, and everything should work without modification.  (Though I have only extensively test sampling).
 * Split (an argument to e.g. `sample.elbo`)
 * Most of "Overall workflow design" should now be functional
+* Three methods for the ELBO/marginal likelihood:
+  - `sample.elbo_vi` (reparam=True) 
+  - `sample.elbo_rws` (reparam=True, but allows gradients for log-probs)
+  - `sample.elbo_nograd` (no gradients at all; useful for memory efficient estimation of marginal likelihood)
 
 ### Minor TODOs:
   * Marginals make sense for variables on different plates if they're in the same heirarchy.
@@ -17,6 +21,7 @@ pip install -e .
   * `repeats` kwarg for `sample.importance_sample`.
   * use `PermutationMixtureSample` as the default `SamplingType`.
   * `ess` method on `Marginals`.
+  * `problem.latent_varnames` useful for testing.
 
 ### Long-run TODOs:
   * Friendly error messages:
