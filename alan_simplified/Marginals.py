@@ -39,3 +39,19 @@ class Marginals:
 
     _moments = torchdim_moments_mixin
     moments = named_moments_mixin
+
+    def ess(self):
+        result = {}
+        set_all_platedims = set(self.all_platedims.values())
+
+        for (varnames, w) in self.weights.items():
+            Kdims = tuple(set(generic_dims(w)).difference(set_all_platedims))
+            assert 1 <= len(Kdims)
+            result[varnames] = 1/((w**2).sum(Kdims))
+        return result
+
+    def min_ess(self):
+        ess_dict = self.ess()
+        min_ess = [ess.min() for ess in ess_dict.values()]
+        return min(min_ess)
+

@@ -23,10 +23,11 @@ all_platesizes = {'T': 10}
 data = {'coin': t.cat([t.zeros(3), t.ones(7)]).refine_names('T')}
 problem = Problem(P, Q, all_platesizes, data)
 
-moments = [(('p',), mean)]
-known_moments = {(('p',), mean): (7+2)/(2+1+10)}
+moments = [('p', mean)]
+known_moments = {('p', mean): (7+2)/(2+1+10)}
 
 tp = TestProblem(problem, moments, known_moments=known_moments, moment_K=10000)
 
 tp.test_moments_sample_marginal(IndependentSample)
 tp.test_moments_importance_sample(IndependentSample)
+tp.test_moments_ground_truth(IndependentSample)

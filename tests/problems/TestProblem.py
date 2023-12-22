@@ -18,7 +18,6 @@ class TestProblem():
         if known_moments is None:
             known_moments = {}
         self.known_moments = known_moments
-
         self.known_elbo = known_elbo
         self.moment_K = moment_K
         self.elbo_K = elbo_K
@@ -76,14 +75,18 @@ class TestProblem():
         The problem is that we can't easily evaluate the ESS.
         The obvious approach is to use the ESS for the marginal of the variable of interest (from `sample.marginals`).
         But that isn't right: the ESS can be reduced because of lack of diversity in other latent variables.
-        Could use minimum of ESS for all latents?
-
-        The other approach is to estimate the moments 10 times, and look at the variance of the overall estimates.
-        Could work ... but we know there are biases in these estimates for small K.
-
+        Here, we use the minimum ESS across all latent variables in the model.
         """
-        for (varnames, m), true_value in self.known_moments.items():
-            est_moment = marginals.moments(varname, m)
-            est_var = marginals.moments(varname, var_from_raw_moment(m))
+        sample = self.problem.sample(K=self.moment_K, reparam=False, sampling_type=sampling_type)
+        marginals = sample.marginals()
+        min_ess = marginals.min_ess()
 
+        for (varnames, m), true_moment in self.known_moments.items():
+            marginal_moment = marginals.moments(varnames, m)
+            est_var = marginals.moments(varnames, var_from_raw_moment(m))
+
+            stderr = (est_var/min_ess).sqrt() 
+            
+            assert marginal_moment < true_moment + self.stderrs * stderr
+            assert true_moment - self.stderrs * stderr < marginal_moment
 
