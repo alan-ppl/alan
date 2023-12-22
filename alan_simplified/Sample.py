@@ -223,7 +223,7 @@ class Sample():
         moms = uniformise_moment_args(raw_moms)
 
         for (varnames, m) in moms:
-            if not issubclass(m, RawMoment):
+            if not isinstance(m, RawMoment):
                 raise Exception("Moments in sample must be `RawMoment`s (i.e. you must be able to compute them as E[f(x)])")
 
         flat_sample = flatten_dict(self.sample)

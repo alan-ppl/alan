@@ -2,7 +2,7 @@ import torch as t
 import torch.distributions as td
 from functorch.dim import Dim
 
-from alan_simplified import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, IndependentSample, Data, Mean, Mean2, Var, Split
+from alan_simplified import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, IndependentSample, Data, mean, mean2, var, Split
 
 t.manual_seed(0)
 
@@ -48,14 +48,14 @@ sample = prob.sample(3, True, sampling_type)
 marginals = sample.marginals(("ab", "c"))
 importance_sample = sample.importance_sample(1000)
 
-a_mean = ("a", Mean)
+a_mean = ("a", mean)
 print(sample.moments(*a_mean))
 print(marginals.moments(*a_mean))
 print(importance_sample.moments(*a_mean))
 
 ab_mean = [
-    ("a", Mean), 
-    ("b", Mean),
+    ("a", mean), 
+    ("b", mean),
 ]
 print(sample.moments(ab_mean))
 print(marginals.moments(ab_mean))

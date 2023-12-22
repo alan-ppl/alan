@@ -5,5 +5,5 @@ from .BoundPlate import BoundPlate
 from .Problem import Problem
 from .Group import Group
 from .Data import Data
-from .moments import Mean, Mean2, Var
+from .moments import mean, mean2, var
 from .Split import Split
