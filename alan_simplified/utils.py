@@ -43,6 +43,14 @@ def function_arguments(f):
 
     return argspec.args
 
+def detach_dict(d):
+    result = {}
+    for (k, v) in d.items():
+        if isinstance(v, dict):
+            result[k] = detach_dict(v)
+        else:
+            assert isinstance(v, Tensor)
+            result[k] = v.detach()
 
 def list_duplicates(xs:list):
     dups = set()

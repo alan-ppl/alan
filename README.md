@@ -49,9 +49,12 @@ pip install -e .
     - contains a sample from the approximate posterior.
     - user-facing methods include:
       - `sample.moments`
-      - `sample.elbo`
       - `sample.importance_sample` (creates a `ImportanceSample` class)
       - `sample.marginals` (creates a `Marginals` class)
+      - Three methods for the ELBO/marginal likelihood:
+        - `sample.elbo_vi` (reparam=True) 
+        - `sample.elbo_rws` (reparam=True, but allows gradients for log-probs)
+        - `sample.elbo_nograd` (no gradients at all; useful for memory efficient estimation of marginal likelihood)
       - no `dump` method, at this stage, as samples here stage aren't user-interpretable.
     - non-user-facing methods:
       - `sample._importance_sample_idxs(N:int, repeats=1)` (Gets the importance-sampled indices).

@@ -26,11 +26,13 @@ class Sample():
             sample: dict,
             groupvarname2Kdim: dict[str, Dim],
             sampling_type: SamplingType,
+            reparam: bool,
         ):
         self.problem = problem
         self.sample = sample
         self.groupvarname2Kdim = groupvarname2Kdim
         self.sampling_type = sampling_type
+        self.reparam = reparam
 
     @property
     def device(self):
@@ -48,13 +50,10 @@ class Sample():
     def all_platedims(self):
         return self.problem.all_platedims
 
-    def elbo(self, extra_log_factors=None, split=nosplit):
-
+    def _elbo(self, extra_log_factors, split):
         if extra_log_factors is None:
             extra_log_factors = empty_tree(self.P.plate)
         assert isinstance(extra_log_factors, dict)
-        #extra_log_factors = named2dim_dict(extra_log_factors, self.all_platedims)
-        #extra_log_factors = tensordict2tree(self.P.plate, extra_log_factors)
 
         lp = logPQ_plate(
             name=None,
@@ -72,6 +71,23 @@ class Sample():
             split=split)
 
         return lp
+
+    def elbo_vi(self, extra_log_factors=None, split=nosplit):
+        if not self.reparam==True:
+            raise Exception("To compute the ELBO with the right gradients for VI you must construct a reparameterised sample using `problem.sample(K, reparam=True)`")
+        return self._elbo(extra_log_factors, split=split)
+
+    def elbo_rws(self, extra_log_factors=None, split=nosplit):
+        if not self.reparam==False:
+            raise Exception("To compute the ELBO with the right gradients for RWS you must construct a non-reparameterised sample using `problem.sample(K, reparam=False)`")
+        return self._elbo(extra_log_factors, split=split)
+
+    def elbo_nograd(self, extra_log_factors=None, split=nosplit):
+        if not self.reparam==False:
+            raise Exception("elbo_nograd has no gradients, so you should construct a non-reparameterised sample using `problem.sample(K, reparam=False)`")
+        with t.nograd():
+            result = self._elbo(extra_log_factors, split=split)
+        return result
     
     def _importance_sample_idxs(self, num_samples:int, split):
         """
@@ -179,7 +195,7 @@ class Sample():
         J_torchdim_tree = tensordict2tree(self.P.plate, J_torchdim_dict)
 
         #Compute loss
-        L = self.elbo(extra_log_factors=J_torchdim_tree)
+        L = self._elbo(extra_log_factors=J_torchdim_tree, split=nosplit)
         #marginals as a list
         marginals_list = grad(L, J_tensor_list)
 
@@ -246,7 +262,7 @@ class Sample():
         J_torchdim_tree = tensordict2tree(self.P.plate, J_torchdim_dict)
 
         #Compute loss
-        L = self.elbo(extra_log_factors=J_torchdim_tree)
+        L = self._elbo(extra_log_factors=J_torchdim_tree, split=nosplit)
         #marginals as a list
         moments_list = grad(L, J_tensor_list)
 

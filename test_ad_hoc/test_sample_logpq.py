@@ -10,8 +10,7 @@ t.manual_seed(0)
 P = Plate(
     ab = Group(
         a = Normal(0, 1),
-        b = Normal("a", 1),
-    ),
+        b = Normal("a", 1),),
     c = Normal(0, lambda a: a.exp()),
     p1 = Plate(
         d = Normal("a", 1),
@@ -65,5 +64,5 @@ print(marginals.moments(ad_mean))
 print(importance_sample.moments(ad_mean))
 
 
-print(sample.elbo())
-print(sample.elbo(split=Split('p1', 2)))
+print(sample.elbo_vi())
+print(sample.elbo_vi(split=Split('p1', 2)))
