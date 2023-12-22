@@ -74,15 +74,13 @@ def uniformise_moment_args(args):
     """
     moment can be called in a bunch of different ways.  For a single variable/set of variables:
     * `sample.moments("a", Mean)`
-    * `sample.moments("b", (Mean, Var))`
     * `sample.moments(("a", "b"), Cov)`
 
-    For multiple variables:
-    sample.moments({
+    For multiple variables, you can pass in a list
+    sample.moments([
         "a": Mean,
-        "b": (Mean, Var),
         ("a", "b"): Cov
-    })
+    ])
 
     This function converts all these argument formats into a uniform dictionary, mapping tuples of input variables to tuples of moments.
     """
@@ -90,41 +88,34 @@ def uniformise_moment_args(args):
 
     mom_args_exception = Exception(".moment must be called as ...")
 
-    #Converts everthing to a dict.
+    #Converts everthing to a list.
     if   1 == len(args):
         args = args[0]
-        if not isinstance(args, dict):
+        if not isinstance(args, (list, tuple)):
             raise mom_args_exception
     elif 2 == len(args):
-        args = {args[0]: args[1]}
+        args = [(args[0], args[1])]
     else:
         raise mom_args_exception
 
-    uniform_arg_dict = {}
-    for k, v in args.items():
+    result = []
+    for (k, v) in args:
         if not isinstance(k, (tuple, str)):
             raise mom_args_exception
-        if not (isinstance(v, tuple) or issubclass(v, Moment)):
+        if not issubclass(v, Moment):
             raise mom_args_exception
 
         if not isinstance(k, tuple):
             k = (k,)
-        if not isinstance(v, tuple):
-            v = (v,)
 
-        uniform_arg_dict[k] = v
+        result.append((k, v))
 
-    return uniform_arg_dict
+    return result
 
 
 def postproc_moment_outputs(result, raw_moms):
-    #If we weren't given a dict, we should just return a value, _not_ a dict.
+    #If we weren't given a list, we should just return a value, _not_ a list.
     if 2==len(raw_moms):
-        result = next(iter(result.values()))
-        assert isinstance(result, tuple)
-
-        #If we weren't given a tuple of moments, just a single moment, we should return a single tensor
-        if not isinstance(raw_moms[1], tuple):
-            assert len(result) == 1
-            result = result[0]
+        assert 1 == len(result)
+        result = result[0]
     return result

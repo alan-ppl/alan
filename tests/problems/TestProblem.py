@@ -15,8 +15,6 @@ class TestProblem():
 
         sample = self.problem.sample(K=3, reparam=False, sampling_type)
 
-
-
     def test_moments_importance_sample(self, sampling_type):
         """
         tests `sample.moments` approx `importance_sample.moments`
@@ -35,11 +33,11 @@ class TestProblem():
         tests `sample.moments` approx `ground truth`.
 
         The problem is that we can't easily evaluate the ESS.
-        The obvious approach is to use the ESS for the marginal of the variable of interest.
-        But that isn't quite right: the ESS can be reduced because of lack of diversity in other latent variables.
+        The obvious approach is to use the ESS for the marginal of the variable of interest (from `sample.marginals`).
+        But that isn't right: the ESS can be reduced because of lack of diversity in other latent variables.
         Could use minimum of ESS for all latents?
 
         The other approach is to estimate the moments 10 times, and look at the variance of the overall estimates.
-
+        Could work ... but we know there are biases in these estimates for small K.
 
         """

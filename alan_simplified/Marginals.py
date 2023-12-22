@@ -26,16 +26,13 @@ class Marginals:
     def moments(self, *raw_moms):
         moms = uniformise_moment_args(raw_moms)
 
-        result = {}
-        for varnames, moment_specs in moms.items():
+        result = []
+        for varnames, m in moms:
             samples = tuple(self.samples[varname] for varname in varnames)
             groupvarnames = frozenset([self.varname2groupvarname[varname] for varname in varnames])
 
             weights = self.weights[groupvarnames]
 
-            moments = [] 
-            for moment_spec in moment_specs:
-                moments.append(moment_spec.from_marginals(samples, weights, self.all_platedims))
-            result[varnames] = tuple(moments)
+            result.append(m.from_marginals(samples, weights, self.all_platedims))
 
         return postproc_moment_outputs(result, raw_moms)

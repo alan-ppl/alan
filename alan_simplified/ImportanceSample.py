@@ -13,14 +13,10 @@ class AbstractImportanceSample():
     def moments(self, *raw_moms):
         moms = uniformise_moment_args(raw_moms)
 
-        result = {}
-        for varnames, moment_specs in moms.items():
+        result = []
+        for varnames, m in moms:
             samples = tuple(self.samples_flatdict[varname] for varname in varnames)
-
-            moments = [] 
-            for moment_spec in moment_specs:
-                moments.append(moment_spec.from_samples(samples, self.Ndim))
-            result[varnames] = tuple(moments)
+            result.append(m.from_samples(samples, self.Ndim))
 
         return postproc_moment_outputs(result, raw_moms)
 

@@ -20,8 +20,11 @@ pip install -e .
   * Implement `sample.moments` for `CompoundMoment`.
   * `repeats` kwarg for `sample.importance_sample`.
   * use `PermutationMixtureSample` as the default `SamplingType`.
-  * `ess` method on `Marginals`.
   * `problem.latent_varnames` useful for testing.
+  * check elbo_rws
+  * TestProblem takes a list of latent variables + moments in the usual form expected by moments.
+  * think carefully about the torchdim/named tensor output of moments.
+
 
 ### Long-run TODOs:
   * Friendly error messages:
@@ -111,16 +114,14 @@ See `moments.py`.  The basic idea is that we should have a uniform way of callin
 
 Specifically, each of these methods can be called, with variable name(s) as a string/tuple of strings, and moments as a class:
   - `sample.moments("a", Mean)`
-  - `sample.moments("b", (Mean, Var))`
   - `sample.moments(("a", "b"), Cov)`
 
 For multiple moments, we provide a dict, mapping variable name(s) to moment(s).
 ```
-sample.moments({
+sample.moments([
     "a": Mean,
-    "b": (Mean, Var),
     ("a", "b"): Cov
-})
+])
 ```
 
 

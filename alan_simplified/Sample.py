@@ -222,10 +222,9 @@ class Sample():
     def moments(self, *raw_moms):
         moms = uniformise_moment_args(raw_moms)
 
-        for ms in moms.values():
-            for m in ms:
-                if not issubclass(m, RawMoment):
-                    raise Exception("Moments in sample must be `RawMoment`s (i.e. you must be able to compute them as E[f(x)])")
+        for (varnames, m) in moms:
+            if not issubclass(m, RawMoment):
+                raise Exception("Moments in sample must be `RawMoment`s (i.e. you must be able to compute them as E[f(x)])")
 
         flat_sample = flatten_dict(self.sample)
 
@@ -236,7 +235,7 @@ class Sample():
         #dimension names
         dimss = []
 
-        for varnames, ms in moms.items():
+        for (varnames, m) in moms:
             samples = [flat_sample[varname] for varname in varnames]
 
             #Check that the variables are heirachically nested within plates.
@@ -245,19 +244,19 @@ class Sample():
             for platedims in platedimss:
                 assert set(platedims).issubset(longest_platedims)
 
-            for m in ms:
-                f = m.f(*samples)
-                assert set(generic_dims(f)).intersection(self.all_platedims) == set(longest_platedims)
+            f = m.f(*samples)
+            assert set(generic_dims(f)).intersection(self.all_platedims) == set(longest_platedims)
 
-                dims = tuple(longest_platedims)
-                dim_sizes = [dim.size for dim in dims]
-                sizes = [*dim_sizes, *f.shape]
+            dims = tuple(longest_platedims)
+            #dims
+            dim_sizes = [dim.size for dim in dims]
+            sizes = [*dim_sizes, *f.shape]
 
-                J_tensor = t.zeros(sizes, requires_grad=True)
-                J_tensor_list.append(J_tensor)
-                J_torchdim = f*generic_getitem(J_tensor, dims)
-                
-                J_torchdim_dict[(varnames, m)] = J_torchdim
+            J_tensor = t.zeros(sizes, requires_grad=True)
+            J_tensor_list.append(J_tensor)
+            J_torchdim = f*generic_getitem(J_tensor, dims)
+            
+            J_torchdim_dict[(varnames, m)] = J_torchdim
 
         J_torchdim_tree = tensordict2tree(self.P.plate, J_torchdim_dict)
 
@@ -265,17 +264,9 @@ class Sample():
         L = self._elbo(extra_log_factors=J_torchdim_tree, split=nosplit)
         #marginals as a list
         moments_list = grad(L, J_tensor_list)
+        #result = [generic_getitem(x, dims) for (x, dims) in zip(moments_list, dimss)]
 
-        result = {}
-        i = 0
-        for varnames, ms in moms.items():
-            result[varnames] = []
-            for m in ms:
-                result[varnames].append(moments_list[i])
-                i = i + 1
-            result[varnames] = tuple(result[varnames])
-
-        return postproc_moment_outputs(result, raw_moms)
+        return postproc_moment_outputs(moments_list, raw_moms)
         
         
     def clone_sample(self, sample: dict):
