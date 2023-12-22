@@ -21,6 +21,11 @@ pip install -e .
   * Friendly error messages:
     - For mismatching dimension names / plate names for data / inputs / params.
     - Make sure inputs_params have separate names for P and Q.
+  * Tests:
+    - Check moments: `ground_truth` approx `sample.moments` = `marginals.moments` approx `importance_sample.moments`
+    - Check ELBO: `ground_truth` approx `sample.elbo`
+    - Check histograms from `_marginal_idxs` and `_importance_sample_idxs`
+    - Check moments + ELBO from different `SamplingType`
   * Natural RWS: Bound plate has two extra arguments:
     - should be able to implement it in terms of `sample.moments`
     - provide a dict to `BoundPlate`, mapping variable name {'a': NaturalRWS(init_mean = 0., init_scale=1.)}
