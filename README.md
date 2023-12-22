@@ -16,16 +16,23 @@ pip install -e .
   * Implement `sample.moments` for `CompoundMoment`.
   * `repeats` kwarg for `sample.importance_sample`.
   * use `PermutationMixtureSample` as the default `SamplingType`.
+  * `ess` method on `Marginals`.
 
 ### Long-run TODOs:
   * Friendly error messages:
     - For mismatching dimension names / plate names for data / inputs / params.
     - Make sure inputs_params have separate names for P and Q.
   * Tests:
-    - Check moments: `ground_truth` approx `sample.moments` = `marginals.moments` approx `importance_sample.moments`
-    - Check ELBO: `ground_truth` approx `sample.elbo`
+    - Define a bunch of problems with ground-truth info (moments + model evidence).
+    - Moments:
+      - `sample.moments`      = `marginals.moments`
+      - `sample.moments` approx `importance_sample.moments`
+      - `sample.moments` approx `ground truth`
+    - ELBO: `sample.elbo` approx `ground_truth`
     - Check histograms from `_marginal_idxs` and `_importance_sample_idxs`
-    - Check moments + ELBO from different `SamplingType`
+    - For different:
+      - `SamplingType`
+      - `Problem`
   * Natural RWS: Bound plate has two extra arguments:
     - should be able to implement it in terms of `sample.moments`
     - provide a dict to `BoundPlate`, mapping variable name {'a': NaturalRWS(init_mean = 0., init_scale=1.)}
