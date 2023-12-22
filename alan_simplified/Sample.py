@@ -72,21 +72,21 @@ class Sample():
 
         return lp
 
-    def elbo_vi(self, extra_log_factors=None, split=checkpoint):
+    def elbo_vi(self, split=checkpoint):
         if not self.reparam==True:
             raise Exception("To compute the ELBO with the right gradients for VI you must construct a reparameterised sample using `problem.sample(K, reparam=True)`")
-        return self._elbo(extra_log_factors, split=split)
+        return self._elbo(extra_log_factors=None, split=split)
 
-    def elbo_rws(self, extra_log_factors=None, split=checkpoint):
+    def elbo_rws(self, split=checkpoint):
         if not self.reparam==False:
             raise Exception("To compute the ELBO with the right gradients for RWS you must construct a non-reparameterised sample using `problem.sample(K, reparam=False)`")
-        return self._elbo(extra_log_factors, split=split)
+        return self._elbo(extra_log_factors=None, split=split)
 
-    def elbo_nograd(self, extra_log_factors=None, split=checkpoint):
+    def elbo_nograd(self, split=checkpoint):
         if not self.reparam==False:
             raise Exception("elbo_nograd has no gradients, so you should construct a non-reparameterised sample using `problem.sample(K, reparam=False)`")
         with t.nograd():
-            result = self._elbo(extra_log_factors, split=split)
+            result = self._elbo(extra_log_factors=None, split=split)
         return result
     
     def _importance_sample_idxs(self, num_samples:int, split):

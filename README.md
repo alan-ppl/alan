@@ -24,8 +24,6 @@ pip install -e .
   * TestProblem takes a list of latent variables + moments in the usual form expected by moments.
   * think carefully about the torchdim/named tensor output of moments.
   * consider adding .sample_reparam and .sample_non_reparam to Sample (Sample with reparam=True has both).
-  * make sure we ._moments which returns torchdims, and .moments which converts to named.
-
 
 
 ### Long-run TODOs:
