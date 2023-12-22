@@ -219,7 +219,7 @@ class Sample():
         samples = {k:v.detach() for (k, v) in samples.items()}
         return Marginals(samples, marginals, self.all_platedims, self.P.varname2groupvarname())
 
-    def moments(self, *raw_moms):
+    def _moments(self, *raw_moms):
         """
         Must use split=NoCheckpoint, as there seems to be a subtle issue in the interaction between
         checkpointing and TorchDims (not sure why it doesn't emerge elsewhere...)
@@ -255,7 +255,7 @@ class Sample():
             assert set(generic_dims(f)).intersection(set_all_platedims) == set(longest_platedims)
 
             dims = tuple(longest_platedims)
-            #dims
+            dimss.append(dims)
             dim_sizes = [dim.size for dim in dims]
             sizes = [*dim_sizes, *f.shape]
 
@@ -272,7 +272,7 @@ class Sample():
 
         #marginals as a list
         moments_list = grad(L, J_tensor_list)
-        #result = [generic_getitem(x, dims) for (x, dims) in zip(moments_list, dimss)]
+        moments_list = [generic_getitem(x, dims) for (x, dims) in zip(moments_list, dimss)]
 
         return postproc_moment_outputs(moments_list, raw_moms)
         

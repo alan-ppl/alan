@@ -29,8 +29,8 @@ class TestProblem():
         sample = self.problem.sample(K=3, reparam=False, sampling_type=sampling_type)
         marginals = sample.marginals()
 
-        sample_moments = sample.moments(self.moments)
-        marginals_moments = marginals.moments(self.moments)
+        sample_moments = sample._moments(self.moments)
+        marginals_moments = marginals._moments(self.moments)
 
         for (varname, moment), sm, mm in zip(self.moments, sample_moments, marginals_moments):
             dims = generic_dims(sm)

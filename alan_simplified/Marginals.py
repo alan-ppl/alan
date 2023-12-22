@@ -23,7 +23,7 @@ class Marginals:
         self.all_platedims = all_platedims
         self.varname2groupvarname = varname2groupvarname
 
-    def moments(self, *raw_moms):
+    def _moments(self, *raw_moms):
         moms = uniformise_moment_args(raw_moms)
 
         result = []
