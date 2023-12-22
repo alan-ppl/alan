@@ -1,7 +1,7 @@
 from typing import Optional
 from .utils import *
 from .Plate import flatten_tree, tensordict2tree
-from .moments import uniformise_moment_args, postproc_moment_outputs
+from .moments import user_facing_moments_mixin
 
 class AbstractImportanceSample():
     def dump(self):
@@ -10,15 +10,14 @@ class AbstractImportanceSample():
         """
         return dim2named_dict(self.samples_flatdict)
 
-    def moments(self, *raw_moms):
-        moms = uniformise_moment_args(raw_moms)
-
+    def _moments(self, moms):
         result = []
         for varnames, m in moms:
             samples = tuple(self.samples_flatdict[varname] for varname in varnames)
             result.append(m.from_samples(samples, self.Ndim))
+        return result
 
-        return postproc_moment_outputs(result, raw_moms)
+    moments = user_facing_moments_mixin
 
 class ImportanceSample(AbstractImportanceSample):
     def __init__(self, problem, samples_tree, Ndim):

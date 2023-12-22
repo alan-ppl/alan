@@ -107,3 +107,22 @@ def postproc_moment_outputs(result, raw_moms):
         assert 1 == len(result)
         result = result[0]
     return result
+
+
+def user_facing_moments_mixin(self, *args):
+    """
+    Added to a class as:
+    class Sample
+        moments = named_moments_mixin
+
+    Assumes that the class provides a _moments method that takes a uniformly specified
+    list of moments (e.g. [('a', mean), ('b', mean)]) and returns torchdim Tensors.
+    _moments is useful internally.
+
+    This function provides a `moments` method that is nice externally, allowing more 
+    flexible inputs, and giving named, rather than torchdim outputs.
+    """
+    moms = uniformise_moment_args(args)
+    result = self._moments(moms)
+    result = [dim2named_tensor(x) for x in result]
+    return postproc_moment_outputs(result, args)

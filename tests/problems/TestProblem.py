@@ -36,10 +36,7 @@ class TestProblem():
             dims = generic_dims(sm)
             sm = generic_order(sm, dims)
             mm = generic_order(mm, dims)
-            breakpoint()
             assert t.allclose(sm, mm)
-
-
 
     def test_moments_importance_sample(self, sampling_type):
         """

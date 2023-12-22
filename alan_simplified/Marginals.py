@@ -1,5 +1,5 @@
 from .utils import *
-from .moments import uniformise_moment_args, postproc_moment_outputs
+from .moments import user_facing_moments_mixin
 
 class Marginals:
     def __init__(
@@ -23,8 +23,7 @@ class Marginals:
         self.all_platedims = all_platedims
         self.varname2groupvarname = varname2groupvarname
 
-    def _moments(self, *raw_moms):
-        moms = uniformise_moment_args(raw_moms)
+    def _moments(self, moms):
 
         result = []
         for varnames, m in moms:
@@ -35,4 +34,6 @@ class Marginals:
 
             result.append(m.from_marginals(samples, weights, self.all_platedims))
 
-        return postproc_moment_outputs(result, raw_moms)
+        return result
+
+    moments = user_facing_moments_mixin
