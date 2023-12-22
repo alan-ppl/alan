@@ -5,7 +5,7 @@ from .Plate import Plate, tree_values, update_scope
 from .Group import Group
 from .utils import *
 from .reduce_Ks import reduce_Ks
-from .Split import Split
+from .Split import Split, checkpoint, no_checkpoint
 from .SamplingType import SamplingType
 from .dist import Dist
 from .Data import Data
@@ -35,9 +35,11 @@ def logPQ_plate(
         all_platedims=all_platedims,
     )
 
+    lpq = _logPQ_plate if split is no_checkpoint else _logPQ_plate_checkpointed
+
     lps = []
     for sieda in siedas:
-        lps.append(_logPQ_plate_checkpointed(
+        lps.append(lpq(
             name=name,
             P=P,
             Q=Q,

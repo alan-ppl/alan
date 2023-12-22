@@ -85,6 +85,9 @@ def reduce_Ks(lps, Ks_to_sum):
 
     return result
 
+def checkpoint_reduce_Ks(lps, Ks_to_sum):
+    return t.utils.checkpoint.checkpoint(reduce_Ks, lps, Ks_to_sum, use_reentrant=False)
+
 def logsumexp_sum(_Ks_to_sum, *lps_to_reduce):
     #Needs a strange argument order, because checkpoint doesn't work with lists of lps.
     return logsumexp_dims(sum(lps_to_reduce), _Ks_to_sum, ignore_extra_dims=True)

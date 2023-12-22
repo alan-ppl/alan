@@ -15,7 +15,7 @@ from .sample_logpq import logPQ_sample
 from .BoundPlate import BoundPlate
 from .Marginals import Marginals
 from .ImportanceSample import ImportanceSample
-from .Split import Split, nosplit
+from .Split import Split, no_checkpoint, checkpoint
 from .moments import uniformise_moment_args, postproc_moment_outputs, RawMoment
 
 
@@ -72,17 +72,17 @@ class Sample():
 
         return lp
 
-    def elbo_vi(self, extra_log_factors=None, split=nosplit):
+    def elbo_vi(self, extra_log_factors=None, split=checkpoint):
         if not self.reparam==True:
             raise Exception("To compute the ELBO with the right gradients for VI you must construct a reparameterised sample using `problem.sample(K, reparam=True)`")
         return self._elbo(extra_log_factors, split=split)
 
-    def elbo_rws(self, extra_log_factors=None, split=nosplit):
+    def elbo_rws(self, extra_log_factors=None, split=checkpoint):
         if not self.reparam==False:
             raise Exception("To compute the ELBO with the right gradients for RWS you must construct a non-reparameterised sample using `problem.sample(K, reparam=False)`")
         return self._elbo(extra_log_factors, split=split)
 
-    def elbo_nograd(self, extra_log_factors=None, split=nosplit):
+    def elbo_nograd(self, extra_log_factors=None, split=checkpoint):
         if not self.reparam==False:
             raise Exception("elbo_nograd has no gradients, so you should construct a non-reparameterised sample using `problem.sample(K, reparam=False)`")
         with t.nograd():
@@ -127,7 +127,7 @@ class Sample():
         indices = {Kdim2groupvarname[k]: v for (k, v) in indices.items()}
         return indices, N_dim
 
-    def importance_sample(self, num_samples:int, split=nosplit):
+    def importance_sample(self, num_samples:int, split=checkpoint):
         """
         User-facing method that returns reweighted samples.
         """
@@ -137,7 +137,7 @@ class Sample():
 
         return ImportanceSample(self.problem, samples, N_dim)
 
-    def _marginal_idxs(self, *joints, split=None):
+    def _marginal_idxs(self, joints, split):
         """
         Internal method that returns a flat dict mapping frozenset describing the K-dimensions in the marginal to a Tensor.
         """
@@ -188,14 +188,14 @@ class Sample():
 
             J_tensor = t.zeros(*shape, device=self.device, requires_grad=True)
             J_tensor_list.append(J_tensor)
-            J_torchdim = J_tensor[dims]
+            J_torchdim = generic_getitem(J_tensor, dims)
             
             J_torchdim_dict[groupvarnames_frozenset] = J_torchdim
 
         J_torchdim_tree = tensordict2tree(self.P.plate, J_torchdim_dict)
 
         #Compute loss
-        L = self._elbo(extra_log_factors=J_torchdim_tree, split=nosplit)
+        L = self._elbo(extra_log_factors=J_torchdim_tree, split=split)
         #marginals as a list
         marginals_list = grad(L, J_tensor_list)
 
@@ -205,7 +205,7 @@ class Sample():
 
         return result
 
-    def marginals(self, *joints, split=None):
+    def marginals(self, *joints, split=checkpoint):
         """
         User-facing method that returns a marginals object
         Computes all univariate marginals + any multivariate marginals specified in the arguments.
@@ -214,12 +214,16 @@ class Sample():
 
         Note that these are groupvarnames, not varnames.
         """
-        marginals = self._marginal_idxs(*joints, split=split)
+        marginals = self._marginal_idxs(joints, split=split)
         samples = flatten_tree(self.sample)
         samples = {k:v.detach() for (k, v) in samples.items()}
         return Marginals(samples, marginals, self.all_platedims, self.P.varname2groupvarname())
 
     def moments(self, *raw_moms):
+        """
+        Must use split=NoCheckpoint, as there seems to be a subtle issue in the interaction between
+        checkpointing and TorchDims (not sure why it doesn't emerge elsewhere...)
+        """
         moms = uniformise_moment_args(raw_moms)
 
         for (varnames, m) in moms:
@@ -227,25 +231,28 @@ class Sample():
                 raise Exception("Moments in sample must be `RawMoment`s (i.e. you must be able to compute them as E[f(x)])")
 
         flat_sample = flatten_dict(self.sample)
+        flat_sample = {k: v.detach() for (k, v) in flat_sample.items()}
 
         #List of named Js to go into torch.autograd.grad
         J_tensor_list = []
         #Flat dict of torchdim tensors to go into elbo as extra_log_factors
-        J_torchdim_dict = {}
+        f_J_torchdim_dict = {}
         #dimension names
         dimss = []
+
+        set_all_platedims = set(self.all_platedims.values())
 
         for (varnames, m) in moms:
             samples = [flat_sample[varname] for varname in varnames]
 
             #Check that the variables are heirachically nested within plates.
-            platedimss = [set(generic_dims(sample)).intersection(self.all_platedims) for sample in samples]
+            platedimss = [set(generic_dims(sample)).intersection(set_all_platedims) for sample in samples]
             longest_platedims = sorted(platedimss, key=len)[-1]
             for platedims in platedimss:
                 assert set(platedims).issubset(longest_platedims)
 
-            f = m.f(*samples)
-            assert set(generic_dims(f)).intersection(self.all_platedims) == set(longest_platedims)
+            f = m.f(*samples).detach()
+            assert set(generic_dims(f)).intersection(set_all_platedims) == set(longest_platedims)
 
             dims = tuple(longest_platedims)
             #dims
@@ -254,14 +261,15 @@ class Sample():
 
             J_tensor = t.zeros(sizes, requires_grad=True)
             J_tensor_list.append(J_tensor)
-            J_torchdim = f*generic_getitem(J_tensor, dims)
+            f_J_torchdim = f*generic_getitem(J_tensor, dims)
             
-            J_torchdim_dict[(varnames, m)] = J_torchdim
+            f_J_torchdim_dict[(varnames, m)] = f_J_torchdim
 
-        J_torchdim_tree = tensordict2tree(self.P.plate, J_torchdim_dict)
+        f_J_torchdim_tree = tensordict2tree(self.P.plate, f_J_torchdim_dict)
 
         #Compute loss
-        L = self._elbo(extra_log_factors=J_torchdim_tree, split=nosplit)
+        L = self._elbo(extra_log_factors=f_J_torchdim_tree, split=no_checkpoint)
+
         #marginals as a list
         moments_list = grad(L, J_tensor_list)
         #result = [generic_getitem(x, dims) for (x, dims) in zip(moments_list, dimss)]

@@ -1,6 +1,24 @@
 from .utils import *
 import math
 
+class NoSplit:
+    def split_args(self, name, sample, inputs_params, extra_log_factors, data, all_platedims):
+        return [{
+            'sample':sample, 
+            'inputs_params':inputs_params, 
+            'extra_log_factors':extra_log_factors, 
+            'data':data,
+            'all_platedims':all_platedims,
+        }]
+
+class NoCheckpoint(NoSplit):
+    pass
+no_checkpoint = NoCheckpoint()
+
+class Checkpoint(NoSplit):
+    pass
+checkpoint = Checkpoint()
+
 class Split:
     def __init__(self, platename:str, split_size:int):
         self.platename = platename

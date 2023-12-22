@@ -1,6 +1,6 @@
 import torch as t
 from TestProblem import TestProblem
-from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, Data
+from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, Data, mean, IndependentSample
 
 P = Plate(
     ab = Group(
@@ -37,4 +37,14 @@ all_platesizes = {'p1': 3, 'p2': 4}
 data = {'e': t.randn(3, 4, names=('p1', 'p2'))}
 
 prob = Problem(P, Q, all_platesizes, data)
-tp = TestProblem(prob)
+sample = prob.sample(10, reparam=False)
+
+#moments = [
+#    ('a', mean),
+#    ('b', mean),
+#    ('c', mean),
+#    ('d', mean),
+#]
+#tp = TestProblem(prob, moments)
+#
+#tp.test_moments_sample_marginal(IndependentSample)
