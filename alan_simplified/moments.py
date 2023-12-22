@@ -110,20 +110,29 @@ def postproc_moment_outputs(result, raw_moms):
     return result
 
 
-def user_facing_moments_mixin(self, *args):
+def torchdim_moments_mixin(self, *args):
     """
-    Added to a class as:
-    class Sample
-        moments = named_moments_mixin
+    _moments_uniform_input takes very structured input.  Must be list[tuple[str], Moment], where the tuple[str] is the variable names.
+    This function allows more flexible inputs.
+    Specifically, we add it to a class using:
+    class ...
+        _moments = torchdim_moments_mixin
 
-    Assumes that the class provides a _moments method that takes a uniformly specified
-    list of moments (e.g. [('a', mean), ('b', mean)]) and returns torchdim Tensors.
-    _moments is useful internally.
+    Now, you can call the _moments method in the class much more flexibly,
+    sample._moments([
+        "a": Mean,
+        ("a", "b"): Cov
+    ])
+    sample._moments('a', Mean)
 
-    This function provides a `moments` method that is nice externally, allowing more 
-    flexible inputs, and giving named, rather than torchdim outputs.
+    Note that _moments returns torchdim tensors, whereas moments returns named tensors
     """
     moms = uniformise_moment_args(args)
-    result = self._moments(moms)
+    result = self._moments_uniform_input(moms)
+    return postproc_moment_outputs(result, args)
+
+def named_moments_mixin(self, *args):
+    moms = uniformise_moment_args(args)
+    result = self._moments_uniform_input(moms)
     result = [dim2named_tensor(x) for x in result]
     return postproc_moment_outputs(result, args)

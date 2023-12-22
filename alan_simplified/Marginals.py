@@ -1,5 +1,5 @@
 from .utils import *
-from .moments import user_facing_moments_mixin
+from .moments import torchdim_moments_mixin, named_moments_mixin
 
 class Marginals:
     def __init__(
@@ -23,7 +23,7 @@ class Marginals:
         self.all_platedims = all_platedims
         self.varname2groupvarname = varname2groupvarname
 
-    def _moments(self, moms):
+    def _moments_uniform_input(self, moms):
         assert isinstance(moms, list)
 
         result = []
@@ -37,4 +37,5 @@ class Marginals:
 
         return result
 
-    moments = user_facing_moments_mixin
+    _moments = torchdim_moments_mixin
+    moments = named_moments_mixin

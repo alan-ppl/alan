@@ -60,9 +60,9 @@ class TestProblem():
         importance_sample = sample.importance_sample(self.importance_N)
 
         for varnames, m in self.moments:
-            marginal_moment = marginals._moments([(varnames, m)])[0]
-            is_moment = importance_sample._moments([(varnames, m)])[0]
-            est_var = marginals.moments([(varnames, var_from_raw_moment(m))])[0]
+            marginal_moment = marginals._moments(varnames, m)
+            is_moment = importance_sample._moments(varnames, m)
+            est_var = marginals.moments(varnames, var_from_raw_moment(m))
 
             stderr = (est_var/self.importance_N).sqrt() 
             
@@ -82,6 +82,8 @@ class TestProblem():
         Could work ... but we know there are biases in these estimates for small K.
 
         """
-        for (varname, m), true_value in self.known_moments.items():
+        for (varnames, m), true_value in self.known_moments.items():
             est_moment = marginals.moments(varname, m)
             est_var = marginals.moments(varname, var_from_raw_moment(m))
+
+

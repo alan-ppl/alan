@@ -1,7 +1,7 @@
 from typing import Optional
 from .utils import *
 from .Plate import flatten_tree, tensordict2tree
-from .moments import user_facing_moments_mixin
+from .moments import torchdim_moments_mixin, named_moments_mixin
 
 class AbstractImportanceSample():
     def dump(self):
@@ -10,7 +10,7 @@ class AbstractImportanceSample():
         """
         return dim2named_dict(self.samples_flatdict)
 
-    def _moments(self, moms):
+    def _moments_uniform_input(self, moms):
         assert isinstance(moms, list)
 
         result = []
@@ -19,7 +19,8 @@ class AbstractImportanceSample():
             result.append(m.from_samples(samples, self.Ndim))
         return result
 
-    moments = user_facing_moments_mixin
+    _moments = torchdim_moments_mixin
+    moments = named_moments_mixin
 
 class ImportanceSample(AbstractImportanceSample):
     def __init__(self, problem, samples_tree, Ndim):

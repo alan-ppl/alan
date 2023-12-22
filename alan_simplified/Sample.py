@@ -16,7 +16,7 @@ from .BoundPlate import BoundPlate
 from .Marginals import Marginals
 from .ImportanceSample import ImportanceSample
 from .Split import Split, no_checkpoint, checkpoint
-from .moments import user_facing_moments_mixin, RawMoment
+from .moments import RawMoment, torchdim_moments_mixin, named_moments_mixin
 
 
 class Sample():
@@ -219,7 +219,7 @@ class Sample():
         samples = {k:v.detach() for (k, v) in samples.items()}
         return Marginals(samples, marginals, self.all_platedims, self.P.varname2groupvarname())
 
-    def _moments(self, moms):
+    def _moments_uniform_input(self, moms):
         """
         Must use split=NoCheckpoint, as there seems to be a subtle issue in the interaction between
         checkpointing and TorchDims (not sure why it doesn't emerge elsewhere...)
@@ -274,7 +274,8 @@ class Sample():
         moments_list = grad(L, J_tensor_list)
         return [generic_getitem(x, dims) for (x, dims) in zip(moments_list, dimss)]
 
-    moments = user_facing_moments_mixin
+    _moments = torchdim_moments_mixin
+    moments = named_moments_mixin
         
     def clone_sample(self, sample: dict):
         '''Takes a sample (nested dict of tensors) and returns a new dict with the same structure
