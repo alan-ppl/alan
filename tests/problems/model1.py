@@ -39,12 +39,12 @@ data = {'e': t.randn(3, 4, names=('p1', 'p2'))}
 prob = Problem(P, Q, all_platesizes, data)
 sample = prob.sample(10, reparam=False)
 
-#moments = [
-#    ('a', mean),
-#    ('b', mean),
-#    ('c', mean),
-#    ('d', mean),
-#]
-#tp = TestProblem(prob, moments)
-#
-#tp.test_moments_sample_marginal(IndependentSample)
+moments = [
+    ('a', mean),
+    ('b', mean),
+    ('c', mean),
+    ('d', mean),
+]
+tp = TestProblem(prob, moments)
+
+tp.test_moments_sample_marginal(IndependentSample)

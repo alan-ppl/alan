@@ -1,3 +1,6 @@
+import torch as t
+from alan_simplified.utils import generic_dims, generic_order
+
 class TestProblem():
     def __init__(self, problem, moments, known_moments=None, known_elbo=None, moment_K=30, elbo_K=30):
         """
@@ -30,9 +33,12 @@ class TestProblem():
         marginals_moments = marginals.moments(self.moments)
 
         for (varname, moment), sm, mm in zip(self.moments, sample_moments, marginals_moments):
-            assert t.isclose(sm, mm)
+            dims = generic_dims(sm)
+            sm = generic_order(sm, dims)
+            mm = generic_order(mm, dims)
+            breakpoint()
+            assert t.allclose(sm, mm)
 
-        breakpoint()
 
 
     def test_moments_importance_sample(self, sampling_type):
