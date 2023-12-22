@@ -11,7 +11,7 @@ pip install -e .
 * Most of "Overall workflow design" should now be functional
 * Three methods for the ELBO/marginal likelihood:
   - `sample.elbo_vi` (reparam=True) 
-  - `sample.elbo_rws` (reparam=True, but allows gradients for log-probs)
+  - `sample.elbo_rws` (reparam=False, but allows gradients for log-probs)
   - `sample.elbo_nograd` (no gradients at all; useful for memory efficient estimation of marginal likelihood)
 
 ### Minor TODOs:
@@ -73,7 +73,7 @@ pip install -e .
       - `sample.marginals` (creates a `Marginals` class)
       - Three methods for the ELBO/marginal likelihood:
         - `sample.elbo_vi` (reparam=True) 
-        - `sample.elbo_rws` (reparam=True, but allows gradients for log-probs)
+        - `sample.elbo_rws` (reparam=False, but allows gradients for log-probs)
         - `sample.elbo_nograd` (no gradients at all; useful for memory efficient estimation of marginal likelihood)
       - no `dump` method, at this stage, as samples here stage aren't user-interpretable.
     - non-user-facing methods:
