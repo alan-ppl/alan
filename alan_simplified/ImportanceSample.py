@@ -11,6 +11,8 @@ class AbstractImportanceSample():
         return dim2named_dict(self.samples_flatdict)
 
     def _moments(self, moms):
+        assert isinstance(moms, list)
+
         result = []
         for varnames, m in moms:
             samples = tuple(self.samples_flatdict[varname] for varname in varnames)

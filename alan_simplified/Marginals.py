@@ -24,6 +24,7 @@ class Marginals:
         self.varname2groupvarname = varname2groupvarname
 
     def _moments(self, moms):
+        assert isinstance(moms, list)
 
         result = []
         for varnames, m in moms:
