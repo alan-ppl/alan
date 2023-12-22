@@ -24,6 +24,7 @@ pip install -e .
   * TestProblem takes a list of latent variables + moments in the usual form expected by moments.
   * think carefully about the torchdim/named tensor output of moments.
   * consider adding .sample_reparam and .sample_non_reparam to Sample (Sample with reparam=True has both).
+  * error message when the data doesn't have the right plate names isn't right.
 
 
 ### Long-run TODOs:

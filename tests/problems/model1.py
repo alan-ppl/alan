@@ -48,3 +48,4 @@ moments = [
 tp = TestProblem(prob, moments)
 
 tp.test_moments_sample_marginal(IndependentSample)
+tp.test_moments_importance_sample(IndependentSample)

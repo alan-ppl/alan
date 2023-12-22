@@ -1,27 +1,32 @@
 import torch as t
-from alan_simplified import Bernoulli, Beta, Plate, BoundPlate, Group, Problem, Data
+from alan_simplified import Bernoulli, Beta, Plate, BoundPlate, Group, Problem, Data, mean, IndependentSample
+from TestProblem import TestProblem
 
 P = Plate(
     p = Beta(2, 1),
-    p1 = Plate(
-        d = Bernoulli(p),
+    T = Plate(
+        coin = Bernoulli('p'),
     ),
 )
 
 Q = Plate(
     p = Beta(1, 1),
-    p1 = Plate(
-        d = Data(p),
+    T = Plate(
+        coin = Data(),
     ),
 )
 
 P = BoundPlate(P)
 Q = BoundPlate(Q)
 
-all_platesizes = {'p1': 10}
-data = {'e': t.cat([t.zeros(3), t.ones(7)])}
+all_platesizes = {'T': 10}
+data = {'coin': t.cat([t.zeros(3), t.ones(7)]).refine_names('T')}
 problem = Problem(P, Q, all_platesizes, data)
 
-known_means = {p: (7+1)/(2+1+10)}
+moments = [(('p',), mean)]
+known_moments = {(('p',), mean): (7+2)/(2+1+10)}
 
-tp = TestProblem(problem, known_means=known_means)
+tp = TestProblem(problem, moments, known_moments=known_moments, moment_K=10000)
+
+tp.test_moments_sample_marginal(IndependentSample)
+tp.test_moments_importance_sample(IndependentSample)

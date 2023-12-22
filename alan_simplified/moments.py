@@ -50,6 +50,7 @@ class CompoundMoment(Moment):
         return self.raw_moments
 
 def var_from_raw_moment(rm:RawMoment):
+    assert isinstance(rm, RawMoment)
     rm2 = RawMoment(lambda x: (rm.f(x))**2)
     return CompoundMoment(lambda Ex, Ex2: Ex2 - Ex*Ex, [rm, rm2])
 

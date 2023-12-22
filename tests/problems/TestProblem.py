@@ -1,8 +1,9 @@
 import torch as t
 from alan_simplified.utils import generic_dims, generic_order
+from alan_simplified.moments import RawMoment, var_from_raw_moment
 
 class TestProblem():
-    def __init__(self, problem, moments, known_moments=None, known_elbo=None, moment_K=30, elbo_K=30):
+    def __init__(self, problem, moments, known_moments=None, known_elbo=None, moment_K=30, elbo_K=30, importance_N=1000, stderrs=6):
         """
         `moments` is a list of tuples [("a", Mean), (("a", "b"), Cov)] as expected by e.g. `sample.moments`.
         Currently restricted to raw moments.
@@ -11,6 +12,9 @@ class TestProblem():
         self.problem = problem
         self.moments = moments
 
+        for _, m in moments:
+            assert isinstance(m, RawMoment)
+
         if known_moments is None:
             known_moments = {}
         self.known_moments = known_moments
@@ -18,6 +22,8 @@ class TestProblem():
         self.known_elbo = known_elbo
         self.moment_K = moment_K
         self.elbo_K = elbo_K
+        self.importance_N = importance_N
+        self.stderrs = stderrs
 
     def test_moments_sample_marginal(self, sampling_type):
         """
@@ -49,7 +55,19 @@ class TestProblem():
         * In the limit as N -> infinity, we expect an exact match.
         * ESS is just N.
         """
-        pass
+        sample = self.problem.sample(K=self.moment_K, reparam=False, sampling_type=sampling_type)
+        marginals = sample.marginals()
+        importance_sample = sample.importance_sample(self.importance_N)
+
+        for varnames, m in self.moments:
+            marginal_moment = marginals._moments([(varnames, m)])[0]
+            is_moment = importance_sample._moments([(varnames, m)])[0]
+            est_var = marginals.moments([(varnames, var_from_raw_moment(m))])[0]
+
+            stderr = (est_var/self.importance_N).sqrt() 
+            
+            assert is_moment < marginal_moment + self.stderrs * stderr
+            assert marginal_moment - self.stderrs * stderr < is_moment
 
     def test_moments_ground_truth(self, sampling_type):
         """
@@ -64,3 +82,6 @@ class TestProblem():
         Could work ... but we know there are biases in these estimates for small K.
 
         """
+        for (varname, m), true_value in self.known_moments.items():
+            est_moment = marginals.moments(varname, m)
+            est_var = marginals.moments(varname, var_from_raw_moment(m))
