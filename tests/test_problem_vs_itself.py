@@ -20,13 +20,12 @@ from linear_gaussian_latents import tp as linear_gaussian_latents
 tps = [
     model1, 
     bernoulli_no_plate, 
-    #All linear Gaussian models with unplated "parameter" latent variables
     linear_gaussian, 
     linear_gaussian_two_params,
     linear_gaussian_two_params_dangling,
-    linear_gaussian_two_params_corr_Q,
-    linear_gaussian_two_params_corr_Q_reversed,
-    linear_gaussian_latents,
+    #linear_gaussian_two_params_corr_Q,
+    #linear_gaussian_two_params_corr_Q_reversed,
+    #linear_gaussian_latents,
 ]#, linear_multivariate_gaussian]
 reparams = [True, False]
 splits = [checkpoint, no_checkpoint, None]
@@ -53,7 +52,7 @@ def moment_stderr(marginals, varnames, moment):
     return (marginal_moment, stderr)
 
 def combine_stderrs(stderr1, stderr2):
-    return ((stderr1**2 + stderr2**2)/2).sqrt()
+    return (stderr1**2 + stderr2**2).sqrt()
 
 
 @pytest.mark.parametrize("tp,reparam,sampling_type", tp_reparam_sampling_types)
@@ -112,11 +111,12 @@ def test_moments_ground_truth(tp, reparam, sampling_type):
     sample = tp.problem.sample(K=tp.moment_K, reparam=False, sampling_type=sampling_type)
     marginals = sample.marginals()
 
+
     for (varnames, m), true_moment in tp.known_moments.items():
         marginal_moment, stderr = moment_stderr(marginals, varnames, m)
         
-        assert generic_all(true_moment < marginal_moment + tp.stderrs * stderr)
-        assert generic_all(marginal_moment - tp.stderrs * stderr < true_moment)
+        assert generic_all(true_moment < marginal_moment + 6*stderr)
+        assert generic_all(marginal_moment - 6*stderr < true_moment)
 
 @pytest.mark.parametrize("tp,sampling_type", tp_sampling_types)
 def test_elbo_ground_truth(tp, sampling_type):

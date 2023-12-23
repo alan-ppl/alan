@@ -65,7 +65,7 @@ def list_duplicates(xs:list):
 def generic_all(x):
     return generic_order(x, generic_dims(x)).all()
 def generic_min(x):
-    return generic_order(x, generic_dims(x)).all()
+    return generic_order(x, generic_dims(x)).min()
 def generic_allclose(x, y):
     assert set(generic_dims(x)) == set(generic_dims(y))
     dims = generic_dims(x)

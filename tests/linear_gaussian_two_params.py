@@ -4,7 +4,7 @@ from alan_simplified import Bernoulli, Beta, Plate, BoundPlate, Group, Problem, 
 from TestProblem import TestProblem
 
 prior_mean = 2
-a_scale = 1
+a_scale = 0.1
 b_scale = 1
 prior_var = a_scale**2 + b_scale**2
 prior_prec = 1/prior_var
@@ -45,13 +45,10 @@ all_platesizes = {'T': N}
 data = {'d': data.refine_names('T')}
 problem = Problem(P, Q, all_platesizes, data)
 
-moments = [('a', mean), ('a', mean2)]
 known_moments = {
-    ('a', mean): post_mean,
-    ('a', mean): post_mean**2 + 1/post_prec,
+    ('b', mean): post_mean,
+    ('b', mean2): post_mean**2 + 1/post_prec,
 }
-
-
+moments = list(known_moments.keys())
 
 tp = TestProblem(problem, moments, known_moments=known_moments, known_elbo=known_elbo, moment_K=1000, elbo_K=1000)
-
