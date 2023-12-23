@@ -8,7 +8,7 @@ from .SamplingType import SamplingType
 from .utils import *
 from .checking import check_PQ_plate, check_inputs_params, mismatch_names
 from .logpq import logPQ_plate
-from .SamplingType import IndependentSample
+from .SamplingType import Permutation
 
 from .Sample import Sample
 
@@ -46,7 +46,7 @@ class Problem(nn.Module):
         if not (self.device == self.P.device and self.device == self.Q.device):
             raise Exception("Device issue: Problem, P and/or Q aren't all on the same device.  The easiest way to make sure everything works is to call e.g. problem.to('cuda'), rather than e.g. P.to('cuda').")
 
-    def sample(self, K: int, reparam:bool=True, sampling_type:SamplingType=IndependentSample):
+    def sample(self, K: int, reparam:bool=True, sampling_type:SamplingType=Permutation):
         """
         Returns: 
             globalK_sample: sample with different K-dimension for each variable.

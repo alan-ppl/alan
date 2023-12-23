@@ -1,34 +1,6 @@
 from .utils import *
 from .TorchDimDist import TorchDimDist
 
-class SamplingType:
-    """
-    In non-factorised approximate posteriors, there are several different approaches to which 
-    particles of the parent latent variables to condition the approximate posterior on.
-    
-    In particular:
-
-    IndependentSample (draw K samples from the full joint).
-    PermutationMixtureSample (permute the parent particles).
-    CategoricalMixtureSample (sample the parents from a uniform Categorical).
-
-    Thus, these classes modify sampling and computing for the approximate posterior.
-    In particular, these classes implement:
-
-    resample_scope: This modifies sampling of the approximate posterior, at which point there is just 
-    a single global K-dimension.  Modifies the parent latent variables by e.g. permuting or 
-    resampling them from a Categorical along the single global K-dimension.  At a high-level, 
-    takes a dictionary, `scope`, containing all the parent variables in-scope, and returns a 
-    permuted/resampled dictionary.
-
-    reduce_log_prob: This modifies computing the log-probability for the approximate posterior.  At this
-    point, we have a different K-dimension for each latent variable/group. Thus, the "raw" lp 
-    (taken as input) has a K-dimensions for the current and all parent latent variables.  But we 
-    need a log prob with just var_Kdim.  So this method e.g. averages over combinations
-    of parent particles (as appropriate) and returns a lp with just a var_Kdim, and no parent
-    K-dimensions.
-    """
-    pass
 
 def check_resample_dims(scope, active_platedims, Kdim):
     """
@@ -41,46 +13,6 @@ def check_resample_dims(scope, active_platedims, Kdim):
     for tensor in scope.values():
         for dim in generic_dims(tensor):
             assert dim in all_dims
-
-class IndependentSample(SamplingType):
-    """
-    Draw K independent samples from the full joint.
-    """
-    @staticmethod
-    def resample_scope(scope: dict[str, Tensor], active_platedims: list[Dim], Kdim: None):
-        """
-        Doesn't permute/resample previous variables.
-
-        All the variables come in with different K-dimensions.  We need to make them the 
-        same K-dimension for sampling to work.
-        """
-        new_scope = {}
-
-        for name, tensor in scope.items():
-            var_Kdims = list(set(generic_dims(tensor)).difference(active_platedims))
-            assert len(var_Kdims) in [0, 1]
-            if len(var_Kdims) == 1:
-                var_Kdim = var_Kdims[0]
-                tensor = tensor.order(var_Kdim)[Kdim]
-            new_scope[name] = tensor
-
-        check_resample_dims(new_scope, active_platedims, Kdim)
-        return new_scope
-
-    @staticmethod
-    def reduce_logQ(lp: Tensor, active_platedims: list[Dim], Kdim: Dim):
-        """
-        lp: log_prob tensor [*active_platedims, *parent_Kdims, var_Kdim]
-        Here, we take the "diagonal" of the parent_Kdims
-        returns log_prob tensor with [*active_platedims, var_Kdim]
-        """
-        parent_Kdims = set(generic_dims(lp)).difference([Kdim, *active_platedims])
-        
-        if len(parent_Kdims) > 0:
-            idxs = [t.arange(Kdim.size)[Kdim] for K in parent_Kdims]
-            lp = lp.order(*parent_Kdims)[idxs]
-        
-        return lp
 
 def Kdim2varname2tensors(scope: dict[str, Tensor], active_platedims: list[Dim]):
     """
@@ -121,26 +53,32 @@ def Kdim2varname2tensors(scope: dict[str, Tensor], active_platedims: list[Dim]):
         Kdim2varname2tensor[Kdim][varname] = tensor
     return Kdim2varname2tensor
 
-#def varname2Kdims(scope: dict[str, Tensor], active_platedims: list[Dim]):
-#    """
-#    Reverse mapping to above, each variable has at most a single K dimension.
-#    """
-#    varname2Kdim = {}
-#    for varname, tensor in scope.items():
-#        dims = generic_dims(tensor)
-#        Kdims = list(set(dims).difference(active_platedims))
-#        assert len(Kdims) in [0, 1]
-#        if len(Kdims) == 1:
-#            varname2Kdim[varname] = Kdims[0]
-#    return varname2Kdim
     
-    
-class MixtureSample(SamplingType):
+class SamplingType:
     """
-    A mixture proposal over all combinations of all particles of parent latent variables.
+    In non-factorised approximate posteriors, there are several different approaches to which 
+    particles of the parent latent variables to condition the approximate posterior on.
+    
+    In particular:
 
-    Note that while there is one log_prob, there are actually a few different approaches to
-    sampling.
+    Permutation (permute the parent particles).
+    Categorical (sample the parents from a uniform Categorical).
+
+    Thus, these classes modify sampling and computing for the approximate posterior.
+    In particular, these classes implement:
+
+    resample_scope: This modifies sampling of the approximate posterior, at which point there is just 
+    a single global K-dimension.  Modifies the parent latent variables by e.g. permuting or 
+    resampling them from a Categorical along the single global K-dimension.  At a high-level, 
+    takes a dictionary, `scope`, containing all the parent variables in-scope, and returns a 
+    permuted/resampled dictionary.
+
+    reduce_log_prob: This modifies computing the log-probability for the approximate posterior.  At this
+    point, we have a different K-dimension for each latent variable/group. Thus, the "raw" lp 
+    (taken as input) has a K-dimensions for the current and all parent latent variables.  But we 
+    need a log prob with just var_Kdim.  So this method e.g. averages over combinations
+    of parent particles (as appropriate) and returns a lp with just a var_Kdim, and no parent
+    K-dimensions.
     """
     
     @classmethod
@@ -192,7 +130,7 @@ class MixtureSample(SamplingType):
 
 
 
-class PermutationMixtureSample(MixtureSample):
+class Permutation(SamplingType):
     """
     A mixture proposal, where we permute the particles on all the parents.
     """
@@ -203,7 +141,7 @@ class PermutationMixtureSample(MixtureSample):
         tdd = TorchDimDist(td.uniform.Uniform, low=0, high=1)
         return tdd.sample(False, sample_dims=[*dims], sample_shape=[]).argsort(Kdim).order(Kdim)
     
-class CategoricalMixtureSample(MixtureSample):
+class Categorical(SamplingType):
     """
     A mixture proposal, where we resample the particles on the parents using a uniform Categorical.
     """

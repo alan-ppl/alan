@@ -3,7 +3,7 @@ import itertools
 
 import torch as t
 
-from alan_simplified import sampling_types, Sample, IndependentSample, checkpoint, no_checkpoint
+from alan_simplified import sampling_types, Sample, Permutation, checkpoint, no_checkpoint
 from alan_simplified.Marginals import Marginals
 from alan_simplified.utils import generic_dims, generic_order, generic_getitem, generic_all, generic_allclose
 from alan_simplified.moments import var_from_raw_moment, RawMoment
@@ -11,17 +11,22 @@ from alan_simplified.moments import var_from_raw_moment, RawMoment
 from model1 import tp as model1
 from bernoulli_no_plate import tp as bernoulli_no_plate
 from linear_gaussian import tp as linear_gaussian
-from linear_gaussian_two_latents import tp as linear_gaussian_two_latents
-from linear_gaussian_two_latents_corr_Q import tp as linear_gaussian_two_latents_corr_Q
-from linear_gaussian_two_latents_corr_Q_reversed import tp as linear_gaussian_two_latents_corr_Q_reversed
+from linear_gaussian_two_params import tp as linear_gaussian_two_params
+from linear_gaussian_two_params_dangling import tp as linear_gaussian_two_params_dangling
+from linear_gaussian_two_params_corr_Q import tp as linear_gaussian_two_params_corr_Q
+from linear_gaussian_two_params_corr_Q_reversed import tp as linear_gaussian_two_params_corr_Q_reversed
+from linear_gaussian_latents import tp as linear_gaussian_latents
 
 tps = [
     model1, 
     bernoulli_no_plate, 
+    #All linear Gaussian models with unplated "parameter" latent variables
     linear_gaussian, 
-    linear_gaussian_two_latents,
-    linear_gaussian_two_latents_corr_Q,
-    linear_gaussian_two_latents_corr_Q_reversed,
+    linear_gaussian_two_params,
+    linear_gaussian_two_params_dangling,
+    linear_gaussian_two_params_corr_Q,
+    linear_gaussian_two_params_corr_Q_reversed,
+    linear_gaussian_latents,
 ]#, linear_multivariate_gaussian]
 reparams = [True, False]
 splits = [checkpoint, no_checkpoint, None]
@@ -133,7 +138,7 @@ def test_moments_vs_moments(tp, reparam, sampling_type):
     """
     tests `marginal.moments` against each other for different reparam and sampling_type.
     """
-    base_marginals = tp.problem.sample(K=tp.moment_K, reparam=False, sampling_type=IndependentSample).marginals()
+    base_marginals = tp.problem.sample(K=tp.moment_K, reparam=False, sampling_type=Permutation).marginals()
     test_marginals = tp.problem.sample(K=tp.moment_K, reparam=reparam, sampling_type=sampling_type).marginals()
 
     for (varnames, moment) in tp.moments:
@@ -154,7 +159,7 @@ def test_split_elbo_vi(tp, split):
     if split is None:
         split = tp.split
 
-    sample = tp.problem.sample(K=3, reparam=True, sampling_type=IndependentSample)
+    sample = tp.problem.sample(K=3, reparam=True, sampling_type=Permutation)
 
     for (varnames, moment) in tp.moments:
         base_elbo = sample.elbo_vi(split=no_checkpoint)
@@ -170,7 +175,7 @@ def test_split_elbo_rws(tp, split):
     if split is None:
         split = tp.split
 
-    sample = tp.problem.sample(K=3, reparam=False, sampling_type=IndependentSample)
+    sample = tp.problem.sample(K=3, reparam=False, sampling_type=Permutation)
 
     for (varnames, moment) in tp.moments:
         base_elbo = sample.elbo_rws(split=no_checkpoint)
@@ -186,7 +191,7 @@ def test_split_moments(tp, split):
     if split is None:
         split = tp.split
 
-    sample = tp.problem.sample(K=3, reparam=False, sampling_type=IndependentSample)
+    sample = tp.problem.sample(K=3, reparam=False, sampling_type=Permutation)
     base_marginals = sample.marginals(split=no_checkpoint)
     test_marginals = sample.marginals(split=split)
 

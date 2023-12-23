@@ -4,7 +4,7 @@ from typing import Optional
 from functorch.dim import Dim
 
 from .utils import *
-from .SamplingType import SamplingType, IndependentSample
+from .SamplingType import SamplingType
 from .dist import Dist
 from .Group import Group
 from .Data import Data

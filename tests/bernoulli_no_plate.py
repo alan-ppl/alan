@@ -1,5 +1,5 @@
 import torch as t
-from alan_simplified import Bernoulli, Beta, Plate, BoundPlate, Group, Problem, Data, mean, IndependentSample
+from alan_simplified import Bernoulli, Beta, Plate, BoundPlate, Group, Problem, Data, mean
 from TestProblem import TestProblem
 
 P = Plate(
