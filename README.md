@@ -17,7 +17,6 @@ pip install -e .
 ### Minor TODOs:
   * Marginals make sense for variables on different plates if they're in the same heirarchy.
   * `importance_sample.dump` should output tensors with the `N` dimension first.
-  * Implement `sample.moments` for `CompoundMoment`.
   * `repeats` kwarg for `sample.importance_sample`.
   * use `PermutationMixtureSample` as the default `SamplingType`.
   * check elbo_rws
@@ -25,6 +24,18 @@ pip install -e .
   * think carefully about the torchdim/named tensor output of moments.
   * consider adding .sample_reparam and .sample_non_reparam to Sample (Sample with reparam=True has both).
   * error message when the data doesn't have the right plate names isn't right.
+  * test different SamplingType and different Q against each other.
+  * to check whether an ELBO estimator is consistent with ground-truth:
+    - evaluate the ELBO a few times.
+    - fit a conjugate prior to the variance (InverseGamma), using sample mean.
+    - find the max possible mean using mean + 6 * stddev/N.
+    - for the variance:
+      - fit a model with known mean (the sample mean) and variance drawn from an Inverse Gamma conjugate prior.
+      - compute the posterior Inverse Gamma over the variance.
+      - get the max variance by taking the posterior variance quantile corresponding to a six-sigma Gaussian probability.
+    - use the max mean and variance as the parameters of a lognormal distribution.
+    - is the ELBO below the max possible?  Assuming elbos are normal; (max_elbo = max_mean + max_var/2)?
+
 
 
 ### Long-run TODOs:

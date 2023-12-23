@@ -1,6 +1,6 @@
 import torch as t
-from TestProblem import TestProblem
 from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, Data, mean, IndependentSample
+from TestProblem import TestProblem
 
 P = Plate(
     ab = Group(
@@ -46,6 +46,3 @@ moments = [
     ('d', mean),
 ]
 tp = TestProblem(prob, moments)
-
-tp.test_moments_sample_marginal(IndependentSample)
-tp.test_moments_importance_sample(IndependentSample)
