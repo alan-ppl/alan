@@ -3,7 +3,7 @@ import itertools
 
 import torch as t
 
-from alan_simplified import sampling_types, Sample, IndependentSample
+from alan_simplified import sampling_types, Sample, IndependentSample, checkpoint, no_checkpoint
 from alan_simplified.Marginals import Marginals
 from alan_simplified.utils import generic_dims, generic_order, generic_getitem, generic_all
 from alan_simplified.moments import var_from_raw_moment, RawMoment
@@ -13,9 +13,10 @@ from bernoulli_no_plate import tp as bernoulli_no_plate
 
 tps = [model1, bernoulli_no_plate]
 reparams = [True, False]
+splits = [checkpoint, no_checkpoint, None]
+
 tp_reparam_sampling_types = list(itertools.product(tps, reparams, sampling_types))
-tp_sampling_types = list(itertools.product(tps, sampling_types))
-tp_reparams = list(itertools.product(tps, reparams))
+tp_splits = list(itertools.product(tps, splits))
 
 def moment_stderr(marginals, varnames, moment):
     """
@@ -121,19 +122,19 @@ def test_moments_vs_moments(tp, reparam, sampling_type):
         assert generic_all(                diff < tp.stderrs * stderr)
         assert generic_all(-tp.stderrs * stderr < diff)
 
-#def test_split_elbo(tp, split)
-#    """
-#    tests `marginal.moments` against each other for different reparam and sampling_type.
-#    """
-#    sample = tp.problem.sample(K=3, reparam=False, sampling_type=IndependentSample).marginals()
-#
-#    for (varnames, moment) in tp.moments:
-#        base_moment, base_stderr = moment_stderr(base_marginals, varnames, moment)
-#        test_moment, test_stderr = moment_stderr(test_marginals, varnames, moment)
-#
-#        diff = base_moment - test_moment
-#        stderr = combine_stderrs(base_stderr, test_stderr)
-#
-#        assert generic_all(                diff < tp.stderrs * stderr)
-#        assert generic_all(-tp.stderrs * stderr < diff)
-#
+@pytest.mark.parametrize("tp,split", tp_splits)
+def test_split_elbo(tp, split):
+    """
+    tests `marginal.moments` against each other for different reparam and sampling_type.
+    """
+    if split is None:
+        split = tp.split
+
+    sample = tp.problem.sample(K=3, reparam=True, sampling_type=IndependentSample)
+
+    for (varnames, moment) in tp.moments:
+        base_elbo = sample.elbo_vi(split=no_checkpoint)
+        test_elbo = sample.elbo_vi(split=split)
+
+        assert t.isclose(base_elbo, test_elbo)
+
