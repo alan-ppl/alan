@@ -85,7 +85,7 @@ class Sample():
     def elbo_nograd(self, split=checkpoint):
         if not self.reparam==False:
             raise Exception("elbo_nograd has no gradients, so you should construct a non-reparameterised sample using `problem.sample(K, reparam=False)`")
-        with t.nograd():
+        with t.no_grad():
             result = self._elbo(extra_log_factors=None, split=split)
         return result
     

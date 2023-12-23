@@ -4,7 +4,7 @@ from alan_simplified.utils import generic_dims, generic_order
 from alan_simplified.moments import RawMoment, var_from_raw_moment
 
 class TestProblem():
-    def __init__(self, problem, moments, known_moments=None, known_elbo=None, moment_K=30, elbo_K=30, importance_N=1000, stderrs=6, split=no_checkpoint):
+    def __init__(self, problem, moments, known_moments=None, known_elbo=None, moment_K=30, elbo_K=30, elbo_iters=20, importance_N=1000, stderrs=6, split=no_checkpoint):
         """
         `moments` is a list of tuples [("a", Mean), (("a", "b"), Cov)] as expected by e.g. `sample.moments`.
         Currently restricted to raw moments.
@@ -22,6 +22,7 @@ class TestProblem():
         self.known_elbo = known_elbo
         self.moment_K = moment_K
         self.elbo_K = elbo_K
+        self.elbo_iters = elbo_iters
         self.importance_N = importance_N
         self.stderrs = stderrs
         self.split = split

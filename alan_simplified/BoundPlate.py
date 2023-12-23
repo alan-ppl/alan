@@ -2,7 +2,7 @@ from typing import Optional
 import torch as t
 import torch.nn as nn
 from .utils import *
-from .SamplingType import SamplingType, Permutation
+from .SamplingType import SamplingType, PermutationSampler
 from .Plate import tensordict2tree, Plate, flatten_tree
 
 def named2torchdim_flat2tree(flat_named:dict, all_platedims, plate):
@@ -111,7 +111,7 @@ class BoundPlate(nn.Module):
         sizes of tensors are consistent.  Note that this isn't obvious for P, as we never actually
         sample from P, we just evaluate log-probabilities under P.
         """
-        self._sample(1, False, Permutation, all_platedims)
+        self._sample(1, False, PermutationSampler, all_platedims)
 
     def _sample(self, K: int, reparam:bool, sampling_type:SamplingType, all_platedims:dict[str, Dim]):
         """
@@ -147,7 +147,7 @@ class BoundPlate(nn.Module):
         """
         all_platedims = {platename: Dim(platename, size) for (platename, size) in all_platesizes.items()}
         set_platedims = list(all_platedims.values())
-        torchdim_tree_withK, _ = self._sample(1, False, Permutation, all_platedims)
+        torchdim_tree_withK, _ = self._sample(1, False, PermutationSampler, all_platedims)
         torchdim_flatdict_withK = flatten_tree(torchdim_tree_withK)
 
         torchdim_flatdict_noK = {}

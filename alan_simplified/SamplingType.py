@@ -130,7 +130,7 @@ class SamplingType:
 
 
 
-class Permutation(SamplingType):
+class PermutationSampler(SamplingType):
     """
     A mixture proposal, where we permute the particles on all the parents.
     """
@@ -141,7 +141,7 @@ class Permutation(SamplingType):
         tdd = TorchDimDist(td.uniform.Uniform, low=0, high=1)
         return tdd.sample(False, sample_dims=[*dims], sample_shape=[]).argsort(Kdim).order(Kdim)
     
-class Categorical(SamplingType):
+class CategoricalSampler(SamplingType):
     """
     A mixture proposal, where we resample the particles on the parents using a uniform Categorical.
     """

@@ -3,7 +3,7 @@ import itertools
 
 import torch as t
 
-from alan_simplified import sampling_types, Sample, Permutation, checkpoint, no_checkpoint
+from alan_simplified import sampling_types, Sample, PermutationSampler, CategoricalSampler, checkpoint, no_checkpoint
 from alan_simplified.Marginals import Marginals
 from alan_simplified.utils import generic_dims, generic_order, generic_getitem, generic_all, generic_allclose
 from alan_simplified.moments import var_from_raw_moment, RawMoment
@@ -121,24 +121,50 @@ def test_moments_ground_truth(tp, reparam, sampling_type):
 @pytest.mark.parametrize("tp,sampling_type", tp_sampling_types)
 def test_elbo_ground_truth(tp, sampling_type):
     """
-    tests `marginal.moments` approx `ground truth`.
-
-    The tp is that we can't easily evaluate the ESS.
-    The obvious approach is to use the ESS for the marginal of the variable of interest (from `sample.marginals`).
-    But that isn't right: the ESS can be reduced because of lack of diversity in other latent variables.
-    Here, we use the minimum ESS across all latent variables in the model.
+    tests `sample.elbo` against ground truth
     """
     if tp.known_elbo is not None:
-        test_elbo = tp.problem.sample(K=tp.moment_K, reparam=True, sampling_type=sampling_type).elbo_vi()
-        assert                   tp.known_elbo < test_elbo + 0.1
-        assert test_elbo - 0.1 < tp.known_elbo
+        N_elbos = tp.elbo_iters
+        elbos = []
+        for _ in range(N_elbos):
+            elbos.append(tp.problem.sample(K=tp.moment_K, reparam=False, sampling_type=sampling_type).elbo_nograd())
+        elbo_tensor = t.stack(elbos)
+
+        sample_mean = elbo_tensor.mean()
+        sample_var  = elbo_tensor.var()
+        
+        stderr_in_mean = (sample_var/N_elbos).sqrt()
+
+        max_mean = sample_mean + 6*stderr_in_mean
+        min_mean = sample_mean - 6*stderr_in_mean
+
+        #https://math.stackexchange.com/questions/72975/variance-of-sample-variance
+        stderr_in_var = (2 * sample_var**2/N_elbos).sqrt()
+
+        max_var = sample_var + 6*stderr_in_var
+        min_var = sample_var - 6*stderr_in_var
+
+        #Assumes ELBO is Gaussian; we know model evidence = E[exp(elbo)]
+        #In that case, exp(elbo) is log-normal.
+        #We know that E[exp(elbo)] = exp(mean + var/2)
+        #where mean and var are the true mean and variance of the distribution over elbos.
+        #but from a finite sample, we don't know the true mean and variance; instead we 
+        #can get a good estimate of the max possible mean and var.
+        max_elbo = max_mean + max_var/2
+        min_elbo = min_mean + min_var/2
+
+        print((min_elbo, tp.known_elbo, max_elbo))
+
+        assert            tp.known_elbo < max_elbo
+        assert min_elbo < tp.known_elbo
+        assert max_elbo - min_elbo < 1
 
 @pytest.mark.parametrize("tp,reparam,sampling_type", tp_reparam_sampling_types)
 def test_moments_vs_moments(tp, reparam, sampling_type):
     """
     tests `marginal.moments` against each other for different reparam and sampling_type.
     """
-    base_marginals = tp.problem.sample(K=tp.moment_K, reparam=False, sampling_type=Permutation).marginals()
+    base_marginals = tp.problem.sample(K=tp.moment_K, reparam=False, sampling_type=PermutationSampler).marginals()
     test_marginals = tp.problem.sample(K=tp.moment_K, reparam=reparam, sampling_type=sampling_type).marginals()
 
     for (varnames, moment) in tp.moments:
@@ -159,7 +185,7 @@ def test_split_elbo_vi(tp, split):
     if split is None:
         split = tp.split
 
-    sample = tp.problem.sample(K=3, reparam=True, sampling_type=Permutation)
+    sample = tp.problem.sample(K=3, reparam=True, sampling_type=PermutationSampler)
 
     for (varnames, moment) in tp.moments:
         base_elbo = sample.elbo_vi(split=no_checkpoint)
@@ -175,7 +201,7 @@ def test_split_elbo_rws(tp, split):
     if split is None:
         split = tp.split
 
-    sample = tp.problem.sample(K=3, reparam=False, sampling_type=Permutation)
+    sample = tp.problem.sample(K=3, reparam=False, sampling_type=PermutationSampler)
 
     for (varnames, moment) in tp.moments:
         base_elbo = sample.elbo_rws(split=no_checkpoint)
@@ -191,7 +217,7 @@ def test_split_moments(tp, split):
     if split is None:
         split = tp.split
 
-    sample = tp.problem.sample(K=3, reparam=False, sampling_type=Permutation)
+    sample = tp.problem.sample(K=3, reparam=False, sampling_type=PermutationSampler)
     base_marginals = sample.marginals(split=no_checkpoint)
     test_marginals = sample.marginals(split=split)
 

@@ -13,7 +13,7 @@ d_scale = 1.5
 like_var = z_scale**2 + d_scale**2
 like_prec = 1/like_var
 
-N = 10
+N = 30
 data = 1.5+t.randn(N)
 post_prec = prior_prec + data.shape[0]*like_prec
 post_mean = (prior_prec*prior_mean + like_prec*data.sum()) / post_prec
@@ -34,7 +34,8 @@ P = Plate(
 Q = Plate(
     a = Normal(1, 4),
     T = Plate(
-        z = Normal(lambda a: 1.5*a, 1.5),
+        z = Normal(lambda a: 1.5*a, 3.5),
+        #z = Normal(1, 3),
         d = Data(),
     ),
 )
@@ -54,5 +55,5 @@ known_moments = {
 
 
 
-tp = TestProblem(problem, moments, known_moments=known_moments, known_elbo=known_elbo, moment_K=100, elbo_K=100)
+tp = TestProblem(problem, moments, known_moments=known_moments, known_elbo=known_elbo, moment_K=100, elbo_K=100, elbo_iters=1000)
 
