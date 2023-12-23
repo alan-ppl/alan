@@ -5,13 +5,14 @@ import torch as t
 
 from alan_simplified import sampling_types, Sample, IndependentSample, checkpoint, no_checkpoint
 from alan_simplified.Marginals import Marginals
-from alan_simplified.utils import generic_dims, generic_order, generic_getitem, generic_all
+from alan_simplified.utils import generic_dims, generic_order, generic_getitem, generic_all, generic_allclose
 from alan_simplified.moments import var_from_raw_moment, RawMoment
 
 from model1 import tp as model1
 from bernoulli_no_plate import tp as bernoulli_no_plate
+from linear_gaussian import tp as linear_gaussian
 
-tps = [model1, bernoulli_no_plate]
+tps = [model1, bernoulli_no_plate, linear_gaussian]
 reparams = [True, False]
 splits = [checkpoint, no_checkpoint, None]
 
@@ -50,14 +51,11 @@ def test_moments_sample_marginal(tp, reparam, sampling_type):
     sample = tp.problem.sample(K=3, reparam=reparam, sampling_type=sampling_type)
     marginals = sample.marginals()
 
-    sample_moments = sample._moments(tp.moments)
-    marginals_moments = marginals._moments(tp.moments)
+    for (varnames, moment) in tp.moments:
+        sample_moments = sample._moments(varnames, moment)
+        marginals_moments = marginals._moments(varnames, moment)
 
-    for (varname, moment), sm, mm in zip(tp.moments, sample_moments, marginals_moments):
-        dims = generic_dims(sm)
-        sm = generic_order(sm, dims)
-        mm = generic_order(mm, dims)
-        assert t.allclose(sm, mm)
+        assert generic_allclose(sample_moments, marginals_moments)
 
 @pytest.mark.parametrize("tp,reparam,sampling_type", tp_reparam_sampling_types)
 def test_moments_importance_sample(tp, reparam, sampling_type):
@@ -123,9 +121,9 @@ def test_moments_vs_moments(tp, reparam, sampling_type):
         assert generic_all(-tp.stderrs * stderr < diff)
 
 @pytest.mark.parametrize("tp,split", tp_splits)
-def test_split_elbo(tp, split):
+def test_split_elbo_vi(tp, split):
     """
-    tests `marginal.moments` against each other for different reparam and sampling_type.
+    tests `sample.elbo_vi` against each other for different splits
     """
     if split is None:
         split = tp.split
@@ -138,3 +136,36 @@ def test_split_elbo(tp, split):
 
         assert t.isclose(base_elbo, test_elbo)
 
+@pytest.mark.parametrize("tp,split", tp_splits)
+def test_split_elbo_rws(tp, split):
+    """
+    tests `sample.elbo_rws` against each other for different splits
+    """
+    if split is None:
+        split = tp.split
+
+    sample = tp.problem.sample(K=3, reparam=False, sampling_type=IndependentSample)
+
+    for (varnames, moment) in tp.moments:
+        base_elbo = sample.elbo_rws(split=no_checkpoint)
+        test_elbo = sample.elbo_rws(split=split)
+
+        assert t.isclose(base_elbo, test_elbo)
+
+@pytest.mark.parametrize("tp,split", tp_splits)
+def test_split_moments(tp, split):
+    """
+    tests `marginals.moments` against each other for different splits
+    """
+    if split is None:
+        split = tp.split
+
+    sample = tp.problem.sample(K=3, reparam=False, sampling_type=IndependentSample)
+    base_marginals = sample.marginals(split=no_checkpoint)
+    test_marginals = sample.marginals(split=split)
+
+    for (varnames, moment) in tp.moments:
+        base_moments = base_marginals._moments(varnames, moment)
+        test_moments = test_marginals._moments(varnames, moment)
+
+        assert generic_allclose(base_moments, test_moments)

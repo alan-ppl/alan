@@ -37,7 +37,15 @@ pip install -e .
   * Do we remember what the issue with trailing Ellipsis in e.g. generic_getitem was?
   * test different Q against each other
   * test different, equivalent models against each other
-  * test equivalence if we do different splits/computation strategies
+  * test problems:
+    - linear_univariate_gaussian
+    - linear_multivariate_gaussian
+    - linear_univariate_gaussian_two_latents
+    - linear_multivariate_gaussian_two_latents
+    - linear_univariate_gaussian_plate
+    - linear_multivariate_gaussian_plate
+
+    - mixture
 
 
 
