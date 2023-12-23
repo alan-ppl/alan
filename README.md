@@ -24,34 +24,10 @@ pip install -e .
   * think carefully about the torchdim/named tensor output of moments.
   * consider adding .sample_reparam and .sample_non_reparam to Sample (Sample with reparam=True has both).
   * error message when the data doesn't have the right plate names isn't right.
-  * to check whether an ELBO estimator is consistent with ground-truth:
-    - evaluate the ELBO a few times.
-    - fit a conjugate prior to the variance (InverseGamma), using sample mean.
-    - find the max possible mean using mean + 6 * stddev/N.
-    - for the variance:
-      - fit a model with known mean (the sample mean) and variance drawn from an Inverse Gamma conjugate prior.
-      - compute the posterior Inverse Gamma over the variance.
-      - get the max variance by taking the posterior variance quantile corresponding to a six-sigma Gaussian probability.
-    - use the max mean and variance as the parameters of a lognormal distribution.
-    - is the ELBO below the max possible?  Assuming elbos are normal; (max_elbo = max_mean + max_var/2)?
   * Do we remember what the issue with trailing Ellipsis in e.g. generic_getitem was?
-  * test different Q against each other
-  * test different, equivalent models against each other
-  * test problems:
-    - linear_gaussian
-    - linear_gaussian_latents
-    - linear_gaussian_two_params
-    - linear_gaussian_two_params_Q_reversed
-    - linear_gaussian_two_params_dangling
-
-    - linear_multivariate_gaussian
-    - linear_univariate_gaussian_two_latents
-    - linear_multivariate_gaussian_two_latents
-    - linear_univariate_gaussian_plate
-    - linear_multivariate_gaussian_plate
-
-    - mixture
-
+  * latent moments for `linear_gaussian_latents`
+  * fix dist for `linear_multivariate_gaussian`
+  * tests for mixture distributions.
 
 
 ### Long-run TODOs:
