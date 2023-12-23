@@ -11,10 +11,14 @@ like_prec = 1/like_scale**2
 
 mult=2.5
 
-data = 1.5+t.randn(10)
-
+N = 10
+data = 1.5+t.randn(N)
 post_prec = prior_prec + data.shape[0]*like_prec*mult**2
 post_mean = (prior_prec*prior_mean + like_prec*mult**2*(data.sum()/mult)) / post_prec
+
+marginal_prior_mean = prior_mean*mult*t.ones(N)
+marginal_prior_cov = ((mult*prior_scale)**2)*t.ones(N, N) + (like_scale**2)*t.eye(N)
+known_elbo = t.distributions.MultivariateNormal(marginal_prior_mean, marginal_prior_cov).log_prob(data)
 
 
 P = Plate(
@@ -34,7 +38,7 @@ Q = Plate(
 P = BoundPlate(P)
 Q = BoundPlate(Q)
 
-all_platesizes = {'T': 10}
+all_platesizes = {'T': N}
 data = {'d': data.refine_names('T')}
 problem = Problem(P, Q, all_platesizes, data)
 
@@ -44,5 +48,7 @@ known_moments = {
     ('a', mean): post_mean**2 + 1/post_prec,
 }
 
-tp = TestProblem(problem, moments, known_moments=known_moments, moment_K=10000)
+
+
+tp = TestProblem(problem, moments, known_moments=known_moments, known_elbo=known_elbo, moment_K=10000, elbo_K=10000)
 

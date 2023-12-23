@@ -11,11 +11,22 @@ from alan_simplified.moments import var_from_raw_moment, RawMoment
 from model1 import tp as model1
 from bernoulli_no_plate import tp as bernoulli_no_plate
 from linear_gaussian import tp as linear_gaussian
+from linear_gaussian_two_latents import tp as linear_gaussian_two_latents
+from linear_gaussian_two_latents_corr_Q import tp as linear_gaussian_two_latents_corr_Q
+from linear_gaussian_two_latents_corr_Q_reversed import tp as linear_gaussian_two_latents_corr_Q_reversed
 
-tps = [model1, bernoulli_no_plate, linear_gaussian]
+tps = [
+    model1, 
+    bernoulli_no_plate, 
+    linear_gaussian, 
+    linear_gaussian_two_latents,
+    linear_gaussian_two_latents_corr_Q,
+    linear_gaussian_two_latents_corr_Q_reversed,
+]#, linear_multivariate_gaussian]
 reparams = [True, False]
 splits = [checkpoint, no_checkpoint, None]
 
+tp_sampling_types = list(itertools.product(tps, sampling_types))
 tp_reparam_sampling_types = list(itertools.product(tps, reparams, sampling_types))
 tp_splits = list(itertools.product(tps, splits))
 
@@ -101,6 +112,21 @@ def test_moments_ground_truth(tp, reparam, sampling_type):
         
         assert generic_all(true_moment < marginal_moment + tp.stderrs * stderr)
         assert generic_all(marginal_moment - tp.stderrs * stderr < true_moment)
+
+@pytest.mark.parametrize("tp,sampling_type", tp_sampling_types)
+def test_elbo_ground_truth(tp, sampling_type):
+    """
+    tests `marginal.moments` approx `ground truth`.
+
+    The tp is that we can't easily evaluate the ESS.
+    The obvious approach is to use the ESS for the marginal of the variable of interest (from `sample.marginals`).
+    But that isn't right: the ESS can be reduced because of lack of diversity in other latent variables.
+    Here, we use the minimum ESS across all latent variables in the model.
+    """
+    if tp.known_elbo is not None:
+        test_elbo = tp.problem.sample(K=tp.moment_K, reparam=True, sampling_type=sampling_type).elbo_vi()
+        assert                   tp.known_elbo < test_elbo + 0.1
+        assert test_elbo - 0.1 < tp.known_elbo
 
 @pytest.mark.parametrize("tp,reparam,sampling_type", tp_reparam_sampling_types)
 def test_moments_vs_moments(tp, reparam, sampling_type):

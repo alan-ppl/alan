@@ -38,7 +38,12 @@ pip install -e .
   * test different Q against each other
   * test different, equivalent models against each other
   * test problems:
-    - linear_univariate_gaussian
+    - linear_gaussian
+    - linear_gaussian_latents
+    - linear_gaussian_two_params
+    - linear_gaussian_two_params_Q_reversed
+    - linear_gaussian_two_params_dangling
+
     - linear_multivariate_gaussian
     - linear_univariate_gaussian_two_latents
     - linear_multivariate_gaussian_two_latents
