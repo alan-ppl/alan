@@ -135,7 +135,8 @@ class MixtureSample(SamplingType):
     sampling.
     """
     
-    def resample_scope(self, scope: dict[str, Tensor], active_platedims: list[Dim], Kdim: Dim):
+    @staticmethod
+    def resample_scope(scope: dict[str, Tensor], active_platedims: list[Dim], Kdim: Dim):
         """
         This is called as we sample Q, and permutes the particles on the parents
 
