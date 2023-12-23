@@ -127,7 +127,7 @@ def test_elbo_ground_truth(tp, sampling_type):
         N_elbos = tp.elbo_iters
         elbos = []
         for _ in range(N_elbos):
-            elbos.append(tp.problem.sample(K=tp.moment_K, reparam=False, sampling_type=sampling_type).elbo_nograd())
+            elbos.append(tp.problem.sample(K=tp.elbo_K, reparam=False, sampling_type=sampling_type).elbo_nograd())
         elbo_tensor = t.stack(elbos)
 
         sample_mean = elbo_tensor.mean()
@@ -154,6 +154,8 @@ def test_elbo_ground_truth(tp, sampling_type):
         max_elbo = max_mean + max_var/2
         #The expected ELBO is a lower-bound on the true model evidence
         min_elbo = min_mean
+
+        print((min_elbo, tp.known_elbo, max_elbo))
 
         assert            tp.known_elbo < max_elbo
         assert min_elbo < tp.known_elbo
