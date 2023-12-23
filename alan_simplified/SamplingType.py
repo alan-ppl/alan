@@ -94,6 +94,9 @@ def Kdim2varname2tensors(scope: dict[str, Tensor], active_platedims: list[Dim]):
       Param  (zero K-dimensions)
 
     Therefore, each tensor should only ever have zero or one K-dimension
+
+    result maps from the single K-dimension (or None) if there are no K-dimensions, to:
+      a dict mapping all the varnames onto the corresponding tensor.
     """
     #dict[Dim, dict[str, Tensor]]
     Kdim2varname2tensor = {}
@@ -101,30 +104,35 @@ def Kdim2varname2tensors(scope: dict[str, Tensor], active_platedims: list[Dim]):
         dims = generic_dims(tensor)
         Kdims = list(set(dims).difference(active_platedims))
         assert len(Kdims) in [0, 1]
-        if len(Kdims) == 1:
+        if len(Kdims) == 0:
+            Kdim = None
+        else:
             Kdim = Kdims[0]
-            if Kdim not in Kdim2varname2tensor:
-                Kdim2varname2tensor[Kdim] = {}
-            else:
-                #If two tensors have the same K-dimension and thus are part of the
-                #same group, then they should have exactly the same K/plate dims
-                dims_prev = generic_dims(next(iter(Kdim2varname2tensor.values())))
-                assert set(generic_dims(tensor)) == set(dims_prev)
-            Kdim2varname2tensor[Kdim][varname] = tensor
+
+        if Kdim not in Kdim2varname2tensor:
+            Kdim2varname2tensor[Kdim] = {}
+
+        if (Kdim is not None) and (1 < len(Kdim2varname2tensor[Kdim])):
+            #If two tensors have the same K-dimension and thus are part of the
+            #same group, then they should have exactly the same K/plate dims
+            dims_prev = generic_dims(next(iter(Kdim2varname2tensor.values())))
+            assert set(generic_dims(tensor)) == set(dims_prev)
+
+        Kdim2varname2tensor[Kdim][varname] = tensor
     return Kdim2varname2tensor
 
-def varname2Kdims(scope: dict[str, Tensor], active_platedims: list[Dim]):
-    """
-    Reverse mapping to above, each variable has at most a single K dimension.
-    """
-    varname2Kdim = {}
-    for varname, tensor in scope.items():
-        dims = generic_dims(tensor)
-        Kdims = list(set(dims).difference(active_platedims))
-        assert len(Kdims) in [0, 1]
-        if len(Kdims) == 1:
-            varname2Kdim[varname] = Kdims[0]
-    return varname2Kdim
+#def varname2Kdims(scope: dict[str, Tensor], active_platedims: list[Dim]):
+#    """
+#    Reverse mapping to above, each variable has at most a single K dimension.
+#    """
+#    varname2Kdim = {}
+#    for varname, tensor in scope.items():
+#        dims = generic_dims(tensor)
+#        Kdims = list(set(dims).difference(active_platedims))
+#        assert len(Kdims) in [0, 1]
+#        if len(Kdims) == 1:
+#            varname2Kdim[varname] = Kdims[0]
+#    return varname2Kdim
     
     
 class MixtureSample(SamplingType):
@@ -135,8 +143,8 @@ class MixtureSample(SamplingType):
     sampling.
     """
     
-    @staticmethod
-    def resample_scope(scope: dict[str, Tensor], active_platedims: list[Dim], Kdim: Dim):
+    @classmethod
+    def resample_scope(cls, scope: dict[str, Tensor], active_platedims: list[Dim], Kdim: Dim):
         """
         This is called as we sample Q, and permutes the particles on the parents
 
@@ -149,13 +157,17 @@ class MixtureSample(SamplingType):
         for var_Kdim,varname2tensor in Kdim2varname2tensors(scope, active_platedims).items():
             tensor0 = next(iter(varname2tensor.values()))
 
-            dims = set(generic_dims(tensor0))
-            #Permutation should have K as the first positional dimension, not as a torchdim!
-            perm = self.perm(dims=dims, Kdim=var_Kdim)
 
-            for varname, tensor in varname2tensor.items():
-                perm_tensor = tensor.order(var_Kdim)[perm,...]
-                new_scope[varname] = perm_tensor[Kdim]
+            if var_Kdim is not None:
+                dims = set(generic_dims(tensor0))
+                perm = cls.perm(dims=dims, Kdim=var_Kdim)
+
+                for varname, tensor in varname2tensor.items():
+                    #Permutation should have K as the first positional dimension, not as a torchdim!
+                    perm_tensor = tensor.order(var_Kdim)[perm,...]
+                    new_scope[varname] = perm_tensor[Kdim]
+            else:
+                new_scope = {**new_scope, **varname2tensor}
 
         check_resample_dims(new_scope, active_platedims, Kdim)
         return new_scope
@@ -186,6 +198,8 @@ class PermutationMixtureSample(MixtureSample):
     """
     @staticmethod
     def perm(dims:set[Dim], Kdim:Dim):
+        assert isinstance(dims, set)
+        assert isinstance(Kdim, Dim)
         tdd = TorchDimDist(td.uniform.Uniform, low=0, high=1)
         return tdd.sample(False, sample_dims=[*dims], sample_shape=[]).argsort(Kdim).order(Kdim)
     
@@ -195,6 +209,8 @@ class CategoricalMixtureSample(MixtureSample):
     """
     @staticmethod
     def perm(dims:set[Dim], Kdim:Dim):
+        assert isinstance(dims, set)
+        assert isinstance(Kdim, Dim)
         tdd = TorchDimDist(td.categorical.Categorical, probs=t.ones(Kdim.size)/Kdim.size)
         platedims = list(dims)
         platedims.remove(Kdim)

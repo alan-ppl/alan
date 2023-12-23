@@ -62,6 +62,9 @@ def list_duplicates(xs:list):
             xs_so_far.add(x)
     return list(dups)
 
+def generic_all(x):
+    return generic_order(x, generic_dims(x)).all()
+
 reserved_names = [
     "plate", 
     "prog", 
@@ -163,6 +166,10 @@ def assert_no_ellipsis(dims):
     if 0<len(dims):
         assert dims[-1] is not Ellipsis
 
+def assert_no_trailing_ellipsis(dims):
+    if 1<len(dims):
+        assert dims[-1] is not Ellipsis
+
 def reduce_dims(func):
     """
     Reduces over specified torchdim dimensions.
@@ -230,8 +237,11 @@ def generic_order(x, dims):
     return x.order(*dims) if 0<len(dims) else x
 
 def generic_getitem(x, dims):
+    """
+    Solves the problem that you can't do x[dims] if dims is empty
+    """
     assert_iter(dims) #dims doesn't have to be unique, e.g. [2,2]
-    assert_no_ellipsis(dims)
+    assert_no_trailing_ellipsis(dims)
 
     if len(dims)==0:
         return x
@@ -240,7 +250,7 @@ def generic_getitem(x, dims):
 
 def generic_setitem(x, dims, value):
     assert_iter(dims) #dims doesn't have to be unique, e.g. [2,2]
-    assert_no_ellipsis(dims)
+    assert_no_trailing_ellipsis(dims)
 
     if len(dims)==0:
         dims = (Ellipsis,)

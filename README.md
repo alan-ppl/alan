@@ -35,6 +35,7 @@ pip install -e .
       - get the max variance by taking the posterior variance quantile corresponding to a six-sigma Gaussian probability.
     - use the max mean and variance as the parameters of a lognormal distribution.
     - is the ELBO below the max possible?  Assuming elbos are normal; (max_elbo = max_mean + max_var/2)?
+  * Do we remember what the issue with trailing Ellipsis in e.g. generic_getitem was?
 
 
 
