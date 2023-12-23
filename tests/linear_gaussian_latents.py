@@ -55,5 +55,15 @@ known_moments = {
 
 
 
-tp = TestProblem(problem, moments, known_moments=known_moments, known_elbo=known_elbo, moment_K=100, elbo_K=100, elbo_iters=1000)
+tp = TestProblem(
+    problem, 
+    moments, 
+    known_moments=known_moments, 
+    known_elbo=known_elbo, 
+    moment_K=100, 
+    elbo_K=100, 
+    elbo_iters=1000,
+    elbo_gap_cat=5,
+    elbo_gap_perm=1.5
+)
 

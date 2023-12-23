@@ -132,6 +132,8 @@ def test_elbo_ground_truth(tp, sampling_type):
 
         sample_mean = elbo_tensor.mean()
         sample_var  = elbo_tensor.var()
+
+        print((sample_mean, sample_var))
         
         stderr_in_mean = (sample_var/N_elbos).sqrt()
 
@@ -142,7 +144,6 @@ def test_elbo_ground_truth(tp, sampling_type):
         stderr_in_var = (2 * sample_var**2/N_elbos).sqrt()
 
         max_var = sample_var + 6*stderr_in_var
-        min_var = sample_var - 6*stderr_in_var
 
         #Assumes ELBO is Gaussian; we know model evidence = E[exp(elbo)]
         #In that case, exp(elbo) is log-normal.
@@ -151,13 +152,14 @@ def test_elbo_ground_truth(tp, sampling_type):
         #but from a finite sample, we don't know the true mean and variance; instead we 
         #can get a good estimate of the max possible mean and var.
         max_elbo = max_mean + max_var/2
-        min_elbo = min_mean + min_var/2
-
-        print((min_elbo, tp.known_elbo, max_elbo))
+        #The expected ELBO is a lower-bound on the true model evidence
+        min_elbo = min_mean
 
         assert            tp.known_elbo < max_elbo
         assert min_elbo < tp.known_elbo
-        assert max_elbo - min_elbo < 1
+
+        elbo_gap = tp.elbo_gap_cat if sampling_type is CategoricalSampler else tp.elbo_gap_perm
+        assert max_elbo - min_elbo < elbo_gap
 
 @pytest.mark.parametrize("tp,reparam,sampling_type", tp_reparam_sampling_types)
 def test_moments_vs_moments(tp, reparam, sampling_type):
