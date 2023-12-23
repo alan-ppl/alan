@@ -24,7 +24,6 @@ pip install -e .
   * think carefully about the torchdim/named tensor output of moments.
   * consider adding .sample_reparam and .sample_non_reparam to Sample (Sample with reparam=True has both).
   * error message when the data doesn't have the right plate names isn't right.
-  * test different SamplingType and different Q against each other.
   * to check whether an ELBO estimator is consistent with ground-truth:
     - evaluate the ELBO a few times.
     - fit a conjugate prior to the variance (InverseGamma), using sample mean.
@@ -36,6 +35,9 @@ pip install -e .
     - use the max mean and variance as the parameters of a lognormal distribution.
     - is the ELBO below the max possible?  Assuming elbos are normal; (max_elbo = max_mean + max_var/2)?
   * Do we remember what the issue with trailing Ellipsis in e.g. generic_getitem was?
+  * test different Q against each other
+  * test different, equivalent models against each other
+  * test equivalence if we do different splits/computation strategies
 
 
 

@@ -21,8 +21,10 @@ checkpoint = Checkpoint()
 
 class Split:
     def __init__(self, platename:str, split_size:int):
-        self.platename = platename
+        assert isinstance(platename, str)
         assert isinstance(split_size, int)
+
+        self.platename = platename
         self.split_size = split_size
 
     def splitdims(self, all_platedims):
@@ -102,5 +104,3 @@ class SplitDims:
                 assert isinstance(v, Tensor)
                 for result, val in zip(results, self.split_tensor(v)):
                     result[k] = val
-
-nosplit = Split(math.nan, 0)

@@ -52,6 +52,6 @@ class Marginals:
 
     def min_ess(self):
         ess_dict = self.ess()
-        min_ess = [ess.min() for ess in ess_dict.values()]
+        min_ess = [generic_min(ess) for ess in ess_dict.values()]
         return min(min_ess)
 

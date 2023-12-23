@@ -1,5 +1,5 @@
 import torch as t
-from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, Data, mean, IndependentSample
+from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, Data, mean, IndependentSample, Split
 from TestProblem import TestProblem
 
 P = Plate(
@@ -45,4 +45,4 @@ moments = [
     ('c', mean),
     ('d', mean),
 ]
-tp = TestProblem(prob, moments)
+tp = TestProblem(prob, moments, moment_K=1000, split=Split('p1', 2))

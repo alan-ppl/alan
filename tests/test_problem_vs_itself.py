@@ -3,9 +3,10 @@ import itertools
 
 import torch as t
 
-from alan_simplified import sampling_types
+from alan_simplified import sampling_types, Sample, IndependentSample
+from alan_simplified.Marginals import Marginals
 from alan_simplified.utils import generic_dims, generic_order, generic_getitem, generic_all
-from alan_simplified.moments import var_from_raw_moment
+from alan_simplified.moments import var_from_raw_moment, RawMoment
 
 from model1 import tp as model1
 from bernoulli_no_plate import tp as bernoulli_no_plate
@@ -13,6 +14,28 @@ from bernoulli_no_plate import tp as bernoulli_no_plate
 tps = [model1, bernoulli_no_plate]
 reparams = [True, False]
 tp_reparam_sampling_types = list(itertools.product(tps, reparams, sampling_types))
+tp_sampling_types = list(itertools.product(tps, sampling_types))
+tp_reparams = list(itertools.product(tps, reparams))
+
+def moment_stderr(marginals, varnames, moment):
+    """
+    returns a dict mapping (varname, moment) onto a tuple of moment + stderr.
+    """
+    assert isinstance(marginals, Marginals)
+    assert isinstance(moment, RawMoment)
+
+    min_ess = marginals.min_ess()
+
+    result = {}
+    marginal_moment = marginals.moments(varnames, moment)
+    est_var = marginals.moments(varnames, var_from_raw_moment(moment))
+
+    stderr = (est_var/min_ess).sqrt() 
+
+    return (marginal_moment, stderr)
+
+def combine_stderrs(stderr1, stderr2):
+    return ((stderr1**2 + stderr2**2)/2).sqrt()
 
 
 @pytest.mark.parametrize("tp,reparam,sampling_type", tp_reparam_sampling_types)
@@ -61,30 +84,56 @@ def test_moments_importance_sample(tp, reparam, sampling_type):
         assert generic_all(is_moment < marginal_moment + tp.stderrs * stderr)
         assert generic_all(marginal_moment - tp.stderrs * stderr < is_moment)
 
-#def test_moments_ground_truth(tp, sampling_type):
+@pytest.mark.parametrize("tp,reparam,sampling_type", tp_reparam_sampling_types)
+def test_moments_ground_truth(tp, reparam, sampling_type):
+    """
+    tests `marginal.moments` approx `ground truth`.
+
+    The tp is that we can't easily evaluate the ESS.
+    The obvious approach is to use the ESS for the marginal of the variable of interest (from `sample.marginals`).
+    But that isn't right: the ESS can be reduced because of lack of diversity in other latent variables.
+    Here, we use the minimum ESS across all latent variables in the model.
+    """
+    sample = tp.problem.sample(K=tp.moment_K, reparam=False, sampling_type=sampling_type)
+    marginals = sample.marginals()
+
+    for (varnames, m), true_moment in tp.known_moments.items():
+        marginal_moment, stderr = moment_stderr(marginals, varnames, m)
+        
+        assert generic_all(true_moment < marginal_moment + tp.stderrs * stderr)
+        assert generic_all(marginal_moment - tp.stderrs * stderr < true_moment)
+
+@pytest.mark.parametrize("tp,reparam,sampling_type", tp_reparam_sampling_types)
+def test_moments_vs_moments(tp, reparam, sampling_type):
+    """
+    tests `marginal.moments` against each other for different reparam and sampling_type.
+    """
+    base_marginals = tp.problem.sample(K=tp.moment_K, reparam=False, sampling_type=IndependentSample).marginals()
+    test_marginals = tp.problem.sample(K=tp.moment_K, reparam=reparam, sampling_type=sampling_type).marginals()
+
+    for (varnames, moment) in tp.moments:
+        base_moment, base_stderr = moment_stderr(base_marginals, varnames, moment)
+        test_moment, test_stderr = moment_stderr(test_marginals, varnames, moment)
+
+        diff = base_moment - test_moment
+        stderr = combine_stderrs(base_stderr, test_stderr)
+
+        assert generic_all(                diff < tp.stderrs * stderr)
+        assert generic_all(-tp.stderrs * stderr < diff)
+
+#def test_split_elbo(tp, split)
 #    """
-#    tests `marginal.moments` approx `ground truth`.
-#
-#    The tp is that we can't easily evaluate the ESS.
-#    The obvious approach is to use the ESS for the marginal of the variable of interest (from `sample.marginals`).
-#    But that isn't right: the ESS can be reduced because of lack of diversity in other latent variables.
-#    Here, we use the minimum ESS across all latent variables in the model.
+#    tests `marginal.moments` against each other for different reparam and sampling_type.
 #    """
-#    sample = tp.problem.sample(K=problem.moment_K, reparam=False, sampling_type=sampling_type)
-#    marginals = sample.marginals()
-#    min_ess = marginals.min_ess()
+#    sample = tp.problem.sample(K=3, reparam=False, sampling_type=IndependentSample).marginals()
 #
-#    for (varnames, m), true_moment in tp.known_moments.items():
-#        marginal_moment = marginals.moments(varnames, m)
-#        est_var = marginals.moments(varnames, var_from_raw_moment(m))
+#    for (varnames, moment) in tp.moments:
+#        base_moment, base_stderr = moment_stderr(base_marginals, varnames, moment)
+#        test_moment, test_stderr = moment_stderr(test_marginals, varnames, moment)
 #
-#        stderr = (est_var/min_ess).sqrt() 
-#        
-#        assert marginal_moment < true_moment + tp.stderrs * stderr
-#        assert true_moment - tp.stderrs * stderr < marginal_moment
+#        diff = base_moment - test_moment
+#        stderr = combine_stderrs(base_stderr, test_stderr)
 #
-#def test_all(tp, sampling_type):
-#    tp.test_moments_sample_marginal(sampling_type)
-#    tp.test_moments_importance_sample(sampling_type)
-#    tp.test_moments_ground_truth(sampling_type)
+#        assert generic_all(                diff < tp.stderrs * stderr)
+#        assert generic_all(-tp.stderrs * stderr < diff)
 #

@@ -64,6 +64,8 @@ def list_duplicates(xs:list):
 
 def generic_all(x):
     return generic_order(x, generic_dims(x)).all()
+def generic_min(x):
+    return generic_order(x, generic_dims(x)).all()
 
 reserved_names = [
     "plate", 
