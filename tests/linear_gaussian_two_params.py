@@ -45,10 +45,10 @@ all_platesizes = {'T': N}
 data = {'d': data.refine_names('T')}
 problem = Problem(P, Q, all_platesizes, data)
 
+moments = [('a', mean), ('a', mean2), ('b', mean), ('b', mean2)]
 known_moments = {
     ('b', mean): post_mean,
     ('b', mean2): post_mean**2 + 1/post_prec,
 }
-moments = list(known_moments.keys())
 
 tp = TestProblem(problem, moments, known_moments=known_moments, known_elbo=known_elbo, moment_K=1000, elbo_K=1000)
