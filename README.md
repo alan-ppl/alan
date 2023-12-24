@@ -28,6 +28,8 @@ pip install -e .
   * latent moments for `linear_gaussian_latents`
   * fix dist for `linear_multivariate_gaussian`
   * tests for mixture distributions.
+  * tests with unnamed batch dimensions.
+  * sample.moments with e.g. multivariate Gaussians.
 
 
 ### Long-run TODOs:
