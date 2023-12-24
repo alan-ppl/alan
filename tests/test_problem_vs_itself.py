@@ -18,7 +18,7 @@ tp_names = [
     "linear_gaussian_two_params_corr_Q_reversed",
     "linear_gaussian_two_params_dangling",
     "linear_gaussian_latents",
-    #"linear_multivariate_gaussian",
+    "linear_multivariate_gaussian",
 ]
 
 #dict[str, TestProblem]
