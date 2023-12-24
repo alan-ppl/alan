@@ -328,51 +328,21 @@ def ultimate_order(x, dims):
             permutation.append(torchdim_idx)
             torchdim_idx = torchdim_idx + 1
         else:
-            print(dim)
             assert dim == slice(None)
             permutation.append(positional_idx)
             positional_idx = positional_idx + 1
 
     #Tensor with no torchdims, with torchdim + positional dimensions in the right order, as specified by dims.
-    x_no_nones = x_torchdim_first.permute(*permutation)
+    if 0 < len(permutation):
+        x_no_nones = x_torchdim_first.permute(*permutation)
+    else:
+        x_no_nones = x_torchdim_first
 
     #However, we still need to add singletons.
     #we can't index with any torchdims:
     dims_nones_but_slices_instead_of_dims = [slice(None) if isinstance(dim, Dim) else dim for dim in dims_nones]
     return generic_getitem(x_no_nones, dims_nones_but_slices_instead_of_dims)
 
-
-def singleton_order(x, dims):
-    """
-    Takes a torchdim tensor and returns a standard tensor,
-    in a manner that mirrors `x.order(dims)` (if `dims` had all
-    dimensions in `x`). However, with `x.order(dims)`,
-    all dimensions in `dims` must be in `x`.  Here, we allow new
-    dimensions in `dims` (i.e. dimensions in `dims` that aren't
-    in `x`), and add singleton dimensions to the result for those
-    dimensions.
-    """
-    for dim in dims:
-        assert isinstance(dim, Dim)
-
-    #This will be applied in dist.py to distribution arguments, 
-    #which may be non-tensors.  These non-tensors should broadcast 
-    #properly whatever happens, so we can return immediately.
-    if not isinstance(x, Tensor):
-        assert isinstance(x, Number)
-        return x
-
-    assert_no_ellipsis(dims)
-
-    x_dims = set(generic_dims(x))
-
-    dims_in_x = [dim for dim in dims if dim in x_dims]
-    x = generic_order(x, dims_in_x)
-
-    idxs = [(slice(None) if (dim in x_dims) else None) for dim in dims]
-    x = generic_getitem(x, idxs)
-
-    return x
 #### Utilities for working with dictionaries of plates
 
 def named2dim_tensor(d, x):

@@ -6,46 +6,6 @@ from functorch.dim import Dim
 from .utils import *
 Tensor = (t.Tensor, functorch.dim.Tensor)
 
-def generic_order_arg(a, torchdims: list[Dim], batch_ndim:int, event_ndim:int):
-    if isinstance(a, functorch.dim.Tensor):
-        return order_arg(a, torchdims, batch_ndim, event_ndim)
-    else:
-        return a
-
-def order_arg(a: Tensor, torchdims: list[Dim], batch_ndim:int, event_ndim:int):
-    """
-    Inputs a torchdim Tensor (either a distribution parameter or sample), with positional shape:
-    [*batch_shape, *event_shape]
-
-    Here:
-    * batch_ndim is the number of unnamed, non-event dimensions (arising from unnamed dimensions in params)
-    * event_ndim is the number of dimensions in the parameters for a single sample (e.g. 1 for MvN mean, 2 for MvN cov).
-
-    Rearranges tensor as:
-    a[*batch_shape, *torchdims, *event_shape]
-    """
-
-    dims = [*colons(batch_ndim), *torchdims, *colons(event_ndim)]
-    #[batch_shape, all_arg_dims, event_shape]
-    return ultimate_order(a, dims)
-
-#    torch_ndim = len(torchdims)
-#
-#    #Check that all dimensions in a are present in torchdims:
-#    assert set(generic_dims(a)).issubset(torchdims)
-#
-#    #Check that length of tensor is correct:
-#    assert generic_ndim(a) == batch_ndim + event_ndim
-#
-#    #[*torchdim_shape, *batch_shape, *event_shape]
-#    a = singleton_order(a, torchdims)
-#
-#    assert a.ndim == torch_ndim + batch_ndim + event_ndim
-#    torchdim_idxs     = [*range(torch_ndim)]
-#    batch_idxs = [*range(torch_ndim, torch_ndim + batch_ndim)]
-#    event_idxs    = [*range(torch_ndim + batch_ndim, torch_ndim + batch_ndim + event_ndim)]
-#
-#    return a.permute(*batch_idxs, *torchdim_idxs, *event_idxs)
 
 def colons(n: int):
     return n*[slice(None)]
@@ -96,12 +56,12 @@ class TorchDimDist():
 
         self.kwargs_tensor = {}
         for name, arg_torchdim in self.kwargs_torchdim.items():
-            self.kwargs_tensor[name] = generic_order_arg(
-                arg_torchdim, 
-                self.all_arg_dims,
-                batch_ndim=self.arg_batch_ndim[name],
-                event_ndim=self.arg_event_ndim[name]
-            )
+            dims = [
+                *colons(self.arg_batch_ndim[name]), 
+                *self.all_arg_dims, 
+                *colons(self.arg_event_ndim[name]),
+            ]
+            self.kwargs_tensor[name] = ultimate_order(arg_torchdim, dims)
 
         self.dist_tensor = self.dist(**self.kwargs_tensor)
 
@@ -155,41 +115,11 @@ class TorchDimDist():
         sample_tensor = sample_method(sample_shape=[*sample_shape, *extra_shape])
 
         dims = [
-            *colons(len(sample_shape)),        # sample_shape
-            *extra_dims,                       # extra_dims
+            *colons(len(sample_shape)), # sample_shape
+            *extra_dims,                # extra_dims
             *self.batch_arg_event_dims, # everythin else
         ]
         return generic_getitem(sample_tensor, dims)
-
-
-
-#    def log_prob(self, x):
-#        """
-#        This is subtle, because args can have lots of K-dimensions that aren't on x.
-#        Therefore, we use singleton_order, which gives singleton dimensions in x_tensor
-#        for dimensions that are in args, but not x.
-#        """
-#        assert isinstance(x, Tensor)
-#
-#        sample_dims = generic_dims(x)
-#        extra_dims = self.extra_dims(sample_dims)
-#
-#        batch_ndim = self.sample_batch_ndim
-#        event_ndim = self.sample_event_ndim
-#        sample_ndim = generic_ndim(x) - batch_ndim - event_ndim
-#
-#        dims = [
-#            *colons(sample_ndim),
-#            *extra_dims,
-#            *self.lp_batch_arg_dims,
-#        ]
-#
-#        x_tensor = singleton_order(x, dims)
-#        lp_tensor = self.dist_tensor.log_prob(x_tensor)
-#        
-#        lp = generic_getitem(lp_tensor, dims)
-#
-#        return sum_non_dim(lp)
 
     def log_prob(self, x):
         """
