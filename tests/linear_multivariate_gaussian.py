@@ -13,38 +13,33 @@ B = t.randn(F, F)
 ap_cov = B@B.mT + 2*t.eye(F)
 
 C = t.randn(F, F)
-like_cov = B @ B.mT
+like_cov = C @ C.mT
 like_prec = t.inverse(like_cov)
 
 N = 10
-data = 1.5+t.randn(N, F)
-post_prec = prior_prec + data.shape[0]*like_prec
-post_mean = post_prec @ (prior_prec@prior_mean + like_prec@data.sum(0))
+data = 1.5+t.randn(F)
+post_prec = prior_prec + like_prec
+post_cov = t.inverse(post_prec)
+post_mean = post_cov @ (prior_prec@prior_mean + like_prec@data)
 
-#marginal_prior_mean = prior_mean*mult*t.ones(N)
-#marginal_prior_cov = ((mult*prior_scale)**2)*t.ones(N, N) + (like_scale**2)*t.eye(N)
-#known_elbo = t.distributions.MultivariateNormal(marginal_prior_mean, marginal_prior_cov).log_prob(data)
+known_elbo = t.distributions.MultivariateNormal(prior_mean, prior_cov + like_cov).log_prob(data)
 
 
 P = Plate(
     a = MultivariateNormal(prior_mean, prior_cov),
-    T = Plate(
-        d = MultivariateNormal('a', like_cov),
-    ),
+    d = MultivariateNormal('a', like_cov),
 )
 
 Q = Plate(
     a = MultivariateNormal(ap_mean, ap_cov),
-    T = Plate(
-        d = Data(),
-    ),
+    d = Data(),
 )
 
 P = BoundPlate(P)
 Q = BoundPlate(Q)
 
-all_platesizes = {'T': N}
-data = {'d': data.refine_names('T', None)}
+all_platesizes = {}
+data = {'d': data}
 problem = Problem(P, Q, all_platesizes, data)
 
 moments = [('a', mean)]

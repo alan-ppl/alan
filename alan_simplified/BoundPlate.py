@@ -123,7 +123,7 @@ class BoundPlate(nn.Module):
         assert isinstance(K, int)
         assert isinstance(reparam, bool)
         assert issubclass(sampling_type, SamplingType)
-        assert isinstance(next(iter(all_platedims.values())), Dim)
+        #assert isinstance(next(iter(all_platedims.values())), Dim)
 
         groupvarname2Kdim = self.plate.groupvarname2Kdim(K)
 
