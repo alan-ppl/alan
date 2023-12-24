@@ -17,10 +17,11 @@ tp_names = [
     "linear_gaussian_two_params_corr_Q",
     "linear_gaussian_two_params_corr_Q_reversed",
     "linear_gaussian_two_params_dangling",
-    #"linear_gaussian_latents",
+    "linear_gaussian_latents",
     #"linear_multivariate_gaussian",
 ]
 
+#dict[str, TestProblem]
 tps = {tp_name: importlib.import_module(tp_name).tp for tp_name in tp_names}
 
 reparams = [True, False]

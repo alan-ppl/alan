@@ -47,10 +47,10 @@ all_platesizes = {'T': N}
 data = {'d': data.refine_names('T')}
 problem = Problem(P, Q, all_platesizes, data)
 
-moments = [('a', mean), ('a', mean2)]
+moments = [('a', mean), ('a', mean2), ('z', mean), ('z', mean2)]
 known_moments = {
     ('a', mean): post_mean,
-    ('a', mean): post_mean**2 + 1/post_prec,
+    ('a', mean2): post_mean**2 + 1/post_prec,
 }
 
 
