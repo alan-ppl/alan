@@ -287,6 +287,60 @@ def partition_tensors(lps, dim):
 
     return has_dim, no_dim
 
+def ultimate_order(x, dims):
+    """
+    dims may be:
+    torchdim in x
+    torchdim not in x (in which case, we will add a singleton dimension)
+    None (in which case, we will add a singleton dimension)
+    slice(None) (in which case, we will place a positional dimension)
+    """
+    dims_in_x = set(generic_dims(x))
+
+    #Convert any dims that aren't in x to nones. So this contains:
+    #  torchdims in x
+    #  slice(None)
+    #  None
+    dims_nones = [None if (isinstance(dim, Dim) and dim not in dims_in_x) else dim for dim in dims]
+
+    #Get rid of None.  So this contains:
+    #  torchdims in x
+    #  slice(None)
+    dims_no_nones = [dim for dim in dims_nones if dim is not None]
+
+    #Get rid of slice(None).  So this contains:
+    #  torchdims in x
+    dims_torchdim_only = [dim for dim in dims_no_nones if isinstance(dim, Dim)]
+
+    #Pull all the dims in x to the front.
+    x_torchdim_first = generic_order(x, dims_torchdim_only)
+
+    #Now we have to put them back in the right place using a permutation.
+    #if we have:
+    #permutation[i] = j
+    #i is the index of the output tensor, j is the index of the input tensor, in:
+    #the input tensor has all the torchdims in x first, and all the positional dims last, so:
+    torchdim_idx = 0
+    positional_idx = len(dims_torchdim_only)
+    permutation = []
+    for dim in dims_no_nones:
+        if isinstance(dim, Dim):
+            permutation.append(torchdim_idx)
+            torchdim_idx = torchdim_idx + 1
+        else:
+            print(dim)
+            assert dim == slice(None)
+            permutation.append(positional_idx)
+            positional_idx = positional_idx + 1
+
+    #Tensor with no torchdims, with torchdim + positional dimensions in the right order, as specified by dims.
+    x_no_nones = x_torchdim_first.permute(*permutation)
+
+    #However, we still need to add singletons.
+    #we can't index with any torchdims:
+    dims_nones_but_slices_instead_of_dims = [slice(None) if isinstance(dim, Dim) else dim for dim in dims_nones]
+    return generic_getitem(x_no_nones, dims_nones_but_slices_instead_of_dims)
+
 
 def singleton_order(x, dims):
     """
@@ -298,6 +352,9 @@ def singleton_order(x, dims):
     in `x`), and add singleton dimensions to the result for those
     dimensions.
     """
+    for dim in dims:
+        assert isinstance(dim, Dim)
+
     #This will be applied in dist.py to distribution arguments, 
     #which may be non-tensors.  These non-tensors should broadcast 
     #properly whatever happens, so we can return immediately.

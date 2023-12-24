@@ -24,23 +24,28 @@ def order_arg(a: Tensor, torchdims: list[Dim], batch_ndim:int, event_ndim:int):
     Rearranges tensor as:
     a[*batch_shape, *torchdims, *event_shape]
     """
-    torch_ndim = len(torchdims)
 
-    #Check that all dimensions in a are present in torchdims:
-    assert set(generic_dims(a)).issubset(torchdims)
+    dims = [*colons(batch_ndim), *torchdims, *colons(event_ndim)]
+    #[batch_shape, all_arg_dims, event_shape]
+    return ultimate_order(a, dims)
 
-    #Check that length of tensor is correct:
-    assert generic_ndim(a) == batch_ndim + event_ndim
-
-    #[*torchdim_shape, *batch_shape, *event_shape]
-    a = singleton_order(a, torchdims)
-
-    assert a.ndim == torch_ndim + batch_ndim + event_ndim
-    torchdim_idxs     = [*range(torch_ndim)]
-    batch_idxs = [*range(torch_ndim, torch_ndim + batch_ndim)]
-    event_idxs    = [*range(torch_ndim + batch_ndim, torch_ndim + batch_ndim + event_ndim)]
-
-    return a.permute(*batch_idxs, *torchdim_idxs, *event_idxs)
+#    torch_ndim = len(torchdims)
+#
+#    #Check that all dimensions in a are present in torchdims:
+#    assert set(generic_dims(a)).issubset(torchdims)
+#
+#    #Check that length of tensor is correct:
+#    assert generic_ndim(a) == batch_ndim + event_ndim
+#
+#    #[*torchdim_shape, *batch_shape, *event_shape]
+#    a = singleton_order(a, torchdims)
+#
+#    assert a.ndim == torch_ndim + batch_ndim + event_ndim
+#    torchdim_idxs     = [*range(torch_ndim)]
+#    batch_idxs = [*range(torch_ndim, torch_ndim + batch_ndim)]
+#    event_idxs    = [*range(torch_ndim + batch_ndim, torch_ndim + batch_ndim + event_ndim)]
+#
+#    return a.permute(*batch_idxs, *torchdim_idxs, *event_idxs)
 
 def colons(n: int):
     return n*[slice(None)]
@@ -216,10 +221,9 @@ class TorchDimDist():
             *self.batch_arg_dims,
         ]
 
-        x_tensor = singleton_order(x, x_dims)
+        x_tensor = ultimate_order(x, x_dims)
         lp_tensor = self.dist_tensor.log_prob(x_tensor)
         
         lp = generic_getitem(lp_tensor, lp_dims)
 
         return sum_non_dim(lp)
-
