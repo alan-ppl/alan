@@ -95,8 +95,8 @@ def test_moments_importance_sample(tp_name, reparam, sampling_type):
 
         stderr = (est_var/tp.importance_N).sqrt() 
         
-        assert generic_all(is_moment < marginal_moment + tp.stderrs * stderr)
-        assert generic_all(marginal_moment - tp.stderrs * stderr < is_moment)
+        assert generic_all(is_moment < marginal_moment + 6 * stderr)
+        assert generic_all(marginal_moment - 6 * stderr < is_moment)
 
 @pytest.mark.parametrize("tp_name,reparam,sampling_type", tp_reparam_sampling_types)
 def test_moments_ground_truth(tp_name, reparam, sampling_type):
@@ -184,8 +184,8 @@ def test_moments_vs_moments(tp_name, reparam, sampling_type):
         diff = base_moment - test_moment
         stderr = combine_stderrs(base_stderr, test_stderr)
 
-        assert generic_all(                diff < tp.stderrs * stderr)
-        assert generic_all(-tp.stderrs * stderr < diff)
+        assert generic_all(              diff < 6 * stderr)
+        assert generic_all(-6 * stderr < diff)
 
 @pytest.mark.parametrize("tp_name,split", tp_splits)
 def test_split_elbo_vi(tp_name, split):

@@ -100,13 +100,13 @@ class TorchDimDist():
 
         self.dist_tensor = self.dist(**self.kwargs_tensor)
 
-        self.sample_batch_arg_event_dims = [
+        self.batch_arg_event_dims = [
             *colons(self.sample_batch_ndim),  # batch_shape
             *self.all_arg_dims,               # all_arg_dims
             *colons(self.sample_event_ndim),   # event_shape
         ]
 
-        self.lp_batch_arg_dims = [
+        self.batch_arg_dims = [
             *colons(self.sample_batch_ndim),  # batch_shape
             *self.all_arg_dims,               # all_arg_dims
         ]
@@ -152,37 +152,74 @@ class TorchDimDist():
         dims = [
             *colons(len(sample_shape)),        # sample_shape
             *extra_dims,                       # extra_dims
-            *self.sample_batch_arg_event_dims, # everythin else
+            *self.batch_arg_event_dims, # everythin else
         ]
         return generic_getitem(sample_tensor, dims)
 
 
+
+#    def log_prob(self, x):
+#        """
+#        This is subtle, because args can have lots of K-dimensions that aren't on x.
+#        Therefore, we use singleton_order, which gives singleton dimensions in x_tensor
+#        for dimensions that are in args, but not x.
+#        """
+#        assert isinstance(x, Tensor)
+#
+#        sample_dims = generic_dims(x)
+#        extra_dims = self.extra_dims(sample_dims)
+#
+#        batch_ndim = self.sample_batch_ndim
+#        event_ndim = self.sample_event_ndim
+#        sample_ndim = generic_ndim(x) - batch_ndim - event_ndim
+#
+#        dims = [
+#            *colons(sample_ndim),
+#            *extra_dims,
+#            *self.lp_batch_arg_dims,
+#        ]
+#
+#        x_tensor = singleton_order(x, dims)
+#        lp_tensor = self.dist_tensor.log_prob(x_tensor)
+#        
+#        lp = generic_getitem(lp_tensor, dims)
+#
+#        return sum_non_dim(lp)
 
     def log_prob(self, x):
         """
         This is subtle, because args can have lots of K-dimensions that aren't on x.
         Therefore, we use singleton_order, which gives singleton dimensions in x_tensor
         for dimensions that are in args, but not x.
+
+        Remember that x comes in as a torchdim tensor with positional dims:
+        [*sample_shape, *batch_shape, *event_shape]
         """
         assert isinstance(x, Tensor)
 
-        sample_dims = generic_dims(x)
+        sample_dims = generic_dims(x)  #Extra dims + a subset of all_arg_dims.
         extra_dims = self.extra_dims(sample_dims)
 
         batch_ndim = self.sample_batch_ndim
         event_ndim = self.sample_event_ndim
         sample_ndim = generic_ndim(x) - batch_ndim - event_ndim
 
-        dims = [
+        x_dims = [
             *colons(sample_ndim),
             *extra_dims,
-            *self.lp_batch_arg_dims,
+            *self.batch_arg_event_dims,
         ]
 
-        x_tensor = singleton_order(x, dims)
+        lp_dims = [
+            *colons(sample_ndim),
+            *extra_dims,
+            *self.batch_arg_dims,
+        ]
+
+        x_tensor = singleton_order(x, x_dims)
         lp_tensor = self.dist_tensor.log_prob(x_tensor)
         
-        lp = generic_getitem(lp_tensor, dims)
+        lp = generic_getitem(lp_tensor, lp_dims)
 
         return sum_non_dim(lp)
 
