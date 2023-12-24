@@ -1,3 +1,4 @@
+import importlib
 import pytest
 import itertools
 
@@ -8,31 +9,26 @@ from alan_simplified.Marginals import Marginals
 from alan_simplified.utils import generic_dims, generic_order, generic_getitem, generic_all, generic_allclose
 from alan_simplified.moments import var_from_raw_moment, RawMoment
 
-from model1 import tp as model1
-from bernoulli_no_plate import tp as bernoulli_no_plate
-from linear_gaussian import tp as linear_gaussian
-from linear_gaussian_two_params import tp as linear_gaussian_two_params
-from linear_gaussian_two_params_dangling import tp as linear_gaussian_two_params_dangling
-from linear_gaussian_two_params_corr_Q import tp as linear_gaussian_two_params_corr_Q
-from linear_gaussian_two_params_corr_Q_reversed import tp as linear_gaussian_two_params_corr_Q_reversed
-from linear_gaussian_latents import tp as linear_gaussian_latents
+tp_names = [
+    "model1",
+    "bernoulli_no_plate",
+    "linear_gaussian",
+    "linear_gaussian_two_params",
+    "linear_gaussian_two_params_corr_Q",
+    "linear_gaussian_two_params_corr_Q_reversed",
+    "linear_gaussian_two_params_dangling",
+    #"linear_gaussian_latents",
+    #"linear_multivariate_gaussian",
+]
 
-tps = [
-    model1, 
-    bernoulli_no_plate, 
-    linear_gaussian, 
-    linear_gaussian_two_params,
-    linear_gaussian_two_params_dangling,
-    #linear_gaussian_two_params_corr_Q,
-    #linear_gaussian_two_params_corr_Q_reversed,
-    #linear_gaussian_latents,
-]#, linear_multivariate_gaussian]
+tps = {tp_name: importlib.import_module(tp_name).tp for tp_name in tp_names}
+
 reparams = [True, False]
 splits = [checkpoint, no_checkpoint, None]
 
-tp_sampling_types = list(itertools.product(tps, sampling_types))
-tp_reparam_sampling_types = list(itertools.product(tps, reparams, sampling_types))
-tp_splits = list(itertools.product(tps, splits))
+tp_sampling_types = list(itertools.product(tp_names, sampling_types))
+tp_reparam_sampling_types = list(itertools.product(tp_names, reparams, sampling_types))
+tp_splits = list(itertools.product(tp_names, splits))
 
 def moment_stderr(marginals, varnames, moment):
     """
@@ -55,13 +51,14 @@ def combine_stderrs(stderr1, stderr2):
     return (stderr1**2 + stderr2**2).sqrt()
 
 
-@pytest.mark.parametrize("tp,reparam,sampling_type", tp_reparam_sampling_types)
-def test_moments_sample_marginal(tp, reparam, sampling_type):
+@pytest.mark.parametrize("tp_name,reparam,sampling_type", tp_reparam_sampling_types)
+def test_moments_sample_marginal(tp_name, reparam, sampling_type):
     """
     tests `marginal.moments` = `sample.moments`
     should be exactly equal
     so we can use small K without incurring large approximation errors.
     """
+    tp = tps[tp_name]
 
     sample = tp.problem.sample(K=3, reparam=reparam, sampling_type=sampling_type)
     marginals = sample.marginals()
@@ -72,8 +69,8 @@ def test_moments_sample_marginal(tp, reparam, sampling_type):
 
         assert generic_allclose(sample_moments, marginals_moments)
 
-@pytest.mark.parametrize("tp,reparam,sampling_type", tp_reparam_sampling_types)
-def test_moments_importance_sample(tp, reparam, sampling_type):
+@pytest.mark.parametrize("tp_name,reparam,sampling_type", tp_reparam_sampling_types)
+def test_moments_importance_sample(tp_name, reparam, sampling_type):
     """
     tests `marginal.moments` approx `importance_sample.moments`
 
@@ -84,6 +81,8 @@ def test_moments_importance_sample(tp, reparam, sampling_type):
     * In the limit as N -> infinity, we expect an exact match.
     * ESS is just N.
     """
+    tp = tps[tp_name]
+
     sample = tp.problem.sample(K=tp.moment_K, reparam=reparam, sampling_type=sampling_type)
     marginals = sample.marginals()
     importance_sample = sample.importance_sample(tp.importance_N)
@@ -98,8 +97,8 @@ def test_moments_importance_sample(tp, reparam, sampling_type):
         assert generic_all(is_moment < marginal_moment + tp.stderrs * stderr)
         assert generic_all(marginal_moment - tp.stderrs * stderr < is_moment)
 
-@pytest.mark.parametrize("tp,reparam,sampling_type", tp_reparam_sampling_types)
-def test_moments_ground_truth(tp, reparam, sampling_type):
+@pytest.mark.parametrize("tp_name,reparam,sampling_type", tp_reparam_sampling_types)
+def test_moments_ground_truth(tp_name, reparam, sampling_type):
     """
     tests `marginal.moments` approx `ground truth`.
 
@@ -108,6 +107,8 @@ def test_moments_ground_truth(tp, reparam, sampling_type):
     But that isn't right: the ESS can be reduced because of lack of diversity in other latent variables.
     Here, we use the minimum ESS across all latent variables in the model.
     """
+    tp = tps[tp_name]
+
     sample = tp.problem.sample(K=tp.moment_K, reparam=False, sampling_type=sampling_type)
     marginals = sample.marginals()
 
@@ -118,11 +119,13 @@ def test_moments_ground_truth(tp, reparam, sampling_type):
         assert generic_all(true_moment < marginal_moment + 6*stderr)
         assert generic_all(marginal_moment - 6*stderr < true_moment)
 
-@pytest.mark.parametrize("tp,sampling_type", tp_sampling_types)
-def test_elbo_ground_truth(tp, sampling_type):
+@pytest.mark.parametrize("tp_name,sampling_type", tp_sampling_types)
+def test_elbo_ground_truth(tp_name, sampling_type):
     """
     tests `sample.elbo` against ground truth
     """
+    tp = tps[tp_name]
+
     if tp.known_elbo is not None:
         N_elbos = tp.elbo_iters
         elbos = []
@@ -163,11 +166,13 @@ def test_elbo_ground_truth(tp, sampling_type):
         elbo_gap = tp.elbo_gap_cat if sampling_type is CategoricalSampler else tp.elbo_gap_perm
         assert max_elbo - min_elbo < elbo_gap
 
-@pytest.mark.parametrize("tp,reparam,sampling_type", tp_reparam_sampling_types)
-def test_moments_vs_moments(tp, reparam, sampling_type):
+@pytest.mark.parametrize("tp_name,reparam,sampling_type", tp_reparam_sampling_types)
+def test_moments_vs_moments(tp_name, reparam, sampling_type):
     """
     tests `marginal.moments` against each other for different reparam and sampling_type.
     """
+    tp = tps[tp_name]
+
     base_marginals = tp.problem.sample(K=tp.moment_K, reparam=False, sampling_type=PermutationSampler).marginals()
     test_marginals = tp.problem.sample(K=tp.moment_K, reparam=reparam, sampling_type=sampling_type).marginals()
 
@@ -181,11 +186,13 @@ def test_moments_vs_moments(tp, reparam, sampling_type):
         assert generic_all(                diff < tp.stderrs * stderr)
         assert generic_all(-tp.stderrs * stderr < diff)
 
-@pytest.mark.parametrize("tp,split", tp_splits)
-def test_split_elbo_vi(tp, split):
+@pytest.mark.parametrize("tp_name,split", tp_splits)
+def test_split_elbo_vi(tp_name, split):
     """
     tests `sample.elbo_vi` against each other for different splits
     """
+    tp = tps[tp_name]
+
     if split is None:
         split = tp.split
 
@@ -197,11 +204,13 @@ def test_split_elbo_vi(tp, split):
 
         assert t.isclose(base_elbo, test_elbo)
 
-@pytest.mark.parametrize("tp,split", tp_splits)
-def test_split_elbo_rws(tp, split):
+@pytest.mark.parametrize("tp_name,split", tp_splits)
+def test_split_elbo_rws(tp_name, split):
     """
     tests `sample.elbo_rws` against each other for different splits
     """
+    tp = tps[tp_name]
+
     if split is None:
         split = tp.split
 
@@ -213,11 +222,13 @@ def test_split_elbo_rws(tp, split):
 
         assert t.isclose(base_elbo, test_elbo)
 
-@pytest.mark.parametrize("tp,split", tp_splits)
-def test_split_moments(tp, split):
+@pytest.mark.parametrize("tp_name,split", tp_splits)
+def test_split_moments(tp_name, split):
     """
     tests `marginals.moments` against each other for different splits
     """
+    tp = tps[tp_name]
+
     if split is None:
         split = tp.split
 
