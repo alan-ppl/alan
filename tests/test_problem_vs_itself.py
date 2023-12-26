@@ -21,6 +21,7 @@ tp_names = [
     "linear_gaussian_latents_dangling",
     "linear_gaussian_latents_batch",
     "linear_multivariate_gaussian",
+    "linear_multivariate_gaussian_batch",
     #"linear_multivariate_gaussian_param",
 ]
 
