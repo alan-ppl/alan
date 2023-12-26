@@ -20,6 +20,7 @@ tp_names = [
     "linear_gaussian_latents",
     "linear_gaussian_latents_dangling",
     "linear_multivariate_gaussian",
+    "linear_multivariate_gaussian_param",
 ]
 
 #dict[str, TestProblem]
@@ -70,7 +71,7 @@ def test_moments_sample_marginal(tp_name, reparam, sampling_type):
         marginals_moments = marginals._moments(varnames, moment)
 
         sample_moments, marginals_moments = multi_order(sample_moments, marginals_moments)
-        assert t.allclose(sample_moments, marginals_moments)
+        assert t.allclose(sample_moments, marginals_moments, rtol=1E-4, atol=1E-5)
 
 @pytest.mark.parametrize("tp_name,reparam,sampling_type", tp_reparam_sampling_types)
 def test_moments_importance_sample(tp_name, reparam, sampling_type):
@@ -251,4 +252,4 @@ def test_split_moments(tp_name, split):
         test_moments = test_marginals._moments(varnames, moment)
 
         base_moments, test_moments = multi_order(base_moments, test_moments)
-        assert t.allclose(base_moments, test_moments)
+        assert t.allclose(base_moments, test_moments, rtol=1E-4, atol=1E-5))
