@@ -10,7 +10,7 @@ prior_prec = t.inverse(prior_cov)
 
 ap_mean = t.randn(F)
 B = t.randn(F, F)
-ap_cov = B@B.mT + 2*t.eye(F)
+ap_cov = B@B.mT + 4*t.eye(F)
 
 C = t.randn(F, F)
 like_cov = C @ C.mT

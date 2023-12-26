@@ -295,6 +295,9 @@ def ultimate_order(x, dims):
     None (in which case, we will add a singleton dimension)
     slice(None) (in which case, we will place a positional dimension)
     """
+    #Check that the number of colons is equal to the number of positional dimensions.
+    assert generic_ndim(x) == sum(dim == slice(None) for dim in dims)
+
     dims_in_x = set(generic_dims(x))
 
     #Convert any dims that aren't in x to nones. So this contains:
@@ -311,6 +314,9 @@ def ultimate_order(x, dims):
     #Get rid of slice(None).  So this contains:
     #  torchdims in x
     dims_torchdim_only = [dim for dim in dims_no_nones if isinstance(dim, Dim)]
+
+    #Check that we've asked to order all the dims, such that the resulting tensor has no torchdims.
+    assert set(dims_torchdim_only) == dims_in_x
 
     #Pull all the dims in x to the front.
     x_torchdim_first = generic_order(x, dims_torchdim_only)

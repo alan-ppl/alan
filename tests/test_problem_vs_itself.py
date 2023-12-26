@@ -22,7 +22,7 @@ tp_names = [
     "linear_gaussian_latents_batch",
     "linear_multivariate_gaussian",
     "linear_multivariate_gaussian_batch",
-    #"linear_multivariate_gaussian_param",
+    "linear_multivariate_gaussian_param",
 ]
 
 #dict[str, TestProblem]
