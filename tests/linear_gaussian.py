@@ -52,7 +52,4 @@ known_moments = {
 }
 moments = list(known_moments.keys())
 
-
-
 tp = TestProblem(problem, moments, known_moments=known_moments, known_elbo=known_elbo, moment_K=10000, elbo_K=10000)
-

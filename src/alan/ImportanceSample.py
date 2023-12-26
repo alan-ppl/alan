@@ -32,7 +32,7 @@ class ImportanceSample(AbstractImportanceSample):
         self.samples_flatdict = flatten_tree(samples_tree)
         self.Ndim = Ndim
 
-    def extend(self, extended_platesizes:dict[str, int], reparam:bool, extended_inputs: Optional[dict[str, Tensor]]):
+    def extend(self, extended_platesizes:dict[str, int], extended_inputs=None):
         """
         User-facing method that extends sample by drawing the rest from the prior.
 
@@ -42,10 +42,9 @@ class ImportanceSample(AbstractImportanceSample):
         """
 
         assert isinstance(extended_platesizes, dict)
-        assert isinstance(reparam, bool)
-        assert isinstance(extended_inputs, dict) or extended_inputs is None
         if extended_inputs is None:
             extended_inputs = {}
+        assert isinstance(extended_inputs, dict)
         
         # If all_platesizes is missing some plates from self.problem.all_platedims,
         # add them in without changing their sizes.
@@ -71,7 +70,7 @@ class ImportanceSample(AbstractImportanceSample):
             extended_platedims=extended_platedims,
             active_extended_platedims=[],
             Ndim=self.Ndim,
-            reparam=reparam,
+            reparam=False,
             original_data=self.problem.data,
         )
 
