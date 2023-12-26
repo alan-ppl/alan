@@ -43,7 +43,8 @@ pip install -e .
   * `sampling_type` -> `sampler`
   * `split` -> `comp_strategy`
   * tests for split
-  * Tests for histograms from `_marginal_idxs` and `_importance_sample_idxs`
+  * tests for histograms from `_marginal_idxs` and `_importance_sample_idxs`
+  * tests for extended_sample
 
 
 
