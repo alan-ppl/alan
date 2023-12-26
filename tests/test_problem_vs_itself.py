@@ -19,6 +19,7 @@ tp_names = [
     "linear_gaussian_two_params_dangling",
     "linear_gaussian_latents",
     "linear_gaussian_latents_dangling",
+    "linear_gaussian_latents_batch",
     "linear_multivariate_gaussian",
     "linear_multivariate_gaussian_param",
 ]
@@ -91,11 +92,13 @@ def test_moments_importance_sample(tp_name, reparam, sampling_type):
     marginals = sample.marginals()
     importance_sample = sample.importance_sample(tp.importance_N)
 
+
     for varnames, m in tp.moments:
         marginal_moment = marginals._moments(varnames, m)
         is_moment = importance_sample._moments(varnames, m)
-        est_var = marginals.moments(varnames, var_from_raw_moment(m))
+        est_var = marginals._moments(varnames, var_from_raw_moment(m))
 
+        breakpoint()
         stderr = (est_var/tp.importance_N).sqrt() 
         upper_bound = marginal_moment + 6 * stderr
         lower_bound = marginal_moment - 6 * stderr

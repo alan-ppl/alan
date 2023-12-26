@@ -27,10 +27,9 @@ To run tests, navigate to `alan_simplfied/tests/` and use `pytest`.
   * error message when the data doesn't have the right plate names isn't right.
   * Do we remember what the issue with trailing Ellipsis in e.g. generic_getitem was?
   * latent moments for `linear_gaussian_latents`
-  * fix dist for `linear_multivariate_gaussian`
   * tests for mixture distributions.
-  * tests with unnamed batch dimensions.
-  * sample.moments with e.g. multivariate Gaussians.
+  * `sampling_type` -> `sampler`
+
 
 
 ### Long-run TODOs:
