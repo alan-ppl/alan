@@ -14,6 +14,7 @@ To run tests, navigate to `alan_simplfied/tests/` and use `pytest`.
   - `sample.elbo_vi` (reparam=True) 
   - `sample.elbo_rws` (reparam=False, but allows gradients for log-probs)
   - `sample.elbo_nograd` (no gradients at all; useful for memory efficient estimation of marginal likelihood)
+* Tests defined a bunch of problems with ground-truth info (moments + model evidence).
 
 ### Minor TODOs:
   * Marginals make sense for variables on different plates if they're in the same heirarchy.
@@ -29,6 +30,10 @@ To run tests, navigate to `alan_simplfied/tests/` and use `pytest`.
   * latent moments for `linear_gaussian_latents`
   * tests for mixture distributions.
   * `sampling_type` -> `sampler`
+  * `split` -> `comp_strategy`
+  * tests for split
+  * Tests for histograms from `_marginal_idxs` and `_importance_sample_idxs`
+  * src/ directory structure [link](https://blog.ionelmc.ro/2014/05/25/python-packaging/#the-structure%3E)
 
 
 
@@ -36,17 +41,6 @@ To run tests, navigate to `alan_simplfied/tests/` and use `pytest`.
   * Friendly error messages:
     - For mismatching dimension names / plate names for data / inputs / params.
     - Make sure inputs_params have separate names for P and Q.
-  * Tests:
-    - Define a bunch of problems with ground-truth info (moments + model evidence).
-    - Moments:
-      - `sample.moments`      = `marginals.moments`
-      - `sample.moments` approx `importance_sample.moments`
-      - `sample.moments` approx `ground truth`
-    - ELBO: `sample.elbo` approx `ground_truth`
-    - Check histograms from `_marginal_idxs` and `_importance_sample_idxs`
-    - For different:
-      - `SamplingType`
-      - `Problem`
   * Natural RWS: Bound plate has two extra arguments:
     - should be able to implement it in terms of `sample.moments`
     - provide a dict to `BoundPlate`, mapping variable name {'a': NaturalRWS(init_mean = 0., init_scale=1.)}
