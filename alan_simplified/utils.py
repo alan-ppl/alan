@@ -66,10 +66,10 @@ def generic_all(x):
     return generic_order(x, generic_dims(x)).all()
 def generic_min(x):
     return generic_order(x, generic_dims(x)).min()
-def assert_generic_allclose(x, y):
+def multi_order(x, y):
     assert set(generic_dims(x)) == set(generic_dims(y))
     dims = generic_dims(x)
-    assert t.allclose(generic_order(x, dims), generic_order(y, dims))
+    return generic_order(x, dims), generic_order(y, dims)
 
 reserved_names = [
     "plate", 

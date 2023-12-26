@@ -2,7 +2,7 @@ import torch as t
 from alan_simplified import Bernoulli, Beta, Plate, BoundPlate, Group, Problem, Data, mean, mean2, MultivariateNormal
 from TestProblem import TestProblem
 
-F = 3
+F = 2
 prior_mean = t.randn(F)
 A = t.randn(F, F)
 prior_cov = A @ A.mT
@@ -47,4 +47,4 @@ known_moments = {
     ('a', mean): post_mean,
 }
 
-tp = TestProblem(problem, moments, known_moments=known_moments, moment_K=100, elbo_K=1000)
+tp = TestProblem(problem, moments, known_moments=known_moments, moment_K=10000, elbo_K=1000)

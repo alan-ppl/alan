@@ -6,7 +6,7 @@ import torch as t
 
 from alan_simplified import sampling_types, Sample, PermutationSampler, CategoricalSampler, checkpoint, no_checkpoint
 from alan_simplified.Marginals import Marginals
-from alan_simplified.utils import generic_dims, generic_order, generic_getitem, generic_all, assert_generic_allclose
+from alan_simplified.utils import generic_dims, generic_order, generic_getitem, generic_all, multi_order
 from alan_simplified.moments import var_from_raw_moment, RawMoment
 
 tp_names = [
@@ -69,7 +69,8 @@ def test_moments_sample_marginal(tp_name, reparam, sampling_type):
         sample_moments = sample._moments(varnames, moment)
         marginals_moments = marginals._moments(varnames, moment)
 
-        assert_generic_allclose(sample_moments, marginals_moments)
+        sample_moments, marginals_moments = multi_order(sample_moments, marginals_moments)
+        assert t.allclose(sample_moments, marginals_moments)
 
 @pytest.mark.parametrize("tp_name,reparam,sampling_type", tp_reparam_sampling_types)
 def test_moments_importance_sample(tp_name, reparam, sampling_type):
@@ -95,9 +96,11 @@ def test_moments_importance_sample(tp_name, reparam, sampling_type):
         est_var = marginals.moments(varnames, var_from_raw_moment(m))
 
         stderr = (est_var/tp.importance_N).sqrt() 
+        upper_bound = marginal_moment + 6 * stderr
+        lower_bound = marginal_moment - 6 * stderr
         
-        assert generic_all(is_moment < marginal_moment + 6 * stderr)
-        assert generic_all(marginal_moment - 6 * stderr < is_moment)
+        assert generic_all(              is_moment < upper_bound)
+        assert generic_all(lower_bound < is_moment)
 
 @pytest.mark.parametrize("tp_name,reparam,sampling_type", tp_reparam_sampling_types)
 def test_moments_ground_truth(tp_name, reparam, sampling_type):
@@ -187,9 +190,11 @@ def test_moments_vs_moments(tp_name, reparam, sampling_type):
 
         diff = base_moment - test_moment
         stderr = combine_stderrs(base_stderr, test_stderr)
+        upper_bound =  6*stderr
+        lower_bound = -6*stderr
 
-        assert generic_all(              diff < 6 * stderr)
-        assert generic_all(-6 * stderr < diff)
+        assert generic_all(              diff < upper_bound)
+        assert generic_all(lower_bound < diff)
 
 @pytest.mark.parametrize("tp_name,split", tp_splits)
 def test_split_elbo_vi(tp_name, split):
@@ -245,4 +250,5 @@ def test_split_moments(tp_name, split):
         base_moments = base_marginals._moments(varnames, moment)
         test_moments = test_marginals._moments(varnames, moment)
 
-        assert_generic_allclose(base_moments, test_moments)
+        base_moments, test_moments = multi_order(base_moments, test_moments)
+        assert t.allclose(base_moments, test_moments)
