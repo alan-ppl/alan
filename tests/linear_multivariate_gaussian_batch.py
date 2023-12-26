@@ -8,7 +8,7 @@ prior_mean_ is of shape [N, F, 1], and is used to compute the posterior mean
 """
 
 import torch as t
-from alan_simplified import Bernoulli, Beta, Plate, BoundPlate, Group, Problem, Data, mean, mean2, MultivariateNormal
+from alan import Bernoulli, Beta, Plate, BoundPlate, Group, Problem, Data, mean, mean2, MultivariateNormal
 from TestProblem import TestProblem
 
 N = 3

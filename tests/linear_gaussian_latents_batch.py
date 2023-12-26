@@ -1,5 +1,5 @@
 import torch as t
-from alan_simplified import Bernoulli, Beta, Plate, BoundPlate, Group, Problem, Data, mean, mean2, Normal, PermutationSampler, CategoricalSampler
+from alan import Bernoulli, Beta, Plate, BoundPlate, Group, Problem, Data, mean, mean2, Normal, PermutationSampler, CategoricalSampler
 from TestProblem import TestProblem
 
 prior_mean = t.randn(2)

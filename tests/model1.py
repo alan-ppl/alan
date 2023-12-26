@@ -1,5 +1,5 @@
 import torch as t
-from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, Data, mean, Split
+from alan import Normal, Plate, BoundPlate, Group, Problem, Data, mean, Split
 from TestProblem import TestProblem
 
 P = Plate(

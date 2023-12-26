@@ -3,7 +3,7 @@ Has plated latent variables, with a non-independent approximate posterior, and a
 """
 
 import torch as t
-from alan_simplified import Bernoulli, Beta, Plate, BoundPlate, Group, Problem, Data, mean, mean2, Normal
+from alan import Bernoulli, Beta, Plate, BoundPlate, Group, Problem, Data, mean, mean2, Normal
 from TestProblem import TestProblem
 
 prior_mean = 2

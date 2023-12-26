@@ -1,7 +1,7 @@
 import torch as t
-from alan_simplified import no_checkpoint
-from alan_simplified.utils import generic_dims, generic_order
-from alan_simplified.moments import RawMoment, var_from_raw_moment
+from alan import no_checkpoint
+from alan.utils import generic_dims, generic_order
+from alan.moments import RawMoment, var_from_raw_moment
 
 class TestProblem():
     def __init__(self, problem, moments, known_moments=None, known_elbo=None, moment_K=30, elbo_K=30, elbo_iters=20, elbo_gap_cat=1, elbo_gap_perm=1, importance_N=1000, split=no_checkpoint):

@@ -4,7 +4,7 @@ Still no plated latent variables, but two parameters with independent Q.
 
 import math
 import torch as t
-from alan_simplified import Bernoulli, Beta, Plate, BoundPlate, Group, Problem, Data, mean, mean2, Normal
+from alan import Bernoulli, Beta, Plate, BoundPlate, Group, Problem, Data, mean, mean2, Normal
 from TestProblem import TestProblem
 
 prior_mean = 2

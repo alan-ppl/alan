@@ -1,9 +1,20 @@
-# alan_simplified
-To install, clone repo, navigate to repo root (`alan_simplified/`) directory, and use,
+# alan
+
+### Logistics:
+
+**Cleanup** It is probably best to start by removing previous alan or alan_simplified
+```
+python -m pip uninstall alan
+python -m pip uninstall alan_simplified
+```
+And then remove the corresponding repo folders before cloning the new repo.
+
+**Installation** To install, clone repo, navigate to repo root directory, and use,
 ```
 pip install -e .
 ```
-To run tests, navigate to `alan_simplfied/tests/` and use `pytest`.
+
+**Tests** To run tests, navigate to `tests/` and use `pytest`.
 
 ### Recent updates
 
@@ -33,7 +44,6 @@ To run tests, navigate to `alan_simplfied/tests/` and use `pytest`.
   * `split` -> `comp_strategy`
   * tests for split
   * Tests for histograms from `_marginal_idxs` and `_importance_sample_idxs`
-  * src/ directory structure [link](https://blog.ionelmc.ro/2014/05/25/python-packaging/#the-structure%3E)
 
 
 
