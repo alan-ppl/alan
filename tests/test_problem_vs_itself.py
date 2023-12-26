@@ -252,4 +252,4 @@ def test_split_moments(tp_name, split):
         test_moments = test_marginals._moments(varnames, moment)
 
         base_moments, test_moments = multi_order(base_moments, test_moments)
-        assert t.allclose(base_moments, test_moments, rtol=1E-4, atol=1E-5))
+        assert t.allclose(base_moments, test_moments, rtol=1E-4, atol=1E-5)
