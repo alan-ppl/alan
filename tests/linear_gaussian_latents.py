@@ -1,3 +1,6 @@
+"""
+Plated latent variables, including a non-IID approximate posterior.
+"""
 import torch as t
 from alan_simplified import Bernoulli, Beta, Plate, BoundPlate, Group, Problem, Data, mean, mean2, Normal
 from TestProblem import TestProblem
