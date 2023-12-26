@@ -45,6 +45,13 @@ pip install -e .
   * tests for split
   * tests for histograms from `_marginal_idxs` and `_importance_sample_idxs`
   * tests for extended_sample
+    - TestProblem takes extended_platesizes and predicted_extended_moments as arguments.
+    - some extended moments are exactly equal to importance sampled moments (i.e. unplated moments + first part of plated moments).
+    - other extended moments aren't exactly equal.
+    - instead, the extended moments are a function of `importance_sample` moments.
+    - TestProblem takes 
+    - predicted_extended_moments is a function that takes an importance sample, and returns mean + variance of moment.
+    - should really compare moments to 
 
 
 
