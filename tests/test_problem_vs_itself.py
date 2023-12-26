@@ -4,10 +4,10 @@ import itertools
 
 import torch as t
 
-from alan_simplified import sampling_types, Sample, PermutationSampler, CategoricalSampler, checkpoint, no_checkpoint
-from alan_simplified.Marginals import Marginals
-from alan_simplified.utils import generic_dims, generic_order, generic_getitem, generic_all, multi_order
-from alan_simplified.moments import var_from_raw_moment, RawMoment
+from alan import sampling_types, Sample, PermutationSampler, CategoricalSampler, checkpoint, no_checkpoint
+from alan.Marginals import Marginals
+from alan.utils import generic_dims, generic_order, generic_getitem, generic_all, multi_order
+from alan.moments import var_from_raw_moment, RawMoment
 
 tp_names = [
     "model1",
