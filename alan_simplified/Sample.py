@@ -261,7 +261,7 @@ class Sample():
 
             J_tensor = t.zeros(sizes, requires_grad=True)
             J_tensor_list.append(J_tensor)
-            f_J_torchdim = f*generic_getitem(J_tensor, dims)
+            f_J_torchdim = sum_non_dim(f*generic_getitem(J_tensor, dims))
             
             f_J_torchdim_dict[(varnames, m)] = f_J_torchdim
 

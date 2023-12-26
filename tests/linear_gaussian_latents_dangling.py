@@ -27,6 +27,7 @@ P = Plate(
     a = Normal(prior_mean, prior_scale),
     T = Plate(
         z = Normal('a', z_scale),
+        zp = Normal('a', 1.),
         d = Normal('z', d_scale),
     ),
 )
@@ -35,6 +36,7 @@ Q = Plate(
     a = Normal(1, 4),
     T = Plate(
         z = Normal(lambda a: 1.5*a, 3.5),
+        zp = Normal(lambda a: 1.5*a, 3.5),
         d = Data(),
     ),
 )

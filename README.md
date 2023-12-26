@@ -1,8 +1,9 @@
 # alan_simplified
-To install, clone repo, navigate to repo root directory, and use,
+To install, clone repo, navigate to repo root (`alan_simplified/`) directory, and use,
 ```
 pip install -e .
 ```
+To run tests, navigate to `alan_simplfied/tests/` and use `pytest`.
 
 ### Recent updates
 

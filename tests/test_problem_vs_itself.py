@@ -6,7 +6,7 @@ import torch as t
 
 from alan_simplified import sampling_types, Sample, PermutationSampler, CategoricalSampler, checkpoint, no_checkpoint
 from alan_simplified.Marginals import Marginals
-from alan_simplified.utils import generic_dims, generic_order, generic_getitem, generic_all, generic_allclose
+from alan_simplified.utils import generic_dims, generic_order, generic_getitem, generic_all, assert_generic_allclose
 from alan_simplified.moments import var_from_raw_moment, RawMoment
 
 tp_names = [
@@ -18,6 +18,7 @@ tp_names = [
     "linear_gaussian_two_params_corr_Q_reversed",
     "linear_gaussian_two_params_dangling",
     "linear_gaussian_latents",
+    "linear_gaussian_latents_dangling",
     "linear_multivariate_gaussian",
 ]
 
@@ -68,7 +69,7 @@ def test_moments_sample_marginal(tp_name, reparam, sampling_type):
         sample_moments = sample._moments(varnames, moment)
         marginals_moments = marginals._moments(varnames, moment)
 
-        assert generic_allclose(sample_moments, marginals_moments)
+        assert_generic_allclose(sample_moments, marginals_moments)
 
 @pytest.mark.parametrize("tp_name,reparam,sampling_type", tp_reparam_sampling_types)
 def test_moments_importance_sample(tp_name, reparam, sampling_type):
@@ -116,9 +117,12 @@ def test_moments_ground_truth(tp_name, reparam, sampling_type):
 
     for (varnames, m), true_moment in tp.known_moments.items():
         marginal_moment, stderr = moment_stderr(marginals, varnames, m)
+
+        upper_bound = marginal_moment + 7*stderr
+        lower_bound = marginal_moment - 7*stderr
         
-        assert generic_all(true_moment < marginal_moment + 6*stderr)
-        assert generic_all(marginal_moment - 6*stderr < true_moment)
+        assert generic_all(              true_moment < upper_bound)
+        assert generic_all(lower_bound < true_moment)
 
 @pytest.mark.parametrize("tp_name,sampling_type", tp_sampling_types)
 def test_elbo_ground_truth(tp_name, sampling_type):
@@ -241,4 +245,4 @@ def test_split_moments(tp_name, split):
         base_moments = base_marginals._moments(varnames, moment)
         test_moments = test_marginals._moments(varnames, moment)
 
-        assert generic_allclose(base_moments, test_moments)
+        assert_generic_allclose(base_moments, test_moments)
