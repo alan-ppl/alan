@@ -274,12 +274,14 @@ def test_device(tp_name, reparam, sampler, compstrat, device):
 
     if compstrat is None:
         compstrat = tp.computation_strategy
+    print(compstrat)
 
-    problem = tp.problem.to(device)
+    problem = tp.problem
+    problem.to(device)
     sample = problem.sample(K=3, reparam=reparam, sampler=sampler)
-    #sample doesn't use checkpointing
-    sample.moments(tp.moments)
-    marginals = sample.marginals(computation_strategy=compstrat)
-    marginals.moments(tp.moments)
-    importance_sample = sample.importance_sample(N=4)
-    importance_sample.moments(tp.moments)
+    sample.moments(tp.moments, computation_strategy=compstrat)
+
+    #marginals = sample.marginals(computation_strategy=compstrat)
+    #marginals.moments(tp.moments)
+    #importance_sample = sample.importance_sample(N=4)
+    #importance_sample.moments(tp.moments)

@@ -37,6 +37,7 @@ pip install -e .
   * think carefully about the torchdim/named tensor output of moments.
   * consider adding .sample_reparam and .sample_non_reparam to Sample (Sample with reparam=True has both).
   * error message when the data doesn't have the right plate names isn't right.
+  * check error message when you ask for e.g. a moment that doesn't live within the heirarchy.
   * Do we remember what the issue with trailing Ellipsis in e.g. generic_getitem was?
   * latent moments for `linear_gaussian_latents`
   * tests for mixture distributions.
@@ -51,6 +52,7 @@ pip install -e .
     - TestProblem takes 
     - predicted_extended_moments is a function that takes an importance sample, and returns mean + variance of moment.
     - should really compare moments to 
+  * extra_log_factors should be a flat dict, and should do the weird trick to make splitting happy (currently in sample.moments).
 
 
 ### Long-run TODOs:
