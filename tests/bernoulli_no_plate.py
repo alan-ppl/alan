@@ -21,9 +21,8 @@ Q = BoundPlate(Q)
 
 all_platesizes = {'T': 10}
 data = {'coin': t.cat([t.zeros(3), t.ones(7)]).refine_names('T')}
-problem = Problem(P, Q, all_platesizes, data)
 
 moments = [('p', mean)]
 known_moments = {('p', mean): (7+2)/(2+1+10)}
 
-tp = TestProblem(problem, moments, known_moments=known_moments, moment_K=10000)
+tp = TestProblem(P, Q, all_platesizes, data, moments, known_moments=known_moments, moment_K=10000)

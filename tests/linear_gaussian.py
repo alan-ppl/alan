@@ -44,7 +44,6 @@ Q = BoundPlate(Q)
 
 all_platesizes = {'T': N}
 data = {'d': data.refine_names('T')}
-problem = Problem(P, Q, all_platesizes, data)
 
 known_moments = {
     ('a', mean): post_mean,
@@ -52,4 +51,4 @@ known_moments = {
 }
 moments = list(known_moments.keys())
 
-tp = TestProblem(problem, moments, known_moments=known_moments, known_elbo=known_elbo, moment_K=10000, elbo_K=10000)
+tp = TestProblem(P, Q, all_platesizes, data, moments, known_moments=known_moments, known_elbo=known_elbo, moment_K=10000, elbo_K=10000)

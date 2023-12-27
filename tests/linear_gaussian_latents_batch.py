@@ -39,7 +39,6 @@ Q = BoundPlate(Q)
 
 all_platesizes = {'T': N}
 data = {'d': data}
-problem = Problem(P, Q, all_platesizes, data)
 
 moments = [('a', mean), ('a', mean2), ('z', mean), ('z', mean2)]
 known_moments = {
@@ -50,7 +49,7 @@ known_moments = {
 
 
 tp = TestProblem(
-    problem, 
+    P, Q, all_platesizes, data,
     moments, 
     known_moments=known_moments, 
     moment_K=1000, 

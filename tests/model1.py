@@ -36,13 +36,10 @@ Q = BoundPlate(Q, params={'a_mean': t.zeros(()), 'd_mean':t.zeros(3, names=('p1'
 all_platesizes = {'p1': 3, 'p2': 4}
 data = {'e': t.randn(3, 4, names=('p1', 'p2'))}
 
-prob = Problem(P, Q, all_platesizes, data)
-sample = prob.sample(10, reparam=False)
-
 moments = [
     ('a', mean),
     ('b', mean),
     ('c', mean),
     ('d', mean),
 ]
-tp = TestProblem(prob, moments, moment_K=1000, computation_strategy=Split('p1', 2))
+tp = TestProblem(P, Q, all_platesizes, data, moments, moment_K=1000, computation_strategy=Split('p1', 2))

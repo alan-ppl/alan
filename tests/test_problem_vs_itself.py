@@ -1,6 +1,7 @@
 import importlib
 import pytest
 import itertools
+import warnings
 
 import torch as t
 
@@ -30,10 +31,19 @@ tps = {tp_name: importlib.import_module(tp_name).tp for tp_name in tp_names}
 
 reparams = [True, False]
 compstrats = [checkpoint, no_checkpoint, None]
+devices = ['cpu']
+if t.cuda.is_available():
+    devices.append('cuda')
+if t.backends.mps.is_available():
+    devices.append('mps')
+print(f"Devices: {devices}")
+if 1 == len(devices):
+    warnings.warn("Only testing CPU methods, as no device is present")
 
 tp_samplers = list(itertools.product(tp_names, samplers))
 tp_reparam_samplers = list(itertools.product(tp_names, reparams, samplers))
 tp_compstrats = list(itertools.product(tp_names, compstrats))
+tp_devices = list(itertools.product(tp_names, devices))
 
 def moment_stderr(marginals, varnames, moment):
     """
@@ -185,8 +195,10 @@ def test_moments_vs_moments(tp_name, reparam, sampler):
     """
     tp = tps[tp_name]
 
-    base_marginals = tp.problem.sample(K=tp.moment_K, reparam=False, sampler=PermutationSampler).marginals()
-    test_marginals = tp.problem.sample(K=tp.moment_K, reparam=reparam, sampler=sampler).marginals()
+    problem = tp.problem
+
+    base_marginals = problem.sample(K=tp.moment_K, reparam=False, sampler=PermutationSampler).marginals()
+    test_marginals = problem.sample(K=tp.moment_K, reparam=reparam, sampler=sampler).marginals()
 
     for (varnames, moment) in tp.moments:
         base_moment, base_stderr = moment_stderr(base_marginals, varnames, moment)
@@ -256,3 +268,11 @@ def test_compstrat_moments(tp_name, computation_strategy):
 
         base_moments, test_moments = multi_order(base_moments, test_moments)
         assert t.allclose(base_moments, test_moments, rtol=1E-4, atol=1E-5)
+
+@pytest.mark.parametrize("tp_name,device", tp_devices)
+def test_device_moments(tp_name, device):
+    """
+    tests `marginals.moments` against each other for different computation_strategys
+    """
+    tp = tps[tp_name]
+    problem = tp.problem.to(device)
