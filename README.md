@@ -77,9 +77,11 @@ pip install -e .
       - `bound_plate.sample`
   * `Problem`
     - created using `Problem(P, Q, data, all_platesizes)`
-    - `P` and `Q` are `Plate`/`BoundPlate`s (any `Plate`s are converted to `BoundPlate` inside Problem).
+    - `P` and `Q` are `BoundPlate`s.
     - `data: dict[str, torch named Tensor]` (any platedims are named).
     - `all_platedims: dict[str, int]` (size of all platedims).
+    - user-facing methods include:
+      - `problem.sample(K=10)`: produces a `Sample`.
   * `Sample`
     - created using `problem.sample(K=10)`
     - contains a sample from the approximate posterior.
