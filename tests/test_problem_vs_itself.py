@@ -29,11 +29,11 @@ tp_names = [
 tps = {tp_name: importlib.import_module(tp_name).tp for tp_name in tp_names}
 
 reparams = [True, False]
-computation_strategys = [checkpoint, no_checkpoint, None]
+compstrats = [checkpoint, no_checkpoint, None]
 
 tp_samplers = list(itertools.product(tp_names, samplers))
 tp_reparam_samplers = list(itertools.product(tp_names, reparams, samplers))
-tp_computation_strategys = list(itertools.product(tp_names, computation_strategys))
+tp_compstrats = list(itertools.product(tp_names, compstrats))
 
 def moment_stderr(marginals, varnames, moment):
     """
@@ -200,8 +200,8 @@ def test_moments_vs_moments(tp_name, reparam, sampler):
         assert generic_all(              diff < upper_bound)
         assert generic_all(lower_bound < diff)
 
-@pytest.mark.parametrize("tp_name,computation_strategy", tp_computation_strategys)
-def test_computation_strategy_elbo_vi(tp_name, computation_strategy):
+@pytest.mark.parametrize("tp_name,computation_strategy", tp_compstrats)
+def test_compstrat_elbo_vi(tp_name, computation_strategy):
     """
     tests `sample.elbo_vi` against each other for different computation_strategys
     """
@@ -218,8 +218,8 @@ def test_computation_strategy_elbo_vi(tp_name, computation_strategy):
 
         assert t.isclose(base_elbo, test_elbo)
 
-@pytest.mark.parametrize("tp_name,computation_strategy", tp_computation_strategys)
-def test_computation_strategy_elbo_rws(tp_name, computation_strategy):
+@pytest.mark.parametrize("tp_name,computation_strategy", tp_compstrats)
+def test_compstrat_elbo_rws(tp_name, computation_strategy):
     """
     tests `sample.elbo_rws` against each other for different computation_strategys
     """
@@ -236,8 +236,8 @@ def test_computation_strategy_elbo_rws(tp_name, computation_strategy):
 
         assert t.isclose(base_elbo, test_elbo)
 
-@pytest.mark.parametrize("tp_name,computation_strategy", tp_computation_strategys)
-def test_computation_strategy_moments(tp_name, computation_strategy):
+@pytest.mark.parametrize("tp_name,computation_strategy", tp_compstrats)
+def test_compstrat_moments(tp_name, computation_strategy):
     """
     tests `marginals.moments` against each other for different computation_strategys
     """
