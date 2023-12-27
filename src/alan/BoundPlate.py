@@ -4,6 +4,7 @@ import torch.nn as nn
 from .utils import *
 from .Sampler import Sampler, PermutationSampler
 from .Plate import tensordict2tree, Plate, flatten_tree
+from .Stores import BufferStore, ParameterStore, ModuleStore
 
 def named2torchdim_flat2tree(flat_named:dict, all_platedims, plate):
     flat_torchdim = named2dim_dict(flat_named, all_platedims)
@@ -33,6 +34,7 @@ class BoundPlate(nn.Module):
 
         #Error checking: input, param names aren't reserved
         input_param_names = [*inputs.keys(), *params.keys()]
+        all_names = set(dir(self))
         for name in input_param_names:
             check_name(name)
         
@@ -47,22 +49,18 @@ class BoundPlate(nn.Module):
         if 0 != len(inputs_params_overlap):
             raise Exception(f"The program in BoundPlate has names that overlap with the inputs/params.  Specifically {prog_inputs_params_overlap}.")
 
-        for name, inp in inputs.items():
-            assert isinstance(inp, t.Tensor)
-            self.register_buffer(name, inp)
-        for name, param in params.items():
-            assert isinstance(param, t.Tensor)
-            self.register_parameter(name, nn.Parameter(param))
+        self._inputs = BufferStore(inputs)
+        self._params = ParameterStore(params)
 
     @property
     def device(self):
         return self._device_tensor.device
 
     def inputs(self):
-        return {k: v for (k, v) in self.named_buffers() if k != "_device_tensor"}
+        return self._inputs.to_dict()
 
     def params(self):
-        return {k: v for (k, v) in self.named_parameters()}
+        return self._params.to_dict()
 
     def inputs_params_flat_named(self):
         """

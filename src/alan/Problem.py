@@ -9,7 +9,7 @@ from .utils import *
 from .checking import check_PQ_plate, check_inputs_params, mismatch_names
 from .logpq import logPQ_plate
 from .Sampler import PermutationSampler
-from .BufferDict import BufferDict
+from .Stores import BufferStore
 
 from .Sample import Sample
 
@@ -30,7 +30,7 @@ class Problem(nn.Module):
         self.Q = Q
         self.all_platedims = {name: Dim(name, size) for name, size in all_platesizes.items()}
         #Put data in a BufferDict so that it is registered properly, and moves to device as requested.
-        self._data = BufferDict(data)
+        self._data = BufferStore(data)
 
 
         #Check names in P matches those in Q+data, and there are no duplicates.

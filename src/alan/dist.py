@@ -8,31 +8,9 @@ import torch
 from .utils import *
 from .TorchDimDist import TorchDimDist
 from .Sampler import Sampler
-
-def func_val_args(func_val):
-    if isinstance(func_val, str):
-        return (func_val,)
-    elif isinstance(func_val, types.FunctionType):
-        return function_arguments(func_val)
-    else:
-        assert isinstance(func_val, (Number, Tensor))
-        return ()
+from .Stores import BufferStore
 
 
-def convert_device_dtype(dist, param_name, param, device):
-    assert isinstance(param, (Tensor, Number))
-
-    if isinstance(param, Tensor):
-        if param.device != device:
-            raise Exception(f"Expected {param_name} to be on {device}, but actually it is on {param.device}.  This is likely because you have used e.g. `t.ones(3)` in the definition of P and Q. This won't work if you move off the cpu.  Instead, you should either just use Python scalars `0` or `1.`, or set the parameter as an input on `BoundPlate`, or set the device by looking at previously generated tensors.  For instance, you could use a function: `lambda a: t.ones(3, device=a.device)` (as you would usually do in PyTorch to make that the result lives on the same device as `a`)")
-        return param
-    else:
-        #If its not a tensor, check with dist is expecting a float param
-        float_param = not dist.arg_constraints[param_name].is_discrete
-
-        if float_param:
-            param=float(param)
-        return t.tensor(param, device=device)
 
 def apply_func_val(func_val, scope):
     if isinstance(func_val, str):
@@ -44,7 +22,7 @@ def apply_func_val(func_val, scope):
         assert isinstance(func_val, (Number, Tensor))
         return func_val
 
-class Dist():
+class Dist(torch.nn.Module):
     """
     Abstract base class for distributions that are actually exposed to users.
 
@@ -62,6 +40,10 @@ class Dist():
     variable from the scope.
     """
     def __init__(self, *args, sample_shape=t.Size([]), **kwargs):
+        super().__init__()
+        #A tensor that e.g. moves to GPU when we call `problem.to(device='cuda')`.
+        self.register_buffer("_device_tensor", t.zeros(()))
+
         self.sample_shape = sample_shape
 
         #Converts args + kwargs to a unified dictionary mapping paramname2something,
@@ -69,19 +51,52 @@ class Dist():
         self.paramname2func_val = inspect.signature(self.dist).bind(*args, **kwargs).arguments
 
         all_args = set()
-        for func_val in self.paramname2func_val.values():
-            all_args.update(func_val_args(func_val))
 
+        self.str_args = {}
+        self.func_args = {}
+        tensor_args = {}
+        self.val_args = {}
+
+        for paramname, func_val in self.paramname2func_val.items():
+            if isinstance(func_val, str):
+                self.str_args[paramname] = func_val
+                all_args.update((func_val,))
+            elif isinstance(func_val, types.FunctionType):
+                self.func_args[paramname] = func_val
+                all_args.update(function_arguments(func_val))
+            elif isinstance(func_val, torch.Tensor):
+                tensor_args[paramname] = func_val
+            else:
+                assert isinstance(func_val, Number)
+                self.val_args[paramname] = func_val
+
+        self.tensor_args = BufferStore(tensor_args)
         self.all_args = list(all_args)
+
+    @property
+    def device(self):
+        return self._device_tensor.device
 
     def filter_scope(self, scope: dict[str, Tensor]):
         return {k: v for (k,v) in scope.items() if k in self.all_args}
 
-    def tdd(self, scope: dict[str, Tensor], device):
-        paramname2val = {paramname: apply_func_val(func_val, scope) for (paramname, func_val) in self.paramname2func_val.items()}
-        paramname2val = {paramname: convert_device_dtype(self.dist, paramname, val, device) for (paramname, val) in paramname2val.items()}
+    def paramname2val(self, scope: dict[str, Tensor]):
+        result = {}
 
-        return TorchDimDist(self.dist, **paramname2val)
+        for paramname, val in self.val_args.items():
+            result[paramname] = self.move_number_device(paramname, val)
+        for paramname, tensor in self.tensor_args.to_dict().items():
+            self.check_device(tensor)
+            result[paramname] = tensor
+        for paramname, arg in self.str_args.items():
+            result[paramname] = scope[arg]
+        for paramname, func in self.func_args.items():
+            result[paramname] = func(*[scope[arg] for arg in function_arguments(func)])
+
+        return result
+
+    def tdd(self, scope: dict[str, Tensor], device):
+        return TorchDimDist(self.dist, **self.paramname2val(scope))
 
     def sample(
             self,
@@ -173,6 +188,23 @@ class Dist():
                  sample: Tensor, 
                  scope: dict[any, Tensor]):
         return self.tdd(scope, sample.device).log_prob(sample)
+
+    def move_number_device(self, param_name, param):
+        assert isinstance(param, Number)
+        #If its not a tensor, check dist is expecting a float param
+        float_param = not self.dist.arg_constraints[param_name].is_discrete
+
+        if float_param:
+            param=float(param)
+        return t.tensor(param, device=self.device)
+
+    def check_device(self, param):
+        assert isinstance(param, Tensor)
+
+        if param.device != self.device:
+            raise Exception(f"Expected parameter to be on {self.device}, but actually it is on {param.device}.  This is likely because you have used e.g. `t.ones(3)` in the definition of P and Q. This won't work if you move off the cpu.  Instead, you should either just use Python scalars `0` or `1.`, or set the parameter as an input on `BoundPlate`, or set the device by looking at previously generated tensors.  For instance, you could use a function: `lambda a: t.ones(3, device=a.device)` (as you would usually do in PyTorch to make that the result lives on the same device as `a`)")
+        return param
+
 
 
 
