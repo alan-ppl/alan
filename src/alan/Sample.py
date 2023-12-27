@@ -186,7 +186,7 @@ class Sample():
             dimss.append(dims)
             shape = [dim.size for dim in dims]
 
-            J_tensor = t.zeros(*shape, device=self.device, requires_grad=True)
+            J_tensor = t.zeros(shape, device=self.device, requires_grad=True)
             J_tensor_list.append(J_tensor)
             J_torchdim = generic_getitem(J_tensor, dims)
             
