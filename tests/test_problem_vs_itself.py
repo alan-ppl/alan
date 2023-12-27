@@ -262,20 +262,24 @@ def test_compstrat_moments(tp_name, compstrat):
         base_moments, test_moments = multi_order(base_moments, test_moments)
         assert t.allclose(base_moments, test_moments, rtol=1E-4, atol=1E-5)
 
-#@pytest.mark.parametrize(
-#    "tp_name,reparam,sampler,compstrat,device", 
-#    itertools.product(["model1"], reparams, samplers, compstrats, devices)
-#)
-#def test_device(tp_name, reparam, sampler, compstrat, device):
-#    """
-#    tests `marginals.moments` against each other for different computation_strategys
-#    """
-#
-#    tp = tps[tp_name]
-#    problem = tp.problem.to(device)
-#    sample = problem.sample(K=3, reparam=reparam, sampler=sampler)
-#    #sample.moments(moments)
-#    marginals = sample.marginals(computation_strategy=compstrat)
-#    marginals.moments(moments)
-#    importance_sample = sample.importance_sample(N=10)
-#    importance_sample.moments(moments)
+@pytest.mark.parametrize(
+    "tp_name,reparam,sampler,compstrat,device", 
+    itertools.product(["model1"], reparams, samplers, [*compstrats, None], devices)
+)
+def test_device(tp_name, reparam, sampler, compstrat, device):
+    """
+    tests `marginals.moments` against each other for different computation_strategys
+    """
+    tp = tps[tp_name]
+
+    if compstrat is None:
+        compstrat = tp.computation_strategy
+
+    problem = tp.problem.to(device)
+    sample = problem.sample(K=3, reparam=reparam, sampler=sampler)
+    #sample doesn't use checkpointing
+    sample.moments(tp.moments)
+    marginals = sample.marginals(computation_strategy=compstrat)
+    marginals.moments(tp.moments)
+    importance_sample = sample.importance_sample(N=4)
+    importance_sample.moments(tp.moments)

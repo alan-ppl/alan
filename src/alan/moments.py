@@ -110,7 +110,7 @@ def postproc_moment_outputs(result, raw_moms):
     return result
 
 
-def torchdim_moments_mixin(self, *args):
+def torchdim_moments_mixin(self, *args, **kwargs):
     """
     _moments_uniform_input takes very structured input.  Must be list[tuple[str], Moment], where the tuple[str] is the variable names.
     This function allows more flexible inputs.
@@ -126,13 +126,15 @@ def torchdim_moments_mixin(self, *args):
     sample._moments('a', Mean)
 
     Note that _moments returns torchdim tensors, whereas moments returns named tensors
+
+    **kwargs is for e.g. computation_strategy in sample.moments(), but that doesn't currently work
     """
     moms = uniformise_moment_args(args)
-    result = self._moments_uniform_input(moms)
+    result = self._moments_uniform_input(moms, **kwargs)
     return postproc_moment_outputs(result, args)
 
-def named_moments_mixin(self, *args):
+def named_moments_mixin(self, *args, **kwargs):
     moms = uniformise_moment_args(args)
-    result = self._moments_uniform_input(moms)
+    result = self._moments_uniform_input(moms, **kwargs)
     result = [dim2named_tensor(x) for x in result]
     return postproc_moment_outputs(result, args)

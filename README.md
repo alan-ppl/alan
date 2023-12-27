@@ -40,9 +40,6 @@ pip install -e .
   * Do we remember what the issue with trailing Ellipsis in e.g. generic_getitem was?
   * latent moments for `linear_gaussian_latents`
   * tests for mixture distributions.
-  * `sampling_type` -> `sampler`
-  * `split` -> `comp_strategy`
-  * tests for split
   * tests for histograms from `_marginal_idxs` and `_importance_sample_idxs`
   * tests for extended_sample
     - TestProblem takes extended_platesizes and predicted_extended_moments as arguments.
@@ -52,7 +49,7 @@ pip install -e .
     - TestProblem takes 
     - predicted_extended_moments is a function that takes an importance sample, and returns mean + variance of moment.
     - should really compare moments to 
-  * tests for device
+  * make sure most of the tests have a split specified.
 
 
 ### Long-run TODOs:
