@@ -9,22 +9,14 @@ from .utils import *
 from .TorchDimDist import TorchDimDist
 from .Sampler import Sampler
 
-def func_args(something):
-    """
-    Takes an argument to the dist (either string, lambda or literal like `0`)
-    """
-    if isinstance(something, str):
-        args = (something,)
-        func = lambda scope: scope[something]
-    elif isinstance(something, types.FunctionType):
-        #The arguments to the function `something`.
-        args = function_arguments(something)
-        func = lambda scope: something(*[scope[arg] for arg in args])
+def func_val_args(func_val):
+    if isinstance(func_val, str):
+        return (func_val,)
+    elif isinstance(func_val, types.FunctionType):
+        return function_arguments(func_val)
     else:
-        #something is e.g. 1 or 0.
-        args = ()
-        func = lambda scope: something
-    return (args, func)
+        assert isinstance(func_val, (Number, Tensor))
+        return ()
 
 
 def convert_device_dtype(dist, param_name, param, device):
@@ -42,16 +34,15 @@ def convert_device_dtype(dist, param_name, param, device):
             param=float(param)
         return t.tensor(param, device=device)
 
-
-
-
-
-
-
-
-
-
-
+def apply_func_val(func_val, scope):
+    if isinstance(func_val, str):
+        return scope[func_val]
+    elif isinstance(func_val, types.FunctionType):
+        args = function_arguments(func_val)
+        return func_val(*[scope[arg] for arg in args])
+    else:
+        assert isinstance(func_val, (Number, Tensor))
+        return func_val
 
 class Dist():
     """
@@ -75,15 +66,11 @@ class Dist():
 
         #Converts args + kwargs to a unified dictionary mapping paramname2something,
         #following distributions initialization signature.
-        paramname2something = inspect.signature(self.dist).bind(*args, **kwargs).arguments
+        self.paramname2func_val = inspect.signature(self.dist).bind(*args, **kwargs).arguments
 
         all_args = set()
-        #A dict[str, function], where the functions map from a scope to a value.
-        self.paramname2func = {}
-        for paramname, something in paramname2something.items():
-            args, func = func_args(something)
-            self.paramname2func[paramname] = func
-            all_args.update(args)
+        for func_val in self.paramname2func_val.values():
+            all_args.update(func_val_args(func_val))
 
         self.all_args = list(all_args)
 
@@ -91,7 +78,7 @@ class Dist():
         return {k: v for (k,v) in scope.items() if k in self.all_args}
 
     def tdd(self, scope: dict[str, Tensor], device):
-        paramname2val = {paramname: func(scope) for (paramname, func) in self.paramname2func.items()}
+        paramname2val = {paramname: apply_func_val(func_val, scope) for (paramname, func_val) in self.paramname2func_val.items()}
         paramname2val = {paramname: convert_device_dtype(self.dist, paramname, val, device) for (paramname, val) in paramname2val.items()}
 
         return TorchDimDist(self.dist, **paramname2val)

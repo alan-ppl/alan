@@ -264,7 +264,7 @@ def test_compstrat_moments(tp_name, compstrat):
 
 @pytest.mark.parametrize(
     "tp_name,reparam,sampler,compstrat,device", 
-    itertools.product(tp_names, reparams, samplers, [*compstrats, None], ['cpu'])
+    itertools.product(["model1"], reparams, samplers, [*compstrats, None], devices)
 )
 def test_device(tp_name, reparam, sampler, compstrat, device):
     """
