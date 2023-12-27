@@ -1,5 +1,7 @@
-from .utils import *
 import math
+import warnings
+
+from .utils import *
 
 class NoSplit:
     def split_args(self, name, sample, inputs_params, extra_log_factors, data, all_platedims):
@@ -77,6 +79,14 @@ class SplitDims:
         assert 0 <= remainder
         if remainder != 0:
             self.split_sizes.append(remainder)
+
+        if (split_size > 2) and self.split_sizes[-1] ==1:
+            #Works around a bug in MPS device, which is triggered if you have a split size of 1
+            self.split_sizes[-2] = self.split_sizes[-2] - 1
+            self.split_sizes[-1] = self.split_sizes[-1] + 1
+
+        if self.split_sizes[-1] == 1:
+            warnings.warn("Split size of 1, seems to trigger bugs on Apple mps device")
             
         self.split_dims = [Dim(f'{self.split.platename}_split_{i}', self.split_sizes[i]) for i in range(len(self.split_sizes))]
         self.split_all_platedimss = [{**all_platedims, self.split.platename: dim} for dim in self.split_dims]
