@@ -42,4 +42,9 @@ moments = [
     ('c', mean),
     ('d', mean),
 ]
-tp = TestProblem(P, Q, all_platesizes, data, moments, moment_K=1000, computation_strategy=Split('p1', 2))
+tp = TestProblem(
+    P, Q, all_platesizes, data, 
+    moments, 
+    moment_K=1000, 
+    computation_strategy=Split('p1', 2)
+)

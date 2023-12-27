@@ -72,7 +72,12 @@ class SplitDims:
 
         assert orig_size > split_size
 
-        self.split_sizes = [*((orig_size//split_size)*[split_size]), orig_size%split_size]
+        self.split_sizes = [*((orig_size//split_size)*[split_size])]
+        remainder = orig_size%split_size
+        assert 0 <= remainder
+        if remainder != 0:
+            self.split_sizes.append(remainder)
+            
         self.split_dims = [Dim(f'{self.split.platename}_split_{i}', self.split_sizes[i]) for i in range(len(self.split_sizes))]
         self.split_all_platedimss = [{**all_platedims, self.split.platename: dim} for dim in self.split_dims]
 

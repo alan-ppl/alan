@@ -1,5 +1,5 @@
 import torch as t
-from alan import Bernoulli, Beta, Plate, BoundPlate, Group, Problem, Data, mean, mean2, Normal, PermutationSampler, CategoricalSampler
+from alan import Bernoulli, Beta, Plate, BoundPlate, Group, Problem, Data, mean, mean2, Normal, Split
 from TestProblem import TestProblem
 
 prior_mean = t.randn(2)
@@ -53,5 +53,6 @@ tp = TestProblem(
     moments, 
     known_moments=known_moments, 
     moment_K=1000, 
+    computation_strategy=Split('T', 3),
 )
 

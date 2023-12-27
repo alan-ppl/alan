@@ -4,7 +4,7 @@ Still no plated latent variables, but two parameters with independent Q.
 
 import math
 import torch as t
-from alan import Bernoulli, Beta, Plate, BoundPlate, Group, Problem, Data, mean, mean2, Normal
+from alan import Bernoulli, Beta, Plate, BoundPlate, Group, Problem, Data, mean, mean2, Normal, Split
 from TestProblem import TestProblem
 
 prior_mean = 2
@@ -60,5 +60,6 @@ tp = TestProblem(
     known_moments=known_moments, 
     known_elbo=known_elbo, 
     moment_K=1000, 
-    elbo_K=1000
+    elbo_K=1000,
+    computation_strategy=Split('T', 5),
 )

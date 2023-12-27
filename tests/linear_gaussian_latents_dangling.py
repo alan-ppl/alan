@@ -3,7 +3,7 @@ Has plated latent variables, with a non-independent approximate posterior, and a
 """
 
 import torch as t
-from alan import Bernoulli, Beta, Plate, BoundPlate, Group, Problem, Data, mean, mean2, Normal
+from alan import Bernoulli, Beta, Plate, BoundPlate, Group, Problem, Data, mean, mean2, Normal, Split
 from TestProblem import TestProblem
 
 prior_mean = 2
@@ -68,5 +68,6 @@ tp = TestProblem(
     elbo_K=1000, 
     elbo_iters=30,
     elbo_gap_cat=2,
+    computation_strategy=Split('T', 5),
 )
 
