@@ -108,7 +108,6 @@ class Dist(torch.nn.Module):
             groupvarname2Kdim:dict[str, Dim],
             sampler:Sampler,
             reparam:bool,
-            device:torch.device,
             ):
 
         Kdim = groupvarname2Kdim[name]

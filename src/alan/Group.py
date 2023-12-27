@@ -32,7 +32,6 @@ class Group():
             groupvarname2Kdim:dict[str, Dim],
             sampler:Sampler,
             reparam:bool,
-            device:t.device,
             ):
 
         result = {}       #This is the sample returned.

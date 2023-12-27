@@ -37,7 +37,6 @@ class Plate():
             groupvarname2Kdim:dict[str, Dim],
             sampler:Sampler,
             reparam:bool,
-            device:t.device,
         ):
 
         if name is not None:
@@ -57,7 +56,6 @@ class Plate():
                     groupvarname2Kdim=groupvarname2Kdim,
                     sampler=sampler,
                     reparam=reparam,
-                    device=device,
                 )
 
                 sample[childname] = childsample
