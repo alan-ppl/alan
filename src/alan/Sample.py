@@ -276,22 +276,6 @@ class Sample():
 
     _moments = torchdim_moments_mixin
     moments = named_moments_mixin
-        
-    def clone_sample(self, sample: dict):
-        '''Takes a sample (nested dict of tensors) and returns a new dict with the same structure
-        but with copies of the tensors.'''
-
-        result = {}
-
-        for name, value in sample.items():
-            if isinstance(value, dict):
-                result[name] = self.clone_sample(value)
-            else:
-                assert isinstance(value, Tensor)
-                result[name] = value.clone()
-
-        return result
-
 
         
 def index_into_sample(

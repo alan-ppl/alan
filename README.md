@@ -41,6 +41,8 @@ pip install -e .
   * latent moments for `linear_gaussian_latents`
   * tests for mixture distributions.
   * tests for histograms from `_marginal_idxs` and `_importance_sample_idxs`
+  * make sure most of the tests have a split specified.
+  * remove the random init from most of the tests.
   * tests for extended_sample
     - TestProblem takes extended_platesizes and predicted_extended_moments as arguments.
     - some extended moments are exactly equal to importance sampled moments (i.e. unplated moments + first part of plated moments).
@@ -49,7 +51,6 @@ pip install -e .
     - TestProblem takes 
     - predicted_extended_moments is a function that takes an importance sample, and returns mean + variance of moment.
     - should really compare moments to 
-  * make sure most of the tests have a split specified.
 
 
 ### Long-run TODOs:
