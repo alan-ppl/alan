@@ -264,7 +264,7 @@ def test_compstrat_moments(tp_name, compstrat):
 
 @pytest.mark.parametrize(
     "tp_name,reparam,sampler,compstrat,device", 
-    itertools.product(["model1"], reparams, samplers, [*compstrats, None], devices)
+    itertools.product(tp_names, reparams, samplers, [*compstrats, None], devices)
 )
 def test_device(tp_name, reparam, sampler, compstrat, device):
     """
@@ -274,14 +274,12 @@ def test_device(tp_name, reparam, sampler, compstrat, device):
 
     if compstrat is None:
         compstrat = tp.computation_strategy
-    print(compstrat)
 
     problem = tp.problem
     problem.to(device)
     sample = problem.sample(K=3, reparam=reparam, sampler=sampler)
     sample.moments(tp.moments, computation_strategy=compstrat)
-
-    #marginals = sample.marginals(computation_strategy=compstrat)
-    #marginals.moments(tp.moments)
-    #importance_sample = sample.importance_sample(N=4)
-    #importance_sample.moments(tp.moments)
+    marginals = sample.marginals(computation_strategy=compstrat)
+    marginals.moments(tp.moments)
+    importance_sample = sample.importance_sample(N=4)
+    importance_sample.moments(tp.moments)

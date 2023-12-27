@@ -51,6 +51,10 @@ pip install -e .
     - TestProblem takes 
     - predicted_extended_moments is a function that takes an importance sample, and returns mean + variance of moment.
     - should really compare moments to 
+  * Make devices work when you put a Tensor on a Dist.
+    - Requires Dist to explicitly save tensor/number inputs.
+    - Requires Dist to be a nn.Module.
+    - Requires Dist to be properly registered by BoundPlate.
 
 
 
