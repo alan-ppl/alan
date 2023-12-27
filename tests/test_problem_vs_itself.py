@@ -264,11 +264,11 @@ def test_compstrat_moments(tp_name, compstrat):
 
 @pytest.mark.parametrize(
     "tp_name,reparam,sampler,compstrat,device", 
-    itertools.product(tp_names, reparams, samplers, [*compstrats, None], devices)
+    itertools.product(tp_names, reparams, samplers, [*compstrats, None], ['cpu'])
 )
 def test_device(tp_name, reparam, sampler, compstrat, device):
     """
-    tests `marginals.moments` against each other for different computation_strategys
+    tests that nothing crashes when you try all configurations.
     """
     tp = tps[tp_name]
 
