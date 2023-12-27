@@ -28,15 +28,10 @@ pip install -e .
 * Tests defined a bunch of problems with ground-truth info (moments + model evidence).
 
 ### Minor TODOs:
-  * Marginals make sense for variables on different plates if they're in the same heirarchy.
   * `importance_sample.dump` should output tensors with the `N` dimension first.
   * `repeats` kwarg for `sample.importance_sample`.
   * check elbo_rws
-  * TestProblem takes a list of latent variables + moments in the usual form expected by moments.
-  * think carefully about the torchdim/named tensor output of moments.
   * consider adding .sample_reparam and .sample_non_reparam to Sample (Sample with reparam=True has both).
-  * error message when the data doesn't have the right plate names isn't right.
-  * check error message when you ask for e.g. a moment that doesn't live within the heirarchy.
   * Do we remember what the issue with trailing Ellipsis in e.g. generic_getitem was?
   * latent moments for `linear_gaussian_latents`
   * tests for mixture distributions.
@@ -56,8 +51,9 @@ pip install -e .
 
 ### Long-run TODOs:
   * Friendly error messages:
-    - For mismatching dimension names / plate names for data / inputs / params.
-    - Make sure inputs_params have separate names for P and Q.
+    - When dimensions on `all_platesizes` doesn't match `data`, `inputs` or `parameters`.
+    - No names on distribution parameters.
+    - Marginals/moments make sense for variables on different plates if they're in the same heirarchy.
   * Natural RWS: Bound plate has two extra arguments:
     - should be able to implement it in terms of `sample.moments`
     - provide a dict to `BoundPlate`, mapping variable name {'a': NaturalRWS(init_mean = 0., init_scale=1.)}
@@ -81,9 +77,11 @@ pip install -e .
       - `bound_plate.sample`
   * `Problem`
     - created using `Problem(P, Q, data, all_platesizes)`
-    - `P` and `Q` are `Plate`/`BoundPlate`s (any `Plate`s are converted to `BoundPlate` inside Problem).
+    - `P` and `Q` are `BoundPlate`s.
     - `data: dict[str, torch named Tensor]` (any platedims are named).
     - `all_platedims: dict[str, int]` (size of all platedims).
+    - user-facing methods include:
+      - `problem.sample(K=10)`: produces a `Sample`.
   * `Sample`
     - created using `problem.sample(K=10)`
     - contains a sample from the approximate posterior.
