@@ -52,7 +52,7 @@ pip install -e .
     - TestProblem takes 
     - predicted_extended_moments is a function that takes an importance sample, and returns mean + variance of moment.
     - should really compare moments to 
-
+  * tests for device
 
 
 ### Long-run TODOs:
