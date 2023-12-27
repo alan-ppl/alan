@@ -30,7 +30,7 @@ tp_names = [
 tps = {tp_name: importlib.import_module(tp_name).tp for tp_name in tp_names}
 
 reparams = [True, False]
-compstrats = [checkpoint, no_checkpoint, None]
+compstrats = [checkpoint, no_checkpoint]
 devices = ['cpu']
 if t.cuda.is_available():
     devices.append('cuda')
@@ -43,7 +43,6 @@ if 1 == len(devices):
 tp_samplers = list(itertools.product(tp_names, samplers))
 tp_reparam_samplers = list(itertools.product(tp_names, reparams, samplers))
 tp_compstrats = list(itertools.product(tp_names, compstrats))
-tp_devices = list(itertools.product(tp_names, devices))
 
 def moment_stderr(marginals, varnames, moment):
     """
@@ -230,37 +229,31 @@ def test_compstrat_elbo_vi(tp_name, computation_strategy):
 
         assert t.isclose(base_elbo, test_elbo)
 
-@pytest.mark.parametrize("tp_name,computation_strategy", tp_compstrats)
-def test_compstrat_elbo_rws(tp_name, computation_strategy):
+@pytest.mark.parametrize("tp_name,compstrat", tp_compstrats)
+def test_compstrat_elbo_rws(tp_name, compstrat):
     """
     tests `sample.elbo_rws` against each other for different computation_strategys
     """
     tp = tps[tp_name]
 
-    if computation_strategy is None:
-        computation_strategy = tp.computation_strategy
-
     sample = tp.problem.sample(K=3, reparam=False, sampler=PermutationSampler)
 
     for (varnames, moment) in tp.moments:
-        base_elbo = sample.elbo_rws(computation_strategy=no_checkpoint)
-        test_elbo = sample.elbo_rws(computation_strategy=computation_strategy)
+        base_elbo = sample.elbo_rws(computation_strategy=tp.computation_strategy)
+        test_elbo = sample.elbo_rws(computation_strategy=compstrat)
 
         assert t.isclose(base_elbo, test_elbo)
 
-@pytest.mark.parametrize("tp_name,computation_strategy", tp_compstrats)
-def test_compstrat_moments(tp_name, computation_strategy):
+@pytest.mark.parametrize("tp_name,compstrat", tp_compstrats)
+def test_compstrat_moments(tp_name, compstrat):
     """
     tests `marginals.moments` against each other for different computation_strategys
     """
     tp = tps[tp_name]
 
-    if computation_strategy is None:
-        computation_strategy = tp.computation_strategy
-
     sample = tp.problem.sample(K=3, reparam=False, sampler=PermutationSampler)
-    base_marginals = sample.marginals(computation_strategy=no_checkpoint)
-    test_marginals = sample.marginals(computation_strategy=computation_strategy)
+    base_marginals = sample.marginals(computation_strategy=tp.computation_strategy)
+    test_marginals = sample.marginals(computation_strategy=compstrat)
 
     for (varnames, moment) in tp.moments:
         base_moments = base_marginals._moments(varnames, moment)
@@ -269,10 +262,20 @@ def test_compstrat_moments(tp_name, computation_strategy):
         base_moments, test_moments = multi_order(base_moments, test_moments)
         assert t.allclose(base_moments, test_moments, rtol=1E-4, atol=1E-5)
 
-@pytest.mark.parametrize("tp_name,device", tp_devices)
-def test_device_moments(tp_name, device):
-    """
-    tests `marginals.moments` against each other for different computation_strategys
-    """
-    tp = tps[tp_name]
-    problem = tp.problem.to(device)
+#@pytest.mark.parametrize(
+#    "tp_name,reparam,sampler,compstrat,device", 
+#    itertools.product(["model1"], reparams, samplers, compstrats, devices)
+#)
+#def test_device(tp_name, reparam, sampler, compstrat, device):
+#    """
+#    tests `marginals.moments` against each other for different computation_strategys
+#    """
+#
+#    tp = tps[tp_name]
+#    problem = tp.problem.to(device)
+#    sample = problem.sample(K=3, reparam=reparam, sampler=sampler)
+#    #sample.moments(moments)
+#    marginals = sample.marginals(computation_strategy=compstrat)
+#    marginals.moments(moments)
+#    importance_sample = sample.importance_sample(N=10)
+#    importance_sample.moments(moments)

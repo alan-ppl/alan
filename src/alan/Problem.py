@@ -9,6 +9,7 @@ from .utils import *
 from .checking import check_PQ_plate, check_inputs_params, mismatch_names
 from .logpq import logPQ_plate
 from .Sampler import PermutationSampler
+from .BufferDict import BufferDict
 
 from .Sample import Sample
 
@@ -28,7 +29,9 @@ class Problem(nn.Module):
         self.P = P
         self.Q = Q
         self.all_platedims = {name: Dim(name, size) for name, size in all_platesizes.items()}
-        self.data = tensordict2tree(P.plate, named2dim_dict(data, self.all_platedims))
+        #Put data in a BufferDict so that it is registered properly, and moves to device as requested.
+        self._data = BufferDict(data)
+
 
         #Check names in P matches those in Q+data, and there are no duplicates.
         #Check the structure of P matches that of Q.
@@ -37,6 +40,13 @@ class Problem(nn.Module):
 
         P.check_deps(self.all_platedims)
         Q.check_deps(self.all_platedims)
+
+    @property
+    def data(self):
+        """
+        Converts data to a torchdim tree
+        """
+        return tensordict2tree(self.P.plate, named2dim_dict(self._data.to_dict(), self.all_platedims))
 
     @property
     def device(self):
