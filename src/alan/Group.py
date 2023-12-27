@@ -3,7 +3,7 @@ import torch as t
 from typing import Optional
 from .dist import Dist
 from .utils import *
-from .SamplingType import SamplingType
+from .Sampler import Sampler
 
 class Group(): 
     def __init__(self, **kwargs):
@@ -30,7 +30,7 @@ class Group():
             active_platedims:list[Dim],
             all_platedims:dict[str, Dim],
             groupvarname2Kdim:dict[str, Dim],
-            sampling_type:SamplingType,
+            sampler:Sampler,
             reparam:bool,
             device:t.device,
             ):
@@ -42,7 +42,7 @@ class Group():
 
         #resampled scope is the scope used in here when sampling from the Group
         scope = self.filter_scope(scope)
-        scope = sampling_type.resample_scope(scope, active_platedims, Kdim)
+        scope = sampler.resample_scope(scope, active_platedims, Kdim)
 
         for name, dist in self.prog.items():
             tdd = dist.tdd(scope, device=device)

@@ -7,7 +7,7 @@ from .Group import Group
 from .utils import *
 from .reduce_Ks import reduce_Ks, sample_Ks
 from .Split import Split
-from .SamplingType import SamplingType
+from .Sampler import Sampler
 from .dist import Dist
 from .logpq import logPQ_dist, logPQ_group, logPQ_plate, lp_getter
 from .Data import Data
@@ -26,7 +26,7 @@ def logPQ_sample(
     active_platedims:list[Dim],
     all_platedims:dict[str: Dim],
     groupvarname2Kdim:dict[str, Tensor],
-    sampling_type:SamplingType,
+    sampler:Sampler,
     computation_strategy:Optional[Split],
     indices:dict[str, Tensor],
     N_dim:Dim,
@@ -59,7 +59,7 @@ def logPQ_sample(
         active_platedims=active_platedims,
         all_platedims=all_platedims,
         groupvarname2Kdim=groupvarname2Kdim,
-        sampling_type=sampling_type,
+        sampler=sampler,
         computation_strategy=computation_strategy)
 
     # Index into each lp with the indices we've collected so far
@@ -87,7 +87,7 @@ def logPQ_sample(
             active_platedims=active_platedims,
             all_platedims=all_platedims,
             groupvarname2Kdim=groupvarname2Kdim,
-            sampling_type=sampling_type,
+            sampler=sampler,
             computation_strategy=computation_strategy,
             indices=indices,
             num_samples=num_samples,

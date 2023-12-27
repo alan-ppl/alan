@@ -4,7 +4,7 @@ import itertools
 
 import torch as t
 
-from alan import sampling_types, Sample, PermutationSampler, CategoricalSampler, checkpoint, no_checkpoint
+from alan import samplers, Sample, PermutationSampler, CategoricalSampler, checkpoint, no_checkpoint
 from alan.Marginals import Marginals
 from alan.utils import generic_dims, generic_order, generic_getitem, generic_all, multi_order
 from alan.moments import var_from_raw_moment, RawMoment
@@ -29,11 +29,11 @@ tp_names = [
 tps = {tp_name: importlib.import_module(tp_name).tp for tp_name in tp_names}
 
 reparams = [True, False]
-splits = [checkpoint, no_checkpoint, None]
+computation_strategys = [checkpoint, no_checkpoint, None]
 
-tp_sampling_types = list(itertools.product(tp_names, sampling_types))
-tp_reparam_sampling_types = list(itertools.product(tp_names, reparams, sampling_types))
-tp_splits = list(itertools.product(tp_names, splits))
+tp_samplers = list(itertools.product(tp_names, samplers))
+tp_reparam_samplers = list(itertools.product(tp_names, reparams, samplers))
+tp_computation_strategys = list(itertools.product(tp_names, computation_strategys))
 
 def moment_stderr(marginals, varnames, moment):
     """
@@ -56,8 +56,8 @@ def combine_stderrs(stderr1, stderr2):
     return (stderr1**2 + stderr2**2).sqrt()
 
 
-@pytest.mark.parametrize("tp_name,reparam,sampling_type", tp_reparam_sampling_types)
-def test_moments_sample_marginal(tp_name, reparam, sampling_type):
+@pytest.mark.parametrize("tp_name,reparam,sampler", tp_reparam_samplers)
+def test_moments_sample_marginal(tp_name, reparam, sampler):
     """
     tests `marginal.moments` = `sample.moments`
     should be exactly equal
@@ -65,7 +65,7 @@ def test_moments_sample_marginal(tp_name, reparam, sampling_type):
     """
     tp = tps[tp_name]
 
-    sample = tp.problem.sample(K=3, reparam=reparam, sampling_type=sampling_type)
+    sample = tp.problem.sample(K=3, reparam=reparam, sampler=sampler)
     marginals = sample.marginals()
 
     for (varnames, moment) in tp.moments:
@@ -75,8 +75,8 @@ def test_moments_sample_marginal(tp_name, reparam, sampling_type):
         sample_moments, marginals_moments = multi_order(sample_moments, marginals_moments)
         assert t.allclose(sample_moments, marginals_moments, rtol=1E-4, atol=1E-5)
 
-@pytest.mark.parametrize("tp_name,reparam,sampling_type", tp_reparam_sampling_types)
-def test_moments_importance_sample(tp_name, reparam, sampling_type):
+@pytest.mark.parametrize("tp_name,reparam,sampler", tp_reparam_samplers)
+def test_moments_importance_sample(tp_name, reparam, sampler):
     """
     tests `marginal.moments` approx `importance_sample.moments`
 
@@ -89,7 +89,7 @@ def test_moments_importance_sample(tp_name, reparam, sampling_type):
     """
     tp = tps[tp_name]
 
-    sample = tp.problem.sample(K=tp.moment_K, reparam=reparam, sampling_type=sampling_type)
+    sample = tp.problem.sample(K=tp.moment_K, reparam=reparam, sampler=sampler)
     marginals = sample.marginals()
     importance_sample = sample.importance_sample(tp.importance_N)
 
@@ -106,8 +106,8 @@ def test_moments_importance_sample(tp_name, reparam, sampling_type):
         assert generic_all(              is_moment < upper_bound)
         assert generic_all(lower_bound < is_moment)
 
-@pytest.mark.parametrize("tp_name,reparam,sampling_type", tp_reparam_sampling_types)
-def test_moments_ground_truth(tp_name, reparam, sampling_type):
+@pytest.mark.parametrize("tp_name,reparam,sampler", tp_reparam_samplers)
+def test_moments_ground_truth(tp_name, reparam, sampler):
     """
     tests `marginal.moments` approx `ground truth`.
 
@@ -118,7 +118,7 @@ def test_moments_ground_truth(tp_name, reparam, sampling_type):
     """
     tp = tps[tp_name]
 
-    sample = tp.problem.sample(K=tp.moment_K, reparam=False, sampling_type=sampling_type)
+    sample = tp.problem.sample(K=tp.moment_K, reparam=False, sampler=sampler)
     marginals = sample.marginals()
 
 
@@ -131,8 +131,8 @@ def test_moments_ground_truth(tp_name, reparam, sampling_type):
         assert generic_all(              true_moment < upper_bound)
         assert generic_all(lower_bound < true_moment)
 
-@pytest.mark.parametrize("tp_name,sampling_type", tp_sampling_types)
-def test_elbo_ground_truth(tp_name, sampling_type):
+@pytest.mark.parametrize("tp_name,sampler", tp_samplers)
+def test_elbo_ground_truth(tp_name, sampler):
     """
     tests `sample.elbo` against ground truth
     """
@@ -142,7 +142,7 @@ def test_elbo_ground_truth(tp_name, sampling_type):
         N_elbos = tp.elbo_iters
         elbos = []
         for _ in range(N_elbos):
-            elbos.append(tp.problem.sample(K=tp.elbo_K, reparam=False, sampling_type=sampling_type).elbo_nograd())
+            elbos.append(tp.problem.sample(K=tp.elbo_K, reparam=False, sampler=sampler).elbo_nograd())
         elbo_tensor = t.stack(elbos)
 
         sample_mean = elbo_tensor.mean()
@@ -175,18 +175,18 @@ def test_elbo_ground_truth(tp_name, sampling_type):
         assert            tp.known_elbo < max_elbo
         assert min_elbo < tp.known_elbo
 
-        elbo_gap = tp.elbo_gap_cat if sampling_type is CategoricalSampler else tp.elbo_gap_perm
+        elbo_gap = tp.elbo_gap_cat if sampler is CategoricalSampler else tp.elbo_gap_perm
         assert max_elbo - min_elbo < elbo_gap
 
-@pytest.mark.parametrize("tp_name,reparam,sampling_type", tp_reparam_sampling_types)
-def test_moments_vs_moments(tp_name, reparam, sampling_type):
+@pytest.mark.parametrize("tp_name,reparam,sampler", tp_reparam_samplers)
+def test_moments_vs_moments(tp_name, reparam, sampler):
     """
-    tests `marginal.moments` against each other for different reparam and sampling_type.
+    tests `marginal.moments` against each other for different reparam and sampler.
     """
     tp = tps[tp_name]
 
-    base_marginals = tp.problem.sample(K=tp.moment_K, reparam=False, sampling_type=PermutationSampler).marginals()
-    test_marginals = tp.problem.sample(K=tp.moment_K, reparam=reparam, sampling_type=sampling_type).marginals()
+    base_marginals = tp.problem.sample(K=tp.moment_K, reparam=False, sampler=PermutationSampler).marginals()
+    test_marginals = tp.problem.sample(K=tp.moment_K, reparam=reparam, sampler=sampler).marginals()
 
     for (varnames, moment) in tp.moments:
         base_moment, base_stderr = moment_stderr(base_marginals, varnames, moment)
@@ -200,55 +200,55 @@ def test_moments_vs_moments(tp_name, reparam, sampling_type):
         assert generic_all(              diff < upper_bound)
         assert generic_all(lower_bound < diff)
 
-@pytest.mark.parametrize("tp_name,split", tp_splits)
-def test_split_elbo_vi(tp_name, split):
+@pytest.mark.parametrize("tp_name,computation_strategy", tp_computation_strategys)
+def test_computation_strategy_elbo_vi(tp_name, computation_strategy):
     """
-    tests `sample.elbo_vi` against each other for different splits
+    tests `sample.elbo_vi` against each other for different computation_strategys
     """
     tp = tps[tp_name]
 
-    if split is None:
-        split = tp.split
+    if computation_strategy is None:
+        computation_strategy = tp.computation_strategy
 
-    sample = tp.problem.sample(K=3, reparam=True, sampling_type=PermutationSampler)
+    sample = tp.problem.sample(K=3, reparam=True, sampler=PermutationSampler)
 
     for (varnames, moment) in tp.moments:
-        base_elbo = sample.elbo_vi(split=no_checkpoint)
-        test_elbo = sample.elbo_vi(split=split)
+        base_elbo = sample.elbo_vi(computation_strategy=no_checkpoint)
+        test_elbo = sample.elbo_vi(computation_strategy=computation_strategy)
 
         assert t.isclose(base_elbo, test_elbo)
 
-@pytest.mark.parametrize("tp_name,split", tp_splits)
-def test_split_elbo_rws(tp_name, split):
+@pytest.mark.parametrize("tp_name,computation_strategy", tp_computation_strategys)
+def test_computation_strategy_elbo_rws(tp_name, computation_strategy):
     """
-    tests `sample.elbo_rws` against each other for different splits
+    tests `sample.elbo_rws` against each other for different computation_strategys
     """
     tp = tps[tp_name]
 
-    if split is None:
-        split = tp.split
+    if computation_strategy is None:
+        computation_strategy = tp.computation_strategy
 
-    sample = tp.problem.sample(K=3, reparam=False, sampling_type=PermutationSampler)
+    sample = tp.problem.sample(K=3, reparam=False, sampler=PermutationSampler)
 
     for (varnames, moment) in tp.moments:
-        base_elbo = sample.elbo_rws(split=no_checkpoint)
-        test_elbo = sample.elbo_rws(split=split)
+        base_elbo = sample.elbo_rws(computation_strategy=no_checkpoint)
+        test_elbo = sample.elbo_rws(computation_strategy=computation_strategy)
 
         assert t.isclose(base_elbo, test_elbo)
 
-@pytest.mark.parametrize("tp_name,split", tp_splits)
-def test_split_moments(tp_name, split):
+@pytest.mark.parametrize("tp_name,computation_strategy", tp_computation_strategys)
+def test_computation_strategy_moments(tp_name, computation_strategy):
     """
-    tests `marginals.moments` against each other for different splits
+    tests `marginals.moments` against each other for different computation_strategys
     """
     tp = tps[tp_name]
 
-    if split is None:
-        split = tp.split
+    if computation_strategy is None:
+        computation_strategy = tp.computation_strategy
 
-    sample = tp.problem.sample(K=3, reparam=False, sampling_type=PermutationSampler)
-    base_marginals = sample.marginals(split=no_checkpoint)
-    test_marginals = sample.marginals(split=split)
+    sample = tp.problem.sample(K=3, reparam=False, sampler=PermutationSampler)
+    base_marginals = sample.marginals(computation_strategy=no_checkpoint)
+    test_marginals = sample.marginals(computation_strategy=computation_strategy)
 
     for (varnames, moment) in tp.moments:
         base_moments = base_marginals._moments(varnames, moment)

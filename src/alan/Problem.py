@@ -4,11 +4,11 @@ from typing import Union
 
 from .Plate import Plate, tensordict2tree, flatten_tree
 from .BoundPlate import BoundPlate, named2torchdim_flat2tree
-from .SamplingType import SamplingType
+from .Sampler import Sampler
 from .utils import *
 from .checking import check_PQ_plate, check_inputs_params, mismatch_names
 from .logpq import logPQ_plate
-from .SamplingType import PermutationSampler
+from .Sampler import PermutationSampler
 
 from .Sample import Sample
 
@@ -46,7 +46,7 @@ class Problem(nn.Module):
         if not (self.device == self.P.device and self.device == self.Q.device):
             raise Exception("Device issue: Problem, P and/or Q aren't all on the same device.  The easiest way to make sure everything works is to call e.g. problem.to('cuda'), rather than e.g. P.to('cuda').")
 
-    def sample(self, K: int, reparam:bool=True, sampling_type:SamplingType=PermutationSampler):
+    def sample(self, K: int, reparam:bool=True, sampler:Sampler=PermutationSampler):
         """
         Returns: 
             globalK_sample: sample with different K-dimension for each variable.
@@ -54,13 +54,13 @@ class Problem(nn.Module):
         """
         self.check_device()
 
-        sample, groupvarname2Kdim = self.Q._sample(K, reparam, sampling_type, self.all_platedims)
+        sample, groupvarname2Kdim = self.Q._sample(K, reparam, sampler, self.all_platedims)
 
         return Sample(
             problem=self,
             sample=sample,
             groupvarname2Kdim=groupvarname2Kdim,
-            sampling_type=sampling_type,
+            sampler=sampler,
             reparam=reparam,
         )
 

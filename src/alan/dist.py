@@ -7,7 +7,7 @@ import torch
 
 from .utils import *
 from .TorchDimDist import TorchDimDist
-from .SamplingType import SamplingType
+from .Sampler import Sampler
 
 def func_args(something):
     """
@@ -104,7 +104,7 @@ class Dist():
             active_platedims:list[Dim],
             all_platedims:dict[str, Dim],
             groupvarname2Kdim:dict[str, Dim],
-            sampling_type:SamplingType,
+            sampler:Sampler,
             reparam:bool,
             device:torch.device,
             ):
@@ -113,7 +113,7 @@ class Dist():
         sample_dims = [Kdim, *active_platedims]
 
         filtered_scope = self.filter_scope(scope)
-        resampled_scope = sampling_type.resample_scope(filtered_scope, active_platedims, Kdim)
+        resampled_scope = sampler.resample_scope(filtered_scope, active_platedims, Kdim)
 
         sample = self.tdd(resampled_scope, device=device).sample(reparam, sample_dims, self.sample_shape)
 

@@ -6,7 +6,7 @@ from typing import Optional, Union, List
 from torch.autograd import grad
 from functorch.dim import Dim
 
-from .SamplingType import SamplingType
+from .Sampler import Sampler
 from .Split import Split
 from .Plate import Plate, tensordict2tree, flatten_tree, empty_tree
 from .utils import *
@@ -25,13 +25,13 @@ class Sample():
             problem,
             sample: dict,
             groupvarname2Kdim: dict[str, Dim],
-            sampling_type: SamplingType,
+            sampler: Sampler,
             reparam: bool,
         ):
         self.problem = problem
         self.sample = sample
         self.groupvarname2Kdim = groupvarname2Kdim
-        self.sampling_type = sampling_type
+        self.sampler = sampler
         self.reparam = reparam
 
     @property
@@ -67,7 +67,7 @@ class Sample():
             active_platedims=[],
             all_platedims=self.all_platedims,
             groupvarname2Kdim=self.groupvarname2Kdim,
-            sampling_type=self.sampling_type,
+            sampler=self.sampler,
             computation_strategy=computation_strategy)
 
         return lp
@@ -114,7 +114,7 @@ class Sample():
                 active_platedims=[],
                 all_platedims=self.all_platedims,
                 groupvarname2Kdim=self.groupvarname2Kdim,
-                sampling_type=self.sampling_type,
+                sampler=self.sampler,
                 computation_strategy=computation_strategy,
                 indices={},
                 num_samples=num_samples,

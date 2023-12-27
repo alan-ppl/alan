@@ -4,7 +4,7 @@ from typing import Optional
 from functorch.dim import Dim
 
 from .utils import *
-from .SamplingType import SamplingType
+from .Sampler import Sampler
 from .dist import Dist
 from .Group import Group
 from .Data import Data
@@ -35,7 +35,7 @@ class Plate():
             active_platedims:list[Dim],
             all_platedims:dict[str, Dim],
             groupvarname2Kdim:dict[str, Dim],
-            sampling_type:SamplingType,
+            sampler:Sampler,
             reparam:bool,
             device:t.device,
         ):
@@ -55,7 +55,7 @@ class Plate():
                     active_platedims=active_platedims,
                     all_platedims=all_platedims,
                     groupvarname2Kdim=groupvarname2Kdim,
-                    sampling_type=sampling_type,
+                    sampler=sampler,
                     reparam=reparam,
                     device=device,
                 )

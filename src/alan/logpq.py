@@ -6,7 +6,7 @@ from .Group import Group
 from .utils import *
 from .reduce_Ks import reduce_Ks
 from .Split import Split, checkpoint, no_checkpoint
-from .SamplingType import SamplingType
+from .Sampler import Sampler
 from .dist import Dist
 from .Data import Data
 
@@ -22,7 +22,7 @@ def logPQ_plate(
         active_platedims:list[Dim],
         all_platedims:dict[str: Dim],
         groupvarname2Kdim:dict[str, Tensor],
-        sampling_type:SamplingType,
+        sampler:Sampler,
         computation_strategy:Optional[Split]):
 
     #Returns a tuple of dicts, with computation_strategy samples, inputs_params, extra_log_factors, data and all_platedims.
@@ -46,7 +46,7 @@ def logPQ_plate(
             scope=scope,
             active_platedims=active_platedims,
             groupvarname2Kdim=groupvarname2Kdim,
-            sampling_type=sampling_type,
+            sampler=sampler,
             computation_strategy=computation_strategy,
             **sieda
         ))
@@ -71,7 +71,7 @@ def _logPQ_plate(
         active_platedims:list[Dim],
         all_platedims:dict[str: Dim],
         groupvarname2Kdim:dict[str, Tensor],
-        sampling_type:SamplingType,
+        sampler:Sampler,
         computation_strategy:Optional[Split]):
 
     assert isinstance(P, Plate)
@@ -102,7 +102,7 @@ def _logPQ_plate(
         active_platedims=active_platedims,
         all_platedims=all_platedims,
         groupvarname2Kdim=groupvarname2Kdim,
-        sampling_type=sampling_type,
+        sampler=sampler,
         computation_strategy=computation_strategy)
 
     #Sum out Ks
@@ -128,7 +128,7 @@ def logPQ_dist(
         active_platedims:list[Dim],
         all_platedims:dict[str: Dim],
         groupvarname2Kdim:dict[str, Tensor],
-        sampling_type:SamplingType,
+        sampler:Sampler,
         computation_strategy:Optional[Split]):
 
     assert isinstance(P, Dist)
@@ -154,7 +154,7 @@ def logPQ_dist(
     if sample is not None:
         Kdim = groupvarname2Kdim[name]
         lq = Q.log_prob(sample=sample, scope=scope)
-        lq = sampling_type.reduce_logQ(lq, active_platedims, Kdim)
+        lq = sampler.reduce_logQ(lq, active_platedims, Kdim)
 
         lpq = lpq - lq - math.log(Kdim.size)
         
@@ -173,7 +173,7 @@ def logPQ_group(
         active_platedims:list[Dim],
         all_platedims:dict[str: Dim],
         groupvarname2Kdim:dict[str, Tensor],
-        sampling_type:SamplingType,
+        sampler:Sampler,
         computation_strategy:Optional[Split]):
 
     assert isinstance(P, Group)
@@ -200,7 +200,7 @@ def logPQ_group(
         total_logP = total_logP + childP.log_prob(sample=childsample, scope=scope)
         total_logQ = total_logQ + childQ.log_prob(sample=childsample, scope=scope)
 
-    total_logQ = sampling_type.reduce_logQ(total_logQ, active_platedims, Kdim)
+    total_logQ = sampler.reduce_logQ(total_logQ, active_platedims, Kdim)
 
     logPQ = total_logP - total_logQ - math.log(Kdim.size)
     return logPQ
@@ -218,7 +218,7 @@ def lp_getter(
         active_platedims:list[Dim],
         all_platedims:dict[str: Dim],
         groupvarname2Kdim:dict[str, Tensor],
-        sampling_type:SamplingType,
+        sampler:Sampler,
         computation_strategy:Optional[Split]):
     """Traverses Q according to the structure of P collecting log probabilities
     
@@ -264,7 +264,7 @@ def lp_getter(
             active_platedims=active_platedims,
             all_platedims=all_platedims,
             groupvarname2Kdim=groupvarname2Kdim,
-            sampling_type=sampling_type,
+            sampler=sampler,
             computation_strategy=computation_strategy)
         lps.append(lp)
 

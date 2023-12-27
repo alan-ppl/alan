@@ -45,4 +45,4 @@ moments = [
     ('c', mean),
     ('d', mean),
 ]
-tp = TestProblem(prob, moments, moment_K=1000, split=Split('p1', 2))
+tp = TestProblem(prob, moments, moment_K=1000, computation_strategy=Split('p1', 2))

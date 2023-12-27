@@ -2,7 +2,7 @@ from typing import Optional
 import torch as t
 import torch.nn as nn
 from .utils import *
-from .SamplingType import SamplingType, IndependentSample
+from .Sampler import Sampler, IndependentSample
 from .Plate import tensordict2tree, Plate
 
 def named2torchdim_flat2tree(flat_named:dict, all_platedims, plate):
@@ -137,7 +137,7 @@ class BoundPlate(nn.Module):
     def check_deps(self, all_platedims:dict[str, Dim]):
         self.sample(1, False, IndependentSample, all_platedims)
 
-    def sample(self, K: int, reparam:bool, sampling_type:SamplingType, all_platedims:dict[str, Dim]):
+    def sample(self, K: int, reparam:bool, sampler:Sampler, all_platedims:dict[str, Dim]):
         """
         Returns: 
             globalK_sample: sample with different K-dimension for each variable.
@@ -152,23 +152,23 @@ class BoundPlate(nn.Module):
             active_platedims=[],
             all_platedims=all_platedims,
             groupvarname2Kdim=groupvarname2Kdim,
-            sampling_type=sampling_type,
+            sampler=sampler,
             reparam=reparam,
         )
 
         return sample, groupvarname2Kdim
     
-    def update_params(self, K: int, reparam:bool, sampling_type:SamplingType, all_platedims:dict[str, Dim]), lr:float, num_samples:int):
+    def update_params(self, K: int, reparam:bool, sampler:Sampler, all_platedims:dict[str, Dim]), lr:float, num_samples:int):
         """Update params of model using self.moments and self.moment2param_init.
 
         Args:
             K (int): number of samples
             reparam (bool): whether to use reparameterization trick
-            sampling_type (SamplingType): sampling type
+            sampler (Sampler): sampling type
             all_platedims (dict[str, Dim]): all platedims
             lr (float): learning rate
         """
-        sample = self.sample(K, reparam, sampling_type, all_platedims)
+        sample = self.sample(K, reparam, sampler, all_platedims)
         
         #Compute moments
         

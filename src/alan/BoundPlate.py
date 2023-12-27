@@ -2,7 +2,7 @@ from typing import Optional
 import torch as t
 import torch.nn as nn
 from .utils import *
-from .SamplingType import SamplingType, PermutationSampler
+from .Sampler import Sampler, PermutationSampler
 from .Plate import tensordict2tree, Plate, flatten_tree
 
 def named2torchdim_flat2tree(flat_named:dict, all_platedims, plate):
@@ -113,7 +113,7 @@ class BoundPlate(nn.Module):
         """
         self._sample(1, False, PermutationSampler, all_platedims)
 
-    def _sample(self, K: int, reparam:bool, sampling_type:SamplingType, all_platedims:dict[str, Dim]):
+    def _sample(self, K: int, reparam:bool, sampler:Sampler, all_platedims:dict[str, Dim]):
         """
         Internal sampling method.
         Returns: 
@@ -122,7 +122,7 @@ class BoundPlate(nn.Module):
         """
         assert isinstance(K, int)
         assert isinstance(reparam, bool)
-        assert issubclass(sampling_type, SamplingType)
+        assert issubclass(sampler, Sampler)
         #assert isinstance(next(iter(all_platedims.values())), Dim)
 
         groupvarname2Kdim = self.plate.groupvarname2Kdim(K)
@@ -134,7 +134,7 @@ class BoundPlate(nn.Module):
             active_platedims=[],
             all_platedims=all_platedims,
             groupvarname2Kdim=groupvarname2Kdim,
-            sampling_type=sampling_type,
+            sampler=sampler,
             reparam=reparam,
             device=self.device,
         )
