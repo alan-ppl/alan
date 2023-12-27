@@ -31,7 +31,6 @@ pip install -e .
   * Marginals make sense for variables on different plates if they're in the same heirarchy.
   * `importance_sample.dump` should output tensors with the `N` dimension first.
   * `repeats` kwarg for `sample.importance_sample`.
-  * use `PermutationMixtureSample` as the default `SamplingType`.
   * check elbo_rws
   * TestProblem takes a list of latent variables + moments in the usual form expected by moments.
   * think carefully about the torchdim/named tensor output of moments.
@@ -52,7 +51,7 @@ pip install -e .
     - TestProblem takes 
     - predicted_extended_moments is a function that takes an importance sample, and returns mean + variance of moment.
     - should really compare moments to 
-  * extra_log_factors should be a flat dict, and should do the weird trick to make splitting happy (currently in sample.moments).
+
 
 
 ### Long-run TODOs:

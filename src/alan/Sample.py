@@ -52,8 +52,26 @@ class Sample():
 
     def _elbo(self, extra_log_factors, computation_strategy):
         if extra_log_factors is None:
-            extra_log_factors = empty_tree(self.P.plate)
-        assert isinstance(extra_log_factors, dict)
+            extra_log_factors = {}
+
+        #Sum out any non-torchdim dimensions.
+        extra_log_factors = {k: sum_non_dim(v) for (k, v) in extra_log_factors.items()}
+
+        for v in extra_log_factors.values():
+            #I have very little idea why this line is necessary ... but without it, 
+            #we get `RuntimeError: Attempt to retrieve a tensor saved by 
+            #autograd multiple times without checkpoint recomputation being 
+            #triggered in between, this is not currently supported. Please 
+            #open an issue with details on your use case so that we can 
+            #prioritize adding this.` if we compute a latent variable for a 
+            #moment we have split.
+            #
+            #my guess is it ensures the variable is part of the compute graph, which
+            #gets forgotten otherwise
+            v.clone()
+
+        #extra_log_factors comes in as a flat dict; convert to tree.
+        extra_log_factors = tensordict2tree(self.P.plate, extra_log_factors)
 
         lp = logPQ_plate(
             name=None,
@@ -192,10 +210,8 @@ class Sample():
             
             J_torchdim_dict[groupvarnames_frozenset] = J_torchdim
 
-        J_torchdim_tree = tensordict2tree(self.P.plate, J_torchdim_dict)
-
         #Compute loss
-        L = self._elbo(extra_log_factors=J_torchdim_tree, computation_strategy=computation_strategy)
+        L = self._elbo(extra_log_factors=J_torchdim_dict, computation_strategy=computation_strategy)
         #marginals as a list
         marginals_list = grad(L, J_tensor_list)
 
@@ -261,26 +277,13 @@ class Sample():
 
             J_tensor = t.zeros(sizes, device=self.device, requires_grad=True)
             J_tensor_list.append(J_tensor)
-            f_J_torchdim = sum_non_dim(f*generic_getitem(J_tensor, dims))
+            f_J_torchdim = f*generic_getitem(J_tensor, dims)
 
-            #I have _no idea_ why this line is necessary ... but without it, 
-            #we get `RuntimeError: Attempt to retrieve a tensor saved by 
-            #autograd multiple times without checkpoint recomputation being 
-            #triggered in between, this is not currently supported. Please 
-            #open an issue with details on your use case so that we can 
-            #prioritize adding this.` if we compute a latent variable for a 
-            #moment we have split.
-
-            a = f_J_torchdim+1
-            del a
-            
             f_J_torchdim_dict[(varnames, m)] = f_J_torchdim
-
-        f_J_torchdim_tree = tensordict2tree(self.P.plate, f_J_torchdim_dict)
         
 
         #Compute loss
-        L = self._elbo(extra_log_factors=f_J_torchdim_tree, computation_strategy=computation_strategy)
+        L = self._elbo(extra_log_factors=f_J_torchdim_dict, computation_strategy=computation_strategy)
 
         #marginals as a list
         moments_list = grad(L, J_tensor_list)
