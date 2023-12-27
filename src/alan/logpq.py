@@ -23,10 +23,10 @@ def logPQ_plate(
         all_platedims:dict[str: Dim],
         groupvarname2Kdim:dict[str, Tensor],
         sampling_type:SamplingType,
-        split:Optional[Split]):
+        computation_strategy:Optional[Split]):
 
-    #Returns a tuple of dicts, with split samples, inputs_params, extra_log_factors, data and all_platedims.
-    siedas = split.split_args(
+    #Returns a tuple of dicts, with computation_strategy samples, inputs_params, extra_log_factors, data and all_platedims.
+    siedas = computation_strategy.split_args(
         name=name, 
         sample=sample, 
         inputs_params=inputs_params, 
@@ -35,7 +35,7 @@ def logPQ_plate(
         all_platedims=all_platedims,
     )
 
-    lpq = _logPQ_plate if split is no_checkpoint else _logPQ_plate_checkpointed
+    lpq = _logPQ_plate if computation_strategy is no_checkpoint else _logPQ_plate_checkpointed
 
     lps = []
     for sieda in siedas:
@@ -47,7 +47,7 @@ def logPQ_plate(
             active_platedims=active_platedims,
             groupvarname2Kdim=groupvarname2Kdim,
             sampling_type=sampling_type,
-            split=split,
+            computation_strategy=computation_strategy,
             **sieda
         ))
 
@@ -72,7 +72,7 @@ def _logPQ_plate(
         all_platedims:dict[str: Dim],
         groupvarname2Kdim:dict[str, Tensor],
         sampling_type:SamplingType,
-        split:Optional[Split]):
+        computation_strategy:Optional[Split]):
 
     assert isinstance(P, Plate)
     assert isinstance(Q, Plate)
@@ -103,7 +103,7 @@ def _logPQ_plate(
         all_platedims=all_platedims,
         groupvarname2Kdim=groupvarname2Kdim,
         sampling_type=sampling_type,
-        split=split)
+        computation_strategy=computation_strategy)
 
     #Sum out Ks
     lp = reduce_Ks(lps, all_Ks)
@@ -129,7 +129,7 @@ def logPQ_dist(
         all_platedims:dict[str: Dim],
         groupvarname2Kdim:dict[str, Tensor],
         sampling_type:SamplingType,
-        split:Optional[Split]):
+        computation_strategy:Optional[Split]):
 
     assert isinstance(P, Dist)
 
@@ -174,7 +174,7 @@ def logPQ_group(
         all_platedims:dict[str: Dim],
         groupvarname2Kdim:dict[str, Tensor],
         sampling_type:SamplingType,
-        split:Optional[Split]):
+        computation_strategy:Optional[Split]):
 
     assert isinstance(P, Group)
     assert isinstance(Q, Group)
@@ -219,7 +219,7 @@ def lp_getter(
         all_platedims:dict[str: Dim],
         groupvarname2Kdim:dict[str, Tensor],
         sampling_type:SamplingType,
-        split:Optional[Split]):
+        computation_strategy:Optional[Split]):
     """Traverses Q according to the structure of P collecting log probabilities
     
     """
@@ -265,7 +265,7 @@ def lp_getter(
             all_platedims=all_platedims,
             groupvarname2Kdim=groupvarname2Kdim,
             sampling_type=sampling_type,
-            split=split)
+            computation_strategy=computation_strategy)
         lps.append(lp)
 
     #Collect all Ks in the plate

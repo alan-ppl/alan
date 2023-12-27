@@ -50,7 +50,7 @@ class Sample():
     def all_platedims(self):
         return self.problem.all_platedims
 
-    def _elbo(self, extra_log_factors, split):
+    def _elbo(self, extra_log_factors, computation_strategy):
         if extra_log_factors is None:
             extra_log_factors = empty_tree(self.P.plate)
         assert isinstance(extra_log_factors, dict)
@@ -68,28 +68,28 @@ class Sample():
             all_platedims=self.all_platedims,
             groupvarname2Kdim=self.groupvarname2Kdim,
             sampling_type=self.sampling_type,
-            split=split)
+            computation_strategy=computation_strategy)
 
         return lp
 
-    def elbo_vi(self, split=checkpoint):
+    def elbo_vi(self, computation_strategy=checkpoint):
         if not self.reparam==True:
             raise Exception("To compute the ELBO with the right gradients for VI you must construct a reparameterised sample using `problem.sample(K, reparam=True)`")
-        return self._elbo(extra_log_factors=None, split=split)
+        return self._elbo(extra_log_factors=None, computation_strategy=computation_strategy)
 
-    def elbo_rws(self, split=checkpoint):
+    def elbo_rws(self, computation_strategy=checkpoint):
         if not self.reparam==False:
             raise Exception("To compute the ELBO with the right gradients for RWS you must construct a non-reparameterised sample using `problem.sample(K, reparam=False)`")
-        return self._elbo(extra_log_factors=None, split=split)
+        return self._elbo(extra_log_factors=None, computation_strategy=computation_strategy)
 
-    def elbo_nograd(self, split=checkpoint):
+    def elbo_nograd(self, computation_strategy=checkpoint):
         if not self.reparam==False:
             raise Exception("elbo_nograd has no gradients, so you should construct a non-reparameterised sample using `problem.sample(K, reparam=False)`")
         with t.no_grad():
-            result = self._elbo(extra_log_factors=None, split=split)
+            result = self._elbo(extra_log_factors=None, computation_strategy=computation_strategy)
         return result
     
-    def _importance_sample_idxs(self, num_samples:int, split):
+    def _importance_sample_idxs(self, num_samples:int, computation_strategy):
         """
         User-facing method that returns reweighted samples.
         """
@@ -115,7 +115,7 @@ class Sample():
                 all_platedims=self.all_platedims,
                 groupvarname2Kdim=self.groupvarname2Kdim,
                 sampling_type=self.sampling_type,
-                split=split,
+                computation_strategy=computation_strategy,
                 indices={},
                 num_samples=num_samples,
                 N_dim=N_dim,
@@ -127,17 +127,17 @@ class Sample():
         indices = {Kdim2groupvarname[k]: v for (k, v) in indices.items()}
         return indices, N_dim
 
-    def importance_sample(self, num_samples:int, split=checkpoint):
+    def importance_sample(self, num_samples:int, computation_strategy=checkpoint):
         """
         User-facing method that returns reweighted samples.
         """
-        indices, N_dim = self._importance_sample_idxs(num_samples=num_samples, split=split)
+        indices, N_dim = self._importance_sample_idxs(num_samples=num_samples, computation_strategy=computation_strategy)
 
         samples = index_into_sample(self.sample, indices, self.groupvarname2Kdim, self.P.varname2groupvarname())
 
         return ImportanceSample(self.problem, samples, N_dim)
 
-    def _marginal_idxs(self, joints, split):
+    def _marginal_idxs(self, joints, computation_strategy):
         """
         Internal method that returns a flat dict mapping frozenset describing the K-dimensions in the marginal to a Tensor.
         """
@@ -195,7 +195,7 @@ class Sample():
         J_torchdim_tree = tensordict2tree(self.P.plate, J_torchdim_dict)
 
         #Compute loss
-        L = self._elbo(extra_log_factors=J_torchdim_tree, split=split)
+        L = self._elbo(extra_log_factors=J_torchdim_tree, computation_strategy=computation_strategy)
         #marginals as a list
         marginals_list = grad(L, J_tensor_list)
 
@@ -205,7 +205,7 @@ class Sample():
 
         return result
 
-    def marginals(self, *joints, split=checkpoint):
+    def marginals(self, *joints, computation_strategy=checkpoint):
         """
         User-facing method that returns a marginals object
         Computes all univariate marginals + any multivariate marginals specified in the arguments.
@@ -214,14 +214,14 @@ class Sample():
 
         Note that these are groupvarnames, not varnames.
         """
-        marginals = self._marginal_idxs(joints, split=split)
+        marginals = self._marginal_idxs(joints, computation_strategy=computation_strategy)
         samples = flatten_tree(self.sample)
         samples = {k:v.detach() for (k, v) in samples.items()}
         return Marginals(samples, marginals, self.all_platedims, self.P.varname2groupvarname())
 
     def _moments_uniform_input(self, moms):
         """
-        Must use split=NoCheckpoint, as there seems to be a subtle issue in the interaction between
+        Must use computation_strategy=NoCheckpoint, as there seems to be a subtle issue in the interaction between
         checkpointing and TorchDims (not sure why it doesn't emerge elsewhere...)
         """
         assert isinstance(moms, list)
@@ -268,7 +268,7 @@ class Sample():
         f_J_torchdim_tree = tensordict2tree(self.P.plate, f_J_torchdim_dict)
 
         #Compute loss
-        L = self._elbo(extra_log_factors=f_J_torchdim_tree, split=no_checkpoint)
+        L = self._elbo(extra_log_factors=f_J_torchdim_tree, computation_strategy=no_checkpoint)
 
         #marginals as a list
         moments_list = grad(L, J_tensor_list)

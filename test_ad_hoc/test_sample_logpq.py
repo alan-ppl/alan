@@ -2,7 +2,7 @@ import torch as t
 import torch.distributions as td
 from functorch.dim import Dim
 
-from alan_simplified import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, Data, mean, mean2, var, Split
+from alan import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, Data, mean, mean2, var, Split
 
 t.manual_seed(0)
 
@@ -62,4 +62,4 @@ print(importance_sample.moments(ab_mean))
 
 
 print(sample.elbo_vi())
-print(sample.elbo_vi(split=Split('p1', 2)))
+print(sample.elbo_vi(computation_strategy=Split('p1', 2)))
