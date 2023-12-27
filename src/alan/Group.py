@@ -45,7 +45,7 @@ class Group():
         scope = sampler.resample_scope(scope, active_platedims, Kdim)
 
         for name, dist in self.prog.items():
-            tdd = dist.tdd(scope, device=device)
+            tdd = dist.tdd(scope)
             sample = tdd.sample(reparam, sample_dims, dist.sample_shape)
 
             scope[name]  = sample

@@ -166,6 +166,23 @@ class Plate():
                 assert isinstance(v, (Dist, Data))
         return result
 
+    def dists(self):
+        """
+        Extracts a flat dict of all distributions.
+        """
+        result = {}
+        for k, v in self.prog.items():
+            if isinstance(v, Dist):
+                result[k] = v
+            elif isinstance(v, Plate):
+                result = {**result, **v.dists()}
+            elif isinstance(v, Group):
+                for gk, gv in v.prog.items():
+                    result[gk] = gv
+            else:
+                assert isinstance(v, (Group, Data))
+        return result
+
 #    def groupvarname2varnames(self):
 #        result = {}
 #        for k, v in self.prog.items():

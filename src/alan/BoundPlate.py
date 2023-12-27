@@ -51,6 +51,7 @@ class BoundPlate(nn.Module):
 
         self._inputs = BufferStore(inputs)
         self._params = ParameterStore(params)
+        self._dists  = ModuleStore(plate.dists())
 
     @property
     def device(self):

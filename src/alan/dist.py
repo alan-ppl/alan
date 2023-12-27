@@ -95,7 +95,7 @@ class Dist(torch.nn.Module):
 
         return result
 
-    def tdd(self, scope: dict[str, Tensor], device):
+    def tdd(self, scope: dict[str, Tensor]):
         return TorchDimDist(self.dist, **self.paramname2val(scope))
 
     def sample(
@@ -117,7 +117,7 @@ class Dist(torch.nn.Module):
         filtered_scope = self.filter_scope(scope)
         resampled_scope = sampler.resample_scope(filtered_scope, active_platedims, Kdim)
 
-        sample = self.tdd(resampled_scope, device=device).sample(reparam, sample_dims, self.sample_shape)
+        sample = self.tdd(resampled_scope).sample(reparam, sample_dims, self.sample_shape)
 
         return sample
     
@@ -140,7 +140,7 @@ class Dist(torch.nn.Module):
                     
         original_sample = sample if sample is not None else original_data[name]
 
-        tdd = self.tdd(filtered_scope, device=original_sample.device)
+        tdd = self.tdd(filtered_scope)
         extended_sample = tdd.sample(reparam, sample_dims, self.sample_shape)
 
         # Need to ensure that we work with lists of platedims in corresponding orders for original and extended samples.
@@ -187,7 +187,9 @@ class Dist(torch.nn.Module):
     def log_prob(self, 
                  sample: Tensor, 
                  scope: dict[any, Tensor]):
-        return self.tdd(scope, sample.device).log_prob(sample)
+
+        assert self.device == sample.device
+        return self.tdd(scope).log_prob(sample)
 
     def move_number_device(self, param_name, param):
         assert isinstance(param, Number)
