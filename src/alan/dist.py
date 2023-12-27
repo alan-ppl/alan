@@ -86,12 +86,17 @@ class Dist(torch.nn.Module):
         for paramname, val in self.val_args.items():
             result[paramname] = self.move_number_device(paramname, val)
         for paramname, tensor in self.tensor_args.to_dict().items():
-            self.check_device(tensor)
+            assert tensor.device == self.device
             result[paramname] = tensor
         for paramname, arg in self.str_args.items():
             result[paramname] = scope[arg]
         for paramname, func in self.func_args.items():
-            result[paramname] = func(*[scope[arg] for arg in function_arguments(func)])
+            val = func(*[scope[arg] for arg in function_arguments(func)])
+            if not isinstance(val, Tensor):
+                raise Exception("Lambda on a distribution returned a non-Tensor")
+            if val.device != self.device:
+                raise Exception(f"Lambda on a distribution returned a tensor on the wrong device.  Expected a tenson on {self.device}, whereas we got a tensor on {val.device}")
+            result[paramname] = val
 
         return result
 
@@ -198,13 +203,6 @@ class Dist(torch.nn.Module):
         if float_param:
             param=float(param)
         return t.tensor(param, device=self.device)
-
-    def check_device(self, param):
-        assert isinstance(param, Tensor)
-
-        if param.device != self.device:
-            raise Exception(f"Expected parameter to be on {self.device}, but actually it is on {param.device}.  This is likely because you have used e.g. `t.ones(3)` in the definition of P and Q. This won't work if you move off the cpu.  Instead, you should either just use Python scalars `0` or `1.`, or set the parameter as an input on `BoundPlate`, or set the device by looking at previously generated tensors.  For instance, you could use a function: `lambda a: t.ones(3, device=a.device)` (as you would usually do in PyTorch to make that the result lives on the same device as `a`)")
-        return param
 
 
 
