@@ -60,7 +60,20 @@ pip install -e .
     - assume (and check) that variables for which we're doing natural RWS are written as `a = Normal('a_mean', 'a_scale')` (i.e. the parameters are specified as strings).
   * Enumeration:
     - Enumeration is a class in Q (like Data), not P.
-  * Timeseries.
+  * Timeseries:
+    - Lives within a plate; can only be the first thing in a plate.
+    - Syntax:
+```
+plate = Plate(
+    T = Plate(
+        timeseries = Timeseries(
+            initial_dist = Normal(0, 1),
+            transition = lambda x: Normal(0.9*x, 0.1),
+        )
+        noisy_timeseries = Normal(timeseries, 0.3),
+    )
+)
+```
   * A better name for BoundPlate.
   * A `Samples` class that aggregates over multiple `Sample` in a memory efficient way.
     - Acts like it contains a list of e.g. 10 `Sample`s, but doesn't actually.
