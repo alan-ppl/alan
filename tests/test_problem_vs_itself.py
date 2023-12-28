@@ -36,7 +36,7 @@ compstrats = [checkpoint, no_checkpoint]
 devices = ['cpu']
 if t.cuda.is_available():
     devices.append('cuda')
-if t.backends.mps.is_available():
+if hasattr(t.backends, 'mps') and t.backends.mps.is_available():
     devices.append('mps')
 print(f"Devices: {devices}")
 if 1 == len(devices):
