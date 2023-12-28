@@ -25,7 +25,7 @@ pip install -e .
   - `sample.elbo_vi` (reparam=True) 
   - `sample.elbo_rws` (reparam=False, but allows gradients for log-probs)
   - `sample.elbo_nograd` (no gradients at all; useful for memory efficient estimation of marginal likelihood)
-* Tests defined a bunch of problems with ground-truth info (moments + model evidence).
+* Extensive tests of sample, elbo for splits, devices, plates, unnamed batches and multivariate distributions (e.g. multivariate Normal).  But not extended sampling.
 
 ### Minor TODOs:
   * `importance_sample.dump` should output tensors with the `N` dimension first.
