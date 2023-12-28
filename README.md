@@ -59,10 +59,8 @@ pip install -e .
     - Specifically, two optimizers: one which only has parameters on P, and the other which only has parameters on Q.
     - P optimizer does ascent; Q optimizer does descent.
     - uses `torch.optim.Adam(..., maximize=True)` kwarg.
-  * Natural RWS: Bound plate has two extra arguments:
-    - should be able to implement it in terms of `sample.moments`
-    - provide a dict to `BoundPlate`, mapping variable name {'a': NaturalRWS(init_mean = 0., init_scale=1.)}
-    - assume (and check) that variables for which we're doing natural RWS are written as `a = Normal('a_mean', 'a_scale')` (i.e. the parameters are specified as strings).
+  * Natural RWS: Rename to QEM for approximate-posterior expectation maximization.
+    - provide an extra kwarg to `BoundPlate`; it behaves exactly like `inputs` and `params` (in that its a dict mapping varname (string) to initial value).
   * Enumeration:
     - Enumeration is a class in Q (like Data), not P.
   * Timeseries:
