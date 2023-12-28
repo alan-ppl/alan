@@ -64,6 +64,7 @@ pip install -e .
     - provide an extra kwarg to `BoundPlate`; it behaves exactly like `inputs` and `params` (in that its a dict mapping varname (string) to initial value).
     - but must be the name of a "direct" argument to a distribution (e.g.`a_mean` in `Normal('a_mean', 1.)`, but not `x` in `Normal(lambda x: 0.9*x, 1.)`).
     - BoundPlate has a mapping from em_conv_param_name -> dist_name, and from dist_name -> dist_type.
+    - Natural / conventional param conversions live on special classes, not part of TorchDimDist or etc.
   * Enumeration:
     - Enumeration is a class in Q (like Data), not P.
   * Timeseries:
