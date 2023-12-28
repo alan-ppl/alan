@@ -54,6 +54,11 @@ pip install -e .
     - When dimensions on `all_platesizes` doesn't match `data`, `inputs` or `parameters`.
     - No names on distribution parameters.
     - Marginals/moments make sense for variables on different plates if they're in the same heirarchy.
+  * RWS:
+    - Should be able to implement in terms of sample.elbo_rws().
+    - Specifically, two optimizers: one which only has parameters on P, and the other which only has parameters on Q.
+    - P optimizer does ascent; Q optimizer does descent.
+    - uses `torch.optim.Adam(..., maximize=True)` kwarg.
   * Natural RWS: Bound plate has two extra arguments:
     - should be able to implement it in terms of `sample.moments`
     - provide a dict to `BoundPlate`, mapping variable name {'a': NaturalRWS(init_mean = 0., init_scale=1.)}
