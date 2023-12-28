@@ -76,7 +76,7 @@ plate = Plate(
             initial_dist = Normal(0, 1),
             transition = lambda x: Normal(0.9*x, 0.1),
         )
-        noisy_timeseries = Normal(timeseries, 0.3),
+        noisy_timeseries = Normal('timeseries', 0.3),
     )
 )
 ```
