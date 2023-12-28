@@ -62,6 +62,9 @@ pip install -e .
     - Enumeration is a class in Q (like Data), not P.
   * Timeseries:
     - Lives within a plate; can only be the first thing in a plate.
+    - log prob algorithm:
+      - sum out all the other K's on the plate, but keep `K_timeseries`.
+      - sum out the plate by handing sample of timeseries + log prob with everything else summed out to a method on Timeseries.
     - Syntax:
 ```
 plate = Plate(
