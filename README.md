@@ -59,9 +59,11 @@ pip install -e .
     - Specifically, two optimizers: one which only has parameters on P, and the other which only has parameters on Q.
     - P optimizer does ascent; Q optimizer does descent.
     - uses `torch.optim.Adam(..., maximize=True)` kwarg.
-  * Natural RWS: Rename to QEM for approximate-posterior expectation maximization.
+  * Natural RWS: Rename to (MP)EM for massively-parallel expectation maximization.
+    - can use it for P too! (usually, you'd have P parameters without plates, so you'd have to allow lower-dimensional parameters).
     - provide an extra kwarg to `BoundPlate`; it behaves exactly like `inputs` and `params` (in that its a dict mapping varname (string) to initial value).
     - but must be the name of a "direct" argument to a distribution (e.g.`a_mean` in `Normal('a_mean', 1.)`, but not `x` in `Normal(lambda x: 0.9*x, 1.)`).
+    - BoundPlate has a mapping from em_conv_param_name -> dist_name, and from dist_name -> dist_type.
   * Enumeration:
     - Enumeration is a class in Q (like Data), not P.
   * Timeseries:
