@@ -61,6 +61,7 @@ pip install -e .
     - uses `torch.optim.Adam(..., maximize=True)` kwarg.
   * Natural RWS: Rename to QEM for approximate-posterior expectation maximization.
     - provide an extra kwarg to `BoundPlate`; it behaves exactly like `inputs` and `params` (in that its a dict mapping varname (string) to initial value).
+    - but must be the name of a "direct" argument to a distribution (e.g.`a_mean` in `Normal('a_mean', 1.)`, but not `x` in `Normal(lambda x: 0.9*x, 1.)`).
   * Enumeration:
     - Enumeration is a class in Q (like Data), not P.
   * Timeseries:
