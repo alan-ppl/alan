@@ -46,10 +46,11 @@ class Dist(torch.nn.Module):
 
         self.sample_shape = sample_shape
 
-        #Converts args + kwargs to a unified dictionary mapping paramname2something,
+        #Converts args + kwargs to a unified dictionary mapping distargname2something,
         #following distributions initialization signature.
-        self.paramname2func_val = inspect.signature(self.dist).bind(*args, **kwargs).arguments
+        self.distargname2func_val = inspect.signature(self.dist).bind(*args, **kwargs).arguments
 
+    #def rest_of_init(varname):
         all_args = set()
 
         self.str_args = {}
@@ -57,18 +58,18 @@ class Dist(torch.nn.Module):
         tensor_args = {}
         self.val_args = {}
 
-        for paramname, func_val in self.paramname2func_val.items():
+        for distargname, func_val in self.distargname2func_val.items():
             if isinstance(func_val, str):
-                self.str_args[paramname] = func_val
+                self.str_args[distargname] = func_val
                 all_args.update((func_val,))
             elif isinstance(func_val, types.FunctionType):
-                self.func_args[paramname] = func_val
+                self.func_args[distargname] = func_val
                 all_args.update(function_arguments(func_val))
             elif isinstance(func_val, torch.Tensor):
-                tensor_args[paramname] = func_val
+                tensor_args[distargname] = func_val
             else:
                 assert isinstance(func_val, Number)
-                self.val_args[paramname] = func_val
+                self.val_args[distargname] = func_val
 
         self.tensor_args = BufferStore(tensor_args)
         self.all_args = list(all_args)

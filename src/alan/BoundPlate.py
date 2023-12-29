@@ -111,13 +111,39 @@ class BoundPlate(nn.Module):
                 if not set_input_param_platenames.issubset(set(var_platenames)):
                     raise Exception(f"{input_param_name} is used for {varname}, but that doesn't make sense as {input_param_name} has plate dimensions {input_param_platedimnames}, while {varname} only has {var_platedimnames}")
 
-        qem_varnames = set(argname2varname[argname] for argname in qem_params)
+        qem_varnames = []
+        qem_varname2dist = {}
+        for paramname in qem_params:
+            varnames = argname2varnames[paramname]
+            assert 0 < len(varnames)
+            if not 1==len(varnames):
+                raise Exception(f"QEM parameter {paramname} should be used on only one distribution, but is currently used on {varnames}")
+            varname = varnames[0]
+            qem_varnames.append(varname)
+
+            qem_dist = varname2groupvarname_dist[varname][1]
+            if not (0 == len(qem_dist.func_args) and (0 == len(qem_dist.tensor_args) and 0 == len(qem_dist.val_args))):
+                raise Exception("To use QEM, we currently need all arguments on the distribution to be strings, i.e. Normal('m', 's'), not Normal('m', 0)")
+
+            argnames = list(qem_dist.str_args.values)
+            if len(str_args) != len(set(str_args)):
+                raise Exception("To use QEM, we can't have duplicated parameters")
+            if not set(qem_dist.str_args.values()).issubset(qem_params.keys()):
+                raise Exception("All the parameters on a QEM distribution must be QEM parameters, but {varname} has {paramname} as a QEM parameter, and while other parameters aren't")
+            qem_varname2dist[varname] = qem_dist
+
+        #raw_moments = []
+        #for qem_varname, qem_dist in qem_varname2dist:
+        #    for 
+        #    raw_moments.append(((qem_varname,), 
+
+
 
 
         self._inputs = BufferStore(inputs)
         self._opt_params = ParameterStore(opt_params)
         self._qem_params = BufferStore(qem_params)
-        self._dists  = ModuleStore(plate.dists())
+        self._dists  = ModuleStore(plate.varname2dist())
             
 
 
