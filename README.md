@@ -59,12 +59,15 @@ pip install -e .
     - Specifically, two optimizers: one which only has parameters on P, and the other which only has parameters on Q.
     - P optimizer does ascent; Q optimizer does descent.
     - uses `torch.optim.Adam(..., maximize=True)` kwarg.
-  * Natural RWS: Rename to (MP)EM for massively-parallel expectation maximization.
-    - can use it for P too! (usually, you'd have P parameters without plates, so you'd have to allow lower-dimensional parameters).
-    - provide an extra kwarg to `BoundPlate`; it behaves exactly like `inputs` and `params` (in that its a dict mapping varname (string) to initial value).
-    - but must be the name of a "direct" argument to a distribution (e.g.`a_mean` in `Normal('a_mean', 1.)`, but not `x` in `Normal(lambda x: 0.9*x, 1.)`).
-    - BoundPlate has a mapping from em_conv_param_name -> dist_name, and from dist_name -> dist_type.
-    - Natural / conventional param conversions live on special classes, not part of TorchDimDist or etc.
+  * Massively parallel expectation maximization for approximate posteriors (acronym: QEM; used to be natural RWS).
+    - A key choice: whether to be parameter or distribution oriented (i.e. do we specifying that we're doing QEM over parameters or distributions?).  We choose parameter oriented, because it has two advantages:
+      - Parameter orientation means it is very natural to keep the program (Plate) the same whether you're optimizing or using QEM.
+      - it means `inputs`, `opt_params`, `qem_params` are provided to `BoundPlate` in the same way, `BoundPlate(qem_params={'a_mean': 0.})`.
+    - More fully, we can provide an initial value and a moment: `BoundPlate(qem_params={'a_mean': (0., ('a', mean))})`.
+      - We can look up default moments for common distributions.
+    - Ultimately, we end up with a dict mapping paramname -> Moment.
+    - We extract the necessary RawMoments.
+    - We compute the initial RawMoments.
   * Enumeration:
     - Enumeration is a class in Q (like Data), not P.
   * Timeseries:

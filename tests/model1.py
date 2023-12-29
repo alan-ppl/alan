@@ -31,7 +31,7 @@ Q = Plate(
 )
 
 P = BoundPlate(P)
-Q = BoundPlate(Q, params={'a_mean': t.zeros(()), 'd_mean':t.zeros(4, names=('p1',))})
+Q = BoundPlate(Q, opt_params={'a_mean': t.zeros(()), 'd_mean':t.zeros(4, names=('p1',))})
 
 all_platesizes = {'p1': 4, 'p2': 4}
 data = {'e': t.randn(4, 4, names=('p1', 'p2'))}

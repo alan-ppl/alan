@@ -18,7 +18,7 @@ class BoundPlate(nn.Module):
 
     Only makes sense at the very top layer.
     """
-    def __init__(self, plate: Plate, inputs=None, params=None):
+    def __init__(self, plate: Plate, inputs=None, opt_params=None, qem_params=None):
         super().__init__()
         self.plate = plate
 
@@ -27,30 +27,33 @@ class BoundPlate(nn.Module):
 
         if inputs is None:
             inputs = {}
-        if params is None:
-            params = {}
+        if opt_params is None:
+            opt_params = {}
+        if qem_params is None:
+            qem_params = {}
         assert isinstance(inputs, dict)
-        assert isinstance(params, dict)
+        assert isinstance(opt_params, dict)
+        assert isinstance(qem_params, dict)
 
         #Error checking: input, param names aren't reserved
-        input_param_names = [*inputs.keys(), *params.keys()]
-        all_names = set(dir(self))
+        input_param_names = [*inputs.keys(), *opt_params.keys(), *qem_params.keys()]
+        set_input_param_names = set(input_param_names)
         for name in input_param_names:
             check_name(name)
         
         #Error checking: no overlap between names in inputs and params.
-        inputs_params_overlap = set(inputs.keys()).intersection(params.keys())
-        if 0 != len(inputs_params_overlap):
-            raise Exception(f"BoundPlate has overlapping names {inputs_params_overlap} in inputs and params")
+        if len(input_param_names) != len(set_input_param_names):
+            raise Exception(f"BoundPlate has overlapping names in inputs, opt_params, and/or qem_params")
 
         #Error checking: no overlap between names in program and in inputs or params.
         prog_names = self.plate.all_prog_names()
-        prog_input_params_overlap = set(input_param_names).intersection(prog_names)
-        if 0 != len(inputs_params_overlap):
-            raise Exception(f"The program in BoundPlate has names that overlap with the inputs/params.  Specifically {prog_inputs_params_overlap}.")
+        prog_input_param_names_overlap = set_input_param_names.intersection(prog_names)
+        if 0 != len(prog_input_param_names_overlap):
+            raise Exception(f"The program in BoundPlate has names that overlap with the inputs/params.  Specifically {prog_inputs_param_names_overlap}.")
 
         self._inputs = BufferStore(inputs)
-        self._params = ParameterStore(params)
+        self._opt_params = ParameterStore(opt_params)
+        self._qem_params = ParameterStore(qem_params)
         self._dists  = ModuleStore(plate.dists())
 
     @property
@@ -60,14 +63,17 @@ class BoundPlate(nn.Module):
     def inputs(self):
         return self._inputs.to_dict()
 
-    def params(self):
-        return self._params.to_dict()
+    def opt_params(self):
+        return self._opt_params.to_dict()
+
+    def qem_params(self):
+        return self._qem_params.to_dict()
 
     def inputs_params_flat_named(self):
         """
         Returns a dict mapping from str -> named tensor
         """
-        return {**self.inputs(), **self.params()}
+        return {**self.inputs(), **self.opt_params(), **self.qem_params()}
 
     def inputs_params(self, all_platedims:dict[str, Dim]):
         return named2torchdim_flat2tree(self.inputs_params_flat_named(), all_platedims, self.plate)

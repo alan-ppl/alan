@@ -54,9 +54,17 @@ def var_from_raw_moment(rm:RawMoment):
     rm2 = RawMoment(lambda x: (rm.f(x))**2)
     return CompoundMoment(lambda Ex, Ex2: Ex2 - Ex*Ex, [rm, rm2])
 
-mean  = RawMoment(lambda x: x)
-mean2 = RawMoment(lambda x: x**2)
-var = var_from_raw_moment(mean)
+def std_from_raw_moment(rm:RawMoment):
+    assert isinstance(rm, RawMoment)
+    rm2 = RawMoment(lambda x: (rm.f(x))**2)
+    return CompoundMoment(lambda Ex, Ex2: (Ex2 - Ex*Ex).sqrt(), [rm, rm2])
+
+mean       = RawMoment(lambda x: x)
+mean2      = RawMoment(lambda x: x**2)
+var        = var_from_raw_moment(mean)
+std        = std_from_raw_moment(mean)
+mean_recip = RawMoment(lambda x: 1/x)
+
 
 
 def uniformise_moment_args(args):
