@@ -22,6 +22,21 @@ def apply_func_val(func_val, scope):
         assert isinstance(func_val, (Number, Tensor))
         return func_val
 
+class _Dist:
+    def __init__(self, *args, sample_shape=t.Size([]), **kwargs):
+        self.args = args
+        self.sample_shape = sample_shape
+        self.kwargs = kwargs
+
+    def finalize(self, varname):
+        return Dist(
+            varname=varname, 
+            dist=self.dist, 
+            args=self.args, 
+            sample_shape=self.sample_shape, 
+            kwargs=self.kwargs
+        )
+
 class Dist(torch.nn.Module):
     """
     Abstract base class for distributions that are actually exposed to users.
@@ -39,9 +54,11 @@ class Dist(torch.nn.Module):
     Critically, we extract the argument name from e.g. `lambda a: a.exp()` and use it to extract the right 
     variable from the scope.
     """
-    def __init__(self, *args, sample_shape=t.Size([]), **kwargs):
+    def __init__(self, varname, dist, args, sample_shape, kwargs):
         super().__init__()
         #A tensor that e.g. moves to GPU when we call `problem.to(device='cuda')`.
+        self.dist = dist
+
         self.register_buffer("_device_tensor", t.zeros(()))
 
         self.sample_shape = sample_shape
@@ -50,7 +67,6 @@ class Dist(torch.nn.Module):
         #following distributions initialization signature.
         self.distargname2func_val = inspect.signature(self.dist).bind(*args, **kwargs).arguments
 
-    #def rest_of_init(varname):
         all_args = set()
 
         self.str_args = {}
@@ -251,7 +267,7 @@ def new_dist(name, dist):
         name: string, will become the class name for the distribution.
         dist: Distribution class mirroring standard PyTorch distribution API.
     """
-    AD = type(name, (Dist,), {'dist': dist})
+    AD = type(name, (_Dist,), {'dist': dist})
     globals()[name] = AD
     #setattr(alan, name, AD)
 

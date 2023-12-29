@@ -1,7 +1,7 @@
 import torch as t
 
 from typing import Optional
-from .dist import Dist
+from .dist import _Dist
 from .utils import *
 from .Sampler import Sampler
 
@@ -9,15 +9,17 @@ class Group():
     def __init__(self, **kwargs):
         #Groups can only contain Dist, not Plates/Timeseries/Data/other Groups.
         for varname, dist in kwargs.items():
-            if not isinstance(dist, Dist):
+            if not isinstance(dist, _Dist):
                 raise Exception("{varname} in a Group should be a Dist, but is actually {type(dist)}")
 
         if len(kwargs) < 2:
             raise Exception("Groups only make sense if they have two or more random variables, but this group only has {len(kwargs)} random variables")
 
-        self.prog = kwargs
-        set_all_arg_list = set([arg for dist in kwargs.values() for arg in dist.all_args])
-        self.all_args = set_all_arg_list.difference(kwargs.keys()) #remove dependencies on other variables in the group.
+        #Finalize the distributions by passing in the varname, and check types
+        self.prog = {varname: dist.finalize(varname) for (varname, dist) in kwargs.items()}
+
+        set_all_arg_list = set([arg for dist in self.prog.values() for arg in dist.all_args])
+        self.all_args = set_all_arg_list.difference(self.prog.keys()) #remove dependencies on other variables in the group.
 
     def filter_scope(self, scope: dict[str, Tensor]):
         return {k: v for (k,v) in scope.items() if k in self.all_args}

@@ -8,13 +8,22 @@ from .Sampler import Sampler
 from .dist import Dist
 from .Group import Group
 from .Data import Data
+from .dist import Dist, _Dist
 
 
 
 
 class Plate():
     def __init__(self, **kwargs):
-        self.prog = kwargs
+        self.prog = {}
+
+        #Finalize the distributions by passing in the varname, and check types
+        for varname, dgpt in kwargs.items():
+            if isinstance(dgpt, _Dist):
+                dgpt = dgpt.finalize(varname)
+            assert isinstance(dgpt, (Dist, Group, Data, Plate))
+            self.prog[varname] = dgpt
+
 
         #Error checking: plate/variable/group names aren't reserved
         all_prog_names = self.all_prog_names()
@@ -26,6 +35,12 @@ class Plate():
         if 0 != len(dup_names):
             raise Exception(f"Plate has duplicate names {dup_names}.")
 
+    def finalize_init(self, groupvarname):
+        for groupvarname, dgpt in self.prog.items():
+            if isinstance(dgpt, (Dist, Plate, Group)):
+                dgpt.finalize_init(groupvarname)
+            else:
+                assert isinstance(dgpt, Data)
 
     def sample(
             self,
