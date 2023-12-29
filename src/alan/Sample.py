@@ -183,20 +183,20 @@ class Sample():
         #dimension names
         dimss = []
 
-        groupvarname2active_platedimnames = self.problem.P.groupvarname2active_platedimnames()
+        groupvarname2platenames = self.problem.P.groupvarname2platenames()
 
         for groupvarnames_frozenset in joints:
             #Convert frozenset groupvarnames to tuple.
             groupvarnames = tuple(groupvarnames_frozenset)
 
             #Check that all variables are part of the same plate.
-            active_platedimnames = groupvarname2active_platedimnames[groupvarnames[0]]
-            set_active_platedimnames = set(active_platedimnames)
+            active_platenames = groupvarname2platenames[groupvarnames[0]]
+            set_active_platenames = set(active_platenames)
             for groupvarname in groupvarnames[:1]:
-                if set_active_platedimnames != set(groupvarname2active_platedimnames[groupvarname]):
+                if set_active_platenames != set(groupvarname2platenames[groupvarname]):
                     raise Exception("Trying to compute marginal for variables at different plates; not sure this makes sense")
 
-            active_platedims = [self.all_platedims[dimname] for dimname in active_platedimnames]
+            active_platedims = [self.all_platedims[platename] for platename in active_platenames]
             
             Kdims = [self.groupvarname2Kdim[groupvarname] for groupvarname in groupvarnames]
 

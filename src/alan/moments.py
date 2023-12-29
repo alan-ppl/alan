@@ -146,3 +146,16 @@ def named_moments_mixin(self, *args, **kwargs):
     result = self._moments_uniform_input(moms, **kwargs)
     result = [dim2named_tensor(x) for x in result]
     return postproc_moment_outputs(result, args)
+
+def moments2raw_moments(moments: list[tuple[str], Moment]):
+    raw_moments = []
+    for varnames, moment in moments:
+        assert isinstance(varnames, tuple)
+        assert isinstance(moment, Moment)
+
+        for raw_moment in moment.raw_moments():
+            raw_moments.append((varnames, raw_moment))
+    return raw_moments
+
+
+

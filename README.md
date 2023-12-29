@@ -54,6 +54,7 @@ pip install -e .
     - When dimensions on `all_platesizes` doesn't match `data`, `inputs` or `parameters`.
     - No names on distribution parameters.
     - Marginals/moments make sense for variables on different plates if they're in the same heirarchy.
+    - Check that a param/input isn't used too early in the heirarchy (e.g. if param/input has plate dimensions 'p1' and 'p2', but is used at level 'p1').
   * RWS:
     - Should be able to implement in terms of sample.elbo_rws().
     - Specifically, two optimizers: one which only has parameters on P, and the other which only has parameters on Q.

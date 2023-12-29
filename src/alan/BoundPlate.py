@@ -5,20 +5,32 @@ from .utils import *
 from .Sampler import Sampler, PermutationSampler
 from .Plate import tensordict2tree, Plate, flatten_tree
 from .Stores import BufferStore, ParameterStore, ModuleStore
+from .moments import moments2raw_moments
 
 def named2torchdim_flat2tree(flat_named:dict, all_platedims, plate):
     flat_torchdim = named2dim_dict(flat_named, all_platedims)
     return tensordict2tree(plate, flat_torchdim)
 
+def expand_named(x, names, all_platesizes):
+    extra_plate_shape = [all_platesizes[name] for name in names]
+    return x.expand(*extra_plate_shape, *x.shape).refine_names(*names, *x.names)
+
+def non_none_names(x):
+    return [name for name in x.names if name is not None]
 
 class BoundPlate(nn.Module):
     """
     Binds a Plate to inputs (e.g. film features in MovieLens) and learned parameters
     (e.g. approximate posterior parameters).
 
-    Only makes sense at the very top layer.
+    Only makes sense at the very top layer. 
+
+    Inputs must be provided as a named tensor, with names corresponding to platenames.
+
+    You can provide params in two formats
+    opt_params = 
     """
-    def __init__(self, plate: Plate, inputs=None, opt_params=None, qem_params=None):
+    def __init__(self, plate: Plate, inputs=None, opt_params=None, qem_params=None, all_platesizes=None):
         super().__init__()
         self.plate = plate
 
@@ -35,8 +47,34 @@ class BoundPlate(nn.Module):
         assert isinstance(opt_params, dict)
         assert isinstance(qem_params, dict)
 
+        for v in inputs.values():
+            if not isinstance(v, t.Tensor):
+                raise Exception("Inputs must be provided as a plain named tensor")
+
+        for v in [*opt_params.values(), *qem_params.values()]:
+            if not isinstance(v, (t.Tensor, tuple)):
+                raise Exception("Parameters must be provided as a plain named tensor, or a tuple of a plain named tensor, and some dimension names to expand")
+
+        if all_platesizes is None:
+            for v in [*opt_params.values(), *qem_params.values()]:
+                if not isinstance(v, t.Tensor):
+                    raise Exception("If you don't provide all_platesizes kwarg, then opt_params and qem_params must be plain named tensors")
+            all_platesizes = {}
+
+        for k, v in opt_params.items():
+            if isinstance(v, tuple):
+                named_tensor, plate_names = v
+                opt_params[k] = expand_named(named_tensor, plate_names, all_platesizes)
+
+        for k, v in qem_params.items():
+            if isinstance(v, tuple):
+                named_tensor, plate_names = v
+                qem_params[k] = expand_named(named_tensor, plate_names, all_platesizes)
+
+        inputs_params = {**inputs, **opt_params, **qem_params}
+
         #Error checking: input, param names aren't reserved
-        input_param_names = [*inputs.keys(), *opt_params.keys(), *qem_params.keys()]
+        input_param_names = list(inputs_params.keys())
         set_input_param_names = set(input_param_names)
         for name in input_param_names:
             check_name(name)
@@ -51,10 +89,59 @@ class BoundPlate(nn.Module):
         if 0 != len(prog_input_param_names_overlap):
             raise Exception(f"The program in BoundPlate has plate/random variable names that overlap with the inputs/params.  Specifically {prog_inputs_param_names_overlap}.")
 
+
+        varname2groupvarname_dist = self.plate.varname2groupvarname_dist()
+        groupvarname2platenames = self.plate.groupvarname2platenames()
+
+        #arg here is any argument to a distribution; could be an input_param, but also could be another random variable.
+        argname2varnames = {}
+        for varname, (_, dist) in varname2groupvarname_dist.items():
+            for argname in dist.all_args:
+                if argname not in argname2varnames:
+                    argname2varnames[argname] = []
+                argname2varnames[argname] = varname
+
+        #Error checking: inputs_params are used in sensible places in the plate heirarchy.
+        #Specifically, bad things happen if an input_param has more platedims than expected when it is used.
+        for input_param_name, tensor in inputs_params.items():
+            set_input_param_platenames = set(non_none_names(tensor))
+            for varname in argname2varnames[input_param_name]:
+                groupvarname, _ = varname2groupvarname_dist[varname]
+                var_platenames = groupvarname2platenames[groupvarname]
+                if not set_input_param_platenames.issubset(set(var_platenames)):
+                    raise Exception(f"{input_param_name} is used for {varname}, but that doesn't make sense as {input_param_name} has plate dimensions {input_param_platedimnames}, while {varname} only has {var_platedimnames}")
+
+        qem_varnames = set(argname2varname[argname] for argname in qem_params)
+
+
         self._inputs = BufferStore(inputs)
         self._opt_params = ParameterStore(opt_params)
-        self._qem_params = ParameterStore(qem_params)
+        self._qem_params = BufferStore(qem_params)
         self._dists  = ModuleStore(plate.dists())
+            
+
+
+
+        #varname2argnames = plate.varname2argnames()
+
+        #QEM stuff:
+        #fundamental datatype:
+        #  moving_average_rawmoments:  (varnames, RawMoment) -> Tensor
+        #need to:
+        #  initialize 
+        #    by converting initial conventional to mean parameters
+        #    dict mapping paramname to varname
+        #    dict mapping varname to the distribution.
+        #  update
+        #    easy: the (varnames, RawMoment) key in moving_average_rawmoments is all you need
+        #  convert to conventional params
+        #    conversions class tells you the RawMoments that it needs.
+        #    look up the RawMoment in moving_average_rawmoments.
+
+        #self.paramname2varname
+        #self.varname2dist
+
+
 
     @property
     def device(self):
@@ -163,8 +250,8 @@ class BoundPlate(nn.Module):
 
         return dim2named_dict(torchdim_flatdict_noK)
 
-    def groupvarname2active_platedimnames(self):
-        return self.plate.groupvarname2active_platedimnames([])
+    def groupvarname2platenames(self):
+        return self.plate.groupvarname2platenames()
 
     def varname2groupvarname(self):
         return self.plate.varname2groupvarname()
