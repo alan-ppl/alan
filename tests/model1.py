@@ -2,8 +2,7 @@ import torch as t
 from alan import Normal, Plate, BoundPlate, Group, Problem, Data, mean, Split, OptParam, QEMParam
 from TestProblem import TestProblem
 
-P = Plate(
-    ab = Group(
+P = Plate( ab = Group(
         a = Normal(0, 1),
         b = Normal("a", 1),
     ),
@@ -56,5 +55,5 @@ problem = tp.problem
 
 sample = problem.sample(K=10)
 
-problem.update_qem_params(0.1, sample)
+sample.update_qem_params(0.1)
 

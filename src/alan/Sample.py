@@ -292,6 +292,12 @@ class Sample():
     _moments = torchdim_moments_mixin
     moments = named_moments_mixin
 
+    def update_qem_params(self, lr:float, computation_strategy=no_checkpoint):
+        """
+        """
+        self.problem.P._update_qem_params(lr, self, computation_strategy=computation_strategy)
+        self.problem.Q._update_qem_params(lr, self, computation_strategy=computation_strategy)
+
 
         
 def index_into_sample(

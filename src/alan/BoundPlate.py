@@ -72,20 +72,30 @@ class BoundPlate(nn.Module):
             if not isinstance(v, t.Tensor):
                 raise Exception("`inputs` and `extra_opt_params` must be provided as a plain named tensor, but {k} is of type {type(v)}")
 
-        #Check no dimension mismatches for inputs.
+        #Check all dimensions used in inputs/extra_opt_params are present in all_platesizes, and match
         for k, v in inputs_extra_opt_params.items():
             for name in v.names:
                 if name is not None:
+                    if name not in all_platesizes:
+                        raise Exception("Dimension name {name} used on input/extra_opt_param {k}, but not provided in all_platesizes")
                     if v.size(name) != all_platesizes[name]:
                         raise Exception("Dimension mismatch for input {k} along dimension {name}; all_platesizes gives {all_platesizes[name]}, while {k} is {v.size(name)}")
 
-        #TODO: check the plates for inputs / extra_opt_params makes sense.
+        #Check that inputs/extra_log_params are used in a place that makes sense with regard to plates.
+        groupvarname2platenames = self.plate.groupvarname2platenames()
+        varname2groupvarname_dist = self.plate.varname2groupvarname_dist()
+        for varname, (groupvarname, dist) in varname2groupvarname_dist.items():
+            for argname in dist.all_args:
+                if argname in inputs_extra_opt_params:
+                    dist_platenames = groupvarname2platenames[groupvarname]
+                    input_extra_opt_param_platenames = non_none_names(inputs_extra_opt_params[argname])
+                    if not set(input_extra_opt_param_platenames).issubset(dist_platenames):
+                        raise Exception(f"{argname} is used on {varname}, which has plates {dist_platenames}, but {argname} has plates {input_extra_opt_param_platenames}")
 
         ###################################
         #### Setting up QEM/Opt Params ####
         ###################################
 
-        groupvarname2platenames = self.plate.groupvarname2platenames()
 
         opt_paramname2tensor = extra_opt_params
         self.opt_paramname2trans = {paramname: (lambda x: x) for paramname in opt_paramname2tensor}
@@ -100,8 +110,10 @@ class BoundPlate(nn.Module):
         #Flat list of rmkeys.
         self.qem_flat_list_rmkeys = []
 
-        #Dict of RawMoments, mapping meanname -> Tesor
+        #Dict of mapping meanname -> moving average moment as a tensor.
         qem_meanname2mom = {}
+        #Dict mapping paramname to conventional parameter as a tensor
+        qem_params = {}
         #Dict mapping varname, distargname 2 paramname
         self.qem_varname_distargname2paramname = {}
 
@@ -110,7 +122,7 @@ class BoundPlate(nn.Module):
         self.qem_meanname2rmkey = {}
 
 
-        for varname, (groupvarname, dist) in self.plate.varname2groupvarname_dist().items():
+        for varname, (groupvarname, dist) in varname2groupvarname_dist.items():
             platenames = groupvarname2platenames[groupvarname]
 
             if not dist.qem_dist:
@@ -138,7 +150,9 @@ class BoundPlate(nn.Module):
                 #and use them to compute the initial mean parameters, using conversion.
                 init_conv_dict = {}
                 for paramname, (distargname, param) in dist.opt_qem_params.items():
-                    init_conv_dict[distargname] = expand_named(param.init, platenames, all_platesizes)
+                    expanded_conv_param = expand_named(param.init, platenames, all_platesizes)
+                    qem_params[paramname] = expanded_conv_param 
+                    init_conv_dict[distargname] = expanded_conv_param 
                 init_means = conversion.conv2mean(**init_conv_dict)
 
                 for i, rmkey in enumerate(rmkeys):
@@ -166,8 +180,9 @@ class BoundPlate(nn.Module):
         ################################################
 
         self._inputs = BufferStore(inputs)
-        self._opt_params = ParameterStore(opt_paramname2tensor)
-        self._qem_meanname2mom = BufferStore(qem_meanname2mom)
+        self._opt_params = ParameterStore(opt_paramname2tensor) 
+        self._qem_params = BufferStore(qem_params)              #dict mapping paramname -> conventional parameter.
+        self._qem_meanname2mom = BufferStore(qem_meanname2mom)  #dict mapping meanname -> moving average mean parameter.
         self._dists  = ModuleStore(plate.varname2dist())
 
         ###################################
@@ -189,6 +204,9 @@ class BoundPlate(nn.Module):
         prog_input_param_names_overlap = set_input_param_names.intersection(prog_names)
         if 0 != len(prog_input_param_names_overlap):
             raise Exception(f"The program in BoundPlate has plate/random variable names that overlap with the inputs/params.  Specifically {prog_inputs_param_names_overlap}.")
+
+        #Check that all the dependencies make sense by sampling.
+        self.sample()
             
     @property
     def device(self):
@@ -197,37 +215,44 @@ class BoundPlate(nn.Module):
     def inputs(self):
         return self._inputs.to_dict()
 
+    def qem_params(self):
+        return self._qem_params.to_dict()
+
     def opt_params(self):
         result = {}
         for paramname, tensor in self._opt_params.to_dict().items():
             result[paramname] = self.opt_paramname2trans[paramname](tensor)
         return result
 
-    def qem_params(self):
+    def _update_qem_convparams(self):
         """
         Converts moving averages in self.qem_moving_average_moments to a flat dict mapping
         paramname -> conventional parameter
         """
         meanname2mom = self._qem_meanname2mom.to_dict()
-        result = {}
+
         for varname, conversion, rmkeys in zip(self.qem_list_varname, self.qem_list_conversion, self.qem_list_rmkeys):
             means = [meanname2mom[self.qem_rmkey2meanname[rmkey]] for rmkey in rmkeys]
             conv_dict = conversion.mean2conv(*means)
             for distargname, tensor in conv_dict.items():
                 paramname = self.qem_varname_distargname2paramname[varname, distargname]
-                result[paramname] = tensor
-        return result
 
-    def _update_qem_params(self, lr, samp_marg_is):
+                getattr(self._qem_params, paramname).copy_(tensor)
+
+
+    def _update_qem_moving_avg(self, lr, sample, computation_strategy):
         rmkey_list = self.qem_flat_list_rmkeys
         if 0 < len(rmkey_list):
-            new_moment_list = samp_marg_is._moments_uniform_input(rmkey_list)
+            new_moment_list = sample._moments_uniform_input(rmkey_list, computation_strategy=computation_strategy)
             for rmkey, new_moment in zip(rmkey_list, new_moment_list):
                 meanname = self.qem_rmkey2meanname[rmkey]
 
                 tensor = getattr(self._qem_meanname2mom, meanname)
                 tensor.mul_(1-lr).add_(new_moment, alpha=lr)
 
+    def _update_qem_params(self, lr, sample, computation_strategy):
+        self._update_qem_moving_avg(lr, sample, computation_strategy)
+        self._update_qem_convparams()
 
     def inputs_params_flat_named(self):
         """
@@ -269,15 +294,6 @@ class BoundPlate(nn.Module):
             original_data,
             extended_data)
     
-    def check_deps(self, all_platedims:dict[str, Dim]):
-        """
-        This is run as we enter Problem, and checks that we can sample from P and Q, and hence
-        that P and Q make sense.  For instance, checks that dependency structure is valid and
-        sizes of tensors are consistent.  Note that this isn't obvious for P, as we never actually
-        sample from P, we just evaluate log-probabilities under P.
-        """
-        self._sample(1, False, PermutationSampler, all_platedims)
-
     def _sample(self, K: int, reparam:bool, sampler:Sampler, all_platedims:dict[str, Dim]):
         """
         Internal sampling method.

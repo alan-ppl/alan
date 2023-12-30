@@ -42,9 +42,6 @@ class Problem(nn.Module):
         check_PQ_plate(None, P.plate, Q.plate, self.data)
         check_inputs_params(P, Q)
 
-        P.check_deps(self.all_platedims)
-        Q.check_deps(self.all_platedims)
-
     @property
     def data(self):
         """
@@ -84,13 +81,3 @@ class Problem(nn.Module):
             **self.Q.inputs_params_flat_named()
         }
         return named2torchdim_flat2tree(flat_named, self.all_platedims, self.P.plate)
-
-    def update_qem_params(self, lr, samp_marg_is):
-        """
-        Pass in a scalar learning rate, and anything with a .moments method, i.e.:
-        Sample
-        Marginals
-        ImportanceSample
-        """
-        self.P._update_qem_params(lr, samp_marg_is)
-        self.Q._update_qem_params(lr, samp_marg_is)
