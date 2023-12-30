@@ -35,10 +35,10 @@ Q = Plate(
     d = Data(),
 )
 
-P = BoundPlate(P)
-Q = BoundPlate(Q)
-
 all_platesizes = {}
+P = BoundPlate(P, all_platesizes)
+Q = BoundPlate(Q, all_platesizes)
+
 data = {'d': data}
 
 moments = [('a', mean)]
@@ -47,7 +47,7 @@ known_moments = {
 }
 
 tp = TestProblem(
-    P, Q, all_platesizes, data, 
+    P, Q, data, 
     moments, 
     known_elbo=known_elbo, 
     known_moments=known_moments, 

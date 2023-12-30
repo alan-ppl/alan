@@ -23,7 +23,7 @@ Q = Plate(
     ),
     c = Normal(0, lambda a: a.exp()),
     p1 = Plate(
-        d = Normal(OptParam(0.), 1),
+        d = Normal(OptParam(0.), "d_scale"),
         p2 = Plate(
             e = Data()
         ),
@@ -33,11 +33,12 @@ Q = Plate(
 
 all_platesizes = {'p1': 4, 'p2': 4}
 
-P = BoundPlate(P)
-Q = BoundPlate(Q, all_platesizes=all_platesizes)
+
+extra_opt_params = {'d_scale': t.ones(4, names=('p1',))}
+P = BoundPlate(P, all_platesizes)
+Q = BoundPlate(Q, all_platesizes, extra_opt_params=extra_opt_params)
 
 data = {'e': t.randn(4, 4, names=('p1', 'p2'))}
-
 moments = [
     ('a', mean),
     ('b', mean),
@@ -45,7 +46,7 @@ moments = [
     ('d', mean),
 ]
 tp = TestProblem(
-    P, Q, all_platesizes, data, 
+    P, Q, data,
     moments, 
     moment_K=1000, 
     computation_strategy=Split('p1', 3)

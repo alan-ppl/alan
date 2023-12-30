@@ -46,7 +46,7 @@ class BoundPlate(nn.Module):
     You can provide params in two formats
     opt_params = 
     """
-    def __init__(self, plate: Plate, inputs=None, all_platesizes=None):
+    def __init__(self, plate: Plate, all_platesizes:dict[str, int], inputs=None, extra_opt_params=None):
         super().__init__()
         #A tensor that e.g. moves to GPU when we call `problem.to(device='cuda')`.
         self.register_buffer("_device_tensor", t.zeros(()))
@@ -56,22 +56,30 @@ class BoundPlate(nn.Module):
         if all_platesizes is None:
             all_platesizes = {}
         assert isinstance(all_platesizes, dict)
+        self.all_platesizes = all_platesizes
 
         if inputs is None:
             inputs = {}
         assert isinstance(inputs, dict)
 
+        if extra_opt_params is None:
+            extra_opt_params = {}
+        assert isinstance(extra_opt_params, dict)
+
         #Check inputs are all named tensors
-        for v in inputs.items():
+        inputs_extra_opt_params = {**inputs, **extra_opt_params}
+        for k, v in inputs_extra_opt_params.items():
             if not isinstance(v, t.Tensor):
-                raise Exception("Inputs must be provided as a plain named tensor")
+                raise Exception("`inputs` and `extra_opt_params` must be provided as a plain named tensor, but {k} is of type {type(v)}")
 
         #Check no dimension mismatches for inputs.
-        for k, v in inputs.items():
+        for k, v in inputs_extra_opt_params.items():
             for name in v.names:
                 if name is not None:
                     if v.size(name) != all_platesizes[name]:
                         raise Exception("Dimension mismatch for input {k} along dimension {name}; all_platesizes gives {all_platesizes[name]}, while {k} is {v.size(name)}")
+
+        #TODO: check the plates for inputs / extra_opt_params makes sense.
 
         ###################################
         #### Setting up QEM/Opt Params ####
@@ -79,7 +87,9 @@ class BoundPlate(nn.Module):
 
         groupvarname2platenames = self.plate.groupvarname2platenames()
 
-        opt_params = {}
+        opt_paramname2tensor = extra_opt_params
+        self.opt_paramname2trans = {paramname: (lambda x: x) for paramname in opt_paramname2tensor}
+
 
         #List of varname
         self.qem_list_varname = []
@@ -104,9 +114,12 @@ class BoundPlate(nn.Module):
             platenames = groupvarname2platenames[groupvarname]
 
             if not dist.qem_dist:
-                #Not a QEM distribution, so may contain opt_params.
+                #Not a QEM distribution, so may contain opt_paramname2tensor.
                 for paramname, (distargname, param) in dist.opt_qem_params.items():
-                    opt_params[paramname] = expand_named(param.init, platenames, all_platesizes)
+                    if paramname in opt_paramname2tensor:
+                        raise Exception("OptParam is trying to add parameter named {paramname}, but there's already a parameter with this name")
+                    opt_paramname2tensor[paramname] = expand_named(param.init, platenames, all_platesizes)
+                    self.opt_paramname2trans[paramname] = param.trans
             else:
             #A QEM distribution, so does not contain opt_params.
                 self.qem_list_varname.append(varname)
@@ -153,7 +166,7 @@ class BoundPlate(nn.Module):
         ################################################
 
         self._inputs = BufferStore(inputs)
-        self._opt_params = ParameterStore(opt_params)
+        self._opt_params = ParameterStore(opt_paramname2tensor)
         self._qem_meanname2mom = BufferStore(qem_meanname2mom)
         self._dists  = ModuleStore(plate.varname2dist())
 
@@ -185,7 +198,10 @@ class BoundPlate(nn.Module):
         return self._inputs.to_dict()
 
     def opt_params(self):
-        return self._opt_params.to_dict()
+        result = {}
+        for paramname, tensor in self._opt_params.to_dict().items():
+            result[paramname] = self.opt_paramname2trans[paramname](tensor)
+        return result
 
     def qem_params(self):
         """
@@ -289,11 +305,16 @@ class BoundPlate(nn.Module):
 
         return sample, groupvarname2Kdim
 
-    def sample(self, all_platesizes:dict[str, int]):
+    def sample(self):
         """
         User-facing sample method, so it should return flat-dict of named Tensors, with no K or N dimensions.
+
+        Note that self.all_platesizes has some platesizes that were originally used to construct the parameters.
+        However, that isn't necessarily all the platesizes.  So the remaining platesizes may be provided as an
+        argument to sample.
         """
-        all_platedims = {platename: Dim(platename, size) for (platename, size) in all_platesizes.items()}
+
+        all_platedims = {platename: Dim(platename, size) for (platename, size) in self.all_platesizes.items()}
         set_platedims = list(all_platedims.values())
         torchdim_tree_withK, _ = self._sample(1, False, PermutationSampler, all_platedims)
         torchdim_flatdict_withK = flatten_tree(torchdim_tree_withK)

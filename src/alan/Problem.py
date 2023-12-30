@@ -17,7 +17,7 @@ PBP = Union[Plate, BoundPlate]
 
 
 class Problem(nn.Module):
-    def __init__(self, P:BoundPlate, Q:BoundPlate, all_platesizes: dict[str, int], data: dict[str, t.Tensor]):
+    def __init__(self, P:BoundPlate, Q:BoundPlate, data: dict[str, t.Tensor]):
         super().__init__()
 
         if (not isinstance(P, BoundPlate)) or (not isinstance(Q, BoundPlate)):
@@ -28,7 +28,11 @@ class Problem(nn.Module):
 
         self.P = P
         self.Q = Q
-        self.all_platedims = {name: Dim(name, size) for name, size in all_platesizes.items()}
+
+        if P.all_platesizes != Q.all_platesizes:
+            raise Exception(f"all_platesizes does not match between P and Q.  In P it is {P.all_platesizes}, while in Q it is {Q.all_platesizes}")
+        
+        self.all_platedims = {name: Dim(name, size) for name, size in P.all_platesizes.items()}
         #Put data in a BufferDict so that it is registered properly, and moves to device as requested.
         self._data = BufferStore(data)
 
