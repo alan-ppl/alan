@@ -292,6 +292,7 @@ class Sample():
     _moments = torchdim_moments_mixin
     moments = named_moments_mixin
 
+
         
 def index_into_sample(
         sample: dict, 

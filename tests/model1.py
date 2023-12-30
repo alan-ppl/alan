@@ -1,5 +1,5 @@
 import torch as t
-from alan import Normal, Plate, BoundPlate, Group, Problem, Data, mean, Split, OptParam
+from alan import Normal, Plate, BoundPlate, Group, Problem, Data, mean, Split, OptParam, QEMParam
 from TestProblem import TestProblem
 
 P = Plate(
@@ -18,7 +18,7 @@ P = Plate(
 
 Q = Plate(
     ab = Group(
-        a = Normal(OptParam(0.), 1),
+        a = Normal(QEMParam(0.), QEMParam(1.)),
         b = Normal("a", 1),
     ),
     c = Normal(0, lambda a: a.exp()),
@@ -50,3 +50,10 @@ tp = TestProblem(
     moment_K=1000, 
     computation_strategy=Split('p1', 3)
 )
+
+problem = tp.problem
+
+sample = problem.sample(K=10)
+
+problem.update_qem_params(0.1, sample)
+

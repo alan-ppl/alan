@@ -65,14 +65,7 @@ pip install -e .
     - P optimizer does ascent; Q optimizer does descent.
     - uses `torch.optim.Adam(..., maximize=True)` kwarg.
   * Massively parallel expectation maximization for approximate posteriors (acronym: QEM; used to be natural RWS).
-    - A key choice: whether to be parameter or distribution oriented (i.e. do we specifying that we're doing QEM over parameters or distributions?).  We choose parameter oriented, because it has two advantages:
-      - Parameter orientation means it is very natural to keep the program (Plate) the same whether you're optimizing or using QEM.
-      - it means `inputs`, `opt_params`, `qem_params` are provided to `BoundPlate` in the same way, `BoundPlate(qem_params={'a_mean': 0.})`.
-    - More fully, we can provide an initial value and a moment: `BoundPlate(qem_params={'a_mean': (0., ('a', mean))})`.
-      - We can look up default moments for common distributions.
-    - Ultimately, we end up with a dict mapping paramname -> Moment.
-    - We extract the necessary RawMoments.
-    - We compute the initial RawMoments.
+    - ...
   * Enumeration:
     - Enumeration is a class in Q (like Data), not P.
   * Timeseries:

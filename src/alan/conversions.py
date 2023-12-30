@@ -1,11 +1,6 @@
 import torch as t
-from torch.distributions.multivariate_normal import _precision_to_scale_tril
 
 from .moments import mean, mean2, mean_log, mean_log1m, mean_xxT, cov_x, vec_square
-
-import alan.postproc as pp
-
-Tensor = (functorch.dim.Tensor, t.Tensor)
 
 def grad_digamma(x):
     return t.special.polygamma(1, x)
@@ -35,7 +30,7 @@ def dict_assert_allclose(xs, ys):
 
 class AbstractConversion():
     @staticmethod
-    def canonical_conv(**kwargs)
+    def canonical_conv(**kwargs):
         return kwargs
 
 
@@ -76,14 +71,13 @@ class NormalConversion(AbstractConversion):
     sufficient_stats = (mean, mean2)
     @staticmethod
     def conv2mean(loc, scale):
-        Ex  = loc
-        Ex2 = loc**2 + scale**2
-        return Ex, Ex2
+        mean  = loc
+        mean2 = loc**2 + scale**2
+        return mean, mean2
     @staticmethod
-    def mean2conv(Ex, Ex2):
-        loc   = Ex
-        var = Ex2 - loc**2
-        scale = scale.floor(min=0.).sqrt()
+    def mean2conv(mean, mean2):
+        loc = mean
+        scale = (mean2 - mean*mean).clamp(min=0.).sqrt()
         return {'loc': loc, 'scale': scale}
     @staticmethod
     def test_conv(N):
@@ -226,7 +220,7 @@ class GammaConversion(AbstractConversion):
 #    def test_conv(N):
 #        return (t.randn(N).exp(),t.randn(N).exp())
 
-class MultivaraiteNormalConversion(AbstractConversion):
+class MultivariateNormalConversion(AbstractConversion):
     dist = t.distributions.MultivariateNormal
     sufficient_stats = (mean, mean_xxT)
 
@@ -253,7 +247,7 @@ class MultivaraiteNormalConversion(AbstractConversion):
             covariance_matrix = scale_tril @ scale_tril.mT
         return {'loc': loc, 'covariance_matrix': covariance_matrix}
 
-converstion_dict = {
+conversion_dict = {
     t.distributions.Bernoulli: BernoulliConversion,
     t.distributions.Beta: BetaConversion,
     t.distributions.Dirichlet: DirichletConversion,

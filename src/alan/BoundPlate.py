@@ -7,6 +7,7 @@ from .Plate import tensordict2tree, Plate, flatten_tree
 from .Stores import BufferStore, ParameterStore, ModuleStore
 from .moments import moments2raw_moments
 from .Param import OptParam, QEMParam
+from .conversions import conversion_dict
 
 def named2torchdim_flat2tree(flat_named:dict, all_platedims, plate):
     flat_torchdim = named2dim_dict(flat_named, all_platedims)
@@ -72,41 +73,96 @@ class BoundPlate(nn.Module):
                     if v.size(name) != all_platesizes[name]:
                         raise Exception("Dimension mismatch for input {k} along dimension {name}; all_platesizes gives {all_platesizes[name]}, while {k} is {v.size(name)}")
 
+        ###################################
+        #### Setting up QEM/Opt Params ####
+        ###################################
+
         groupvarname2platenames = self.plate.groupvarname2platenames()
 
         opt_params = {}
-        qem_paramname2varname_conversion = {}
+
+        #List of varname
+        self.qem_list_varname = []
+        #List of conversion
+        self.qem_list_conversion = []
+        #List of lists of rmkeys; outer list corresponds to random variables.
+        self.qem_list_rmkeys = []
+        #Flat list of rmkeys.
+        self.qem_flat_list_rmkeys = []
+
+        #Dict of RawMoments, mapping meanname -> Tesor
+        qem_meanname2mom = {}
+        #Dict mapping varname, distargname 2 paramname
+        self.qem_varname_distargname2paramname = {}
+
+        #We need meanname because we need to put the tensors in a BufferStore, which requires a dict as input.
+        self.qem_rmkey2meanname = {}
+        self.qem_meanname2rmkey = {}
+
 
         for varname, (groupvarname, dist) in self.plate.varname2groupvarname_dist().items():
             platenames = groupvarname2platenames[groupvarname]
 
-            for paramname, (distargname, param) in dist.opt_qem_params.items():
-                param_init = param.init
-                if isinstance(param_init, Number):
-                    param_init = t.tensor(float(param_init))
-                assert isinstance(param_init, t.Tensor)
-                param_init = expand_named(param_init, platenames, all_platesizes)
+            if not dist.qem_dist:
+                #Not a QEM distribution, so may contain opt_params.
+                for paramname, (distargname, param) in dist.opt_qem_params.items():
+                    opt_params[paramname] = expand_named(param.init, platenames, all_platesizes)
+            else:
+            #A QEM distribution, so does not contain opt_params.
+                self.qem_list_varname.append(varname)
 
-                if isinstance(param, OptParam):
-                    opt_params[paramname] = param_init
-                else:
-                    assert isinstance(param, QEMParam)
-                    #qem_paramname2varname_conversion() #!!!!!!
+                conversion = conversion_dict[dist.dist]
+                self.qem_list_conversion.append(conversion)
 
+                #Sufficient statistics for a distribution, specified in the form of 
+                #rmkeys: tuple[tuple[varname], RawMoment]
+                #so we can pass it directly to e.g. marginals.moments.
+                rmkeys = [((varname,), mom) for mom in conversion.sufficient_stats]
+                self.qem_flat_list_rmkeys = [*self.qem_flat_list_rmkeys, *rmkeys]
+                self.qem_list_rmkeys.append(rmkeys)
 
-        #to allow us to construct/process the necessary RawMoments, we need 
-        #  dict mapping paramname -> (varname, Conversion)
+                #Expand the initial conventional parameters provided to the distribution
+                #and use them to compute the initial mean parameters, using conversion.
+                init_conv_dict = {}
+                for paramname, (distargname, param) in dist.opt_qem_params.items():
+                    init_conv_dict[distargname] = expand_named(param.init, platenames, all_platesizes)
+                init_means = conversion.conv2mean(**init_conv_dict)
 
-        #fundamental type: moving average RawMoments
-        #  dict mapping (varname, RawMoment) -> Tensor
+                for i, rmkey in enumerate(rmkeys):
+                    meanname = f"{varname}_{i}"
+                    self.qem_rmkey2meanname[rmkey] = meanname
+                    self.qem_meanname2rmkey[meanname] = rmkey
 
-        #Convert this to:
-        #  dict mapping paramname -> Tensor
+                #Put these initial mean parameters into the critical qem_moving_average_moments
+                #dict.
+                for rmkey, init_mean in zip(rmkeys, init_means):
+                    meanname = self.qem_rmkey2meanname[rmkey]
+                    qem_meanname2mom[meanname] = init_mean
+
+                #conversion.mean2conv produces a dict:
+                #distargname -> Tensor.
+                #we need to convert varname, distargname -> paramname
+                distargname2paramname = {}
+                for paramname, (distargname, param) in dist.opt_qem_params.items():
+                    self.qem_varname_distargname2paramname[(varname, distargname)] = paramname
+
+        ################################################
+        #### Finished setting up Opt/QEM Params!    ####
+        #### Now, assign stuff to Param/BufferStore ####
+        #### so it is properly registered on device ####
+        ################################################
+
+        self._inputs = BufferStore(inputs)
+        self._opt_params = ParameterStore(opt_params)
+        self._qem_meanname2mom = BufferStore(qem_meanname2mom)
+        self._dists  = ModuleStore(plate.varname2dist())
+
+        ###################################
+        #### A bit more error checking ####
+        ###################################
         
-        inputs_params = {**inputs, **opt_params}#, **qem_params}
-
         #Error checking: input, param names aren't reserved
-        input_param_names = list(inputs_params.keys())
+        input_param_names = list(self.inputs_params_flat_named().keys())
         set_input_param_names = set(input_param_names)
         for name in input_param_names:
             check_name(name)
@@ -120,20 +176,7 @@ class BoundPlate(nn.Module):
         prog_input_param_names_overlap = set_input_param_names.intersection(prog_names)
         if 0 != len(prog_input_param_names_overlap):
             raise Exception(f"The program in BoundPlate has plate/random variable names that overlap with the inputs/params.  Specifically {prog_inputs_param_names_overlap}.")
-
-
-
-        self._inputs = BufferStore(inputs)
-        self._opt_params = ParameterStore(opt_params)
-        #self._qem_params = BufferStore(qem_params)
-        self._dists  = ModuleStore(plate.varname2dist())
             
-#    def qem_params(self):
-#        for 
-#        return self._qem_params.to_dict()
-
-
-
     @property
     def device(self):
         return self._device_tensor.device
@@ -144,12 +187,37 @@ class BoundPlate(nn.Module):
     def opt_params(self):
         return self._opt_params.to_dict()
 
+    def qem_params(self):
+        """
+        Converts moving averages in self.qem_moving_average_moments to a flat dict mapping
+        paramname -> conventional parameter
+        """
+        meanname2mom = self._qem_meanname2mom.to_dict()
+        result = {}
+        for varname, conversion, rmkeys in zip(self.qem_list_varname, self.qem_list_conversion, self.qem_list_rmkeys):
+            means = [meanname2mom[self.qem_rmkey2meanname[rmkey]] for rmkey in rmkeys]
+            conv_dict = conversion.mean2conv(*means)
+            for distargname, tensor in conv_dict.items():
+                paramname = self.qem_varname_distargname2paramname[varname, distargname]
+                result[paramname] = tensor
+        return result
+
+    def _update_qem_params(self, lr, samp_marg_is):
+        rmkey_list = self.qem_flat_list_rmkeys
+        if 0 < len(rmkey_list):
+            new_moment_list = samp_marg_is._moments_uniform_input(rmkey_list)
+            for rmkey, new_moment in zip(rmkey_list, new_moment_list):
+                meanname = self.qem_rmkey2meanname[rmkey]
+
+                tensor = getattr(self._qem_meanname2mom, meanname)
+                tensor.mul_(1-lr).add_(new_moment, alpha=lr)
+
 
     def inputs_params_flat_named(self):
         """
         Returns a dict mapping from str -> named tensor
         """
-        return {**self.inputs(), **self.opt_params()}#, **self.qem_params()}
+        return {**self.inputs(), **self.opt_params(), **self.qem_params()}
 
     def inputs_params(self, all_platedims:dict[str, Dim]):
         return named2torchdim_flat2tree(self.inputs_params_flat_named(), all_platedims, self.plate)

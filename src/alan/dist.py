@@ -73,6 +73,21 @@ class Dist(torch.nn.Module):
         #Lambda
         distargname2func_val_param = inspect.signature(self.dist).bind(*args, **kwargs).arguments
 
+        #QEM Error checking:
+        #  If any parameter is QEM, then all parameters must be QEM
+        #  All QEM parameters must have the same ignore_platedims
+        self.qem_dist = 0 < sum(isinstance(x, QEMParam) for x in distargname2func_val_param.values())
+        if self.qem_dist:
+            func_val_params = list(distargname2func_val_param.values())
+            for func_val_param in func_val_params:
+                if not isinstance(func_val_param, QEMParam):
+                    raise Exception("If one parameter on a distribution is a QEMParam, then all parameters on that distribution should be QEM distributions")
+
+            set_ignore_platenames0 = set(func_val_params[0].ignore_platenames)
+            for func_val_param in func_val_params[1:]:
+                if set_ignore_platenames0 != set(func_val_param.ignore_platenames):
+                    raise Exception("If one parameter on a distribution is a QEMParam, then all parameters on that distribution should be QEM distributions")
+
         #Dict mapping distargname (e.g. loc and scale in a Normal) to:
         #str
         #Number
@@ -88,9 +103,8 @@ class Dist(torch.nn.Module):
                 func_val_param = name
             distargname2func_val[distargname] = func_val_param
 
-        n_qems = sum(isinstance(x, QEMParam) for x in self.opt_qem_params)
-        if 0<n_qems and (n_qems != len(distargname2func_val_param)):
-            raise Exception("If one parameter on a distribution is a QEMParam, then all parameters on that distribution should be QEM distributions")
+            
+
 
         all_args = set()
 
