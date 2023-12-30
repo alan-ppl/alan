@@ -226,9 +226,7 @@ class GammaConversion(AbstractConversion):
 #    def test_conv(N):
 #        return (t.randn(N).exp(),t.randn(N).exp())
 
-def posdef_matrix_inverse(x):
-    return t.cholesky_inverse(t.linalg.cholesky(x))
-class MvNormalConversion(AbstractConversion):
+class MultivaraiteNormalConversion(AbstractConversion):
     dist = t.distributions.MultivariateNormal
     sufficient_stats = (mean, mean_xxT)
 
@@ -250,7 +248,18 @@ class MvNormalConversion(AbstractConversion):
     def canonical_conv(loc, covariance_matrix=None, precision_matrix=None, scale_tril=None):
         assert 1 == sum(x is not None for x in [covariance_matrix, precision_matrix, scale_tril])
         if precision_matrix is not None:
-            covariance_matrix = posdef_matrix_inverse(precision_matrix)
+            covariance_matrix = t.cholesky_inverse(t.linalg.cholesky(x))
         elif scale_tril is not None:
             covariance_matrix = scale_tril @ scale_tril.mT
         return {'loc': loc, 'covariance_matrix': covariance_matrix}
+
+converstion_dict = {
+    t.distributions.Bernoulli: BernoulliConversion,
+    t.distributions.Beta: BetaConversion,
+    t.distributions.Dirichlet: DirichletConversion,
+    t.distributions.Poisson: PoissonConversion,
+    t.distributions.Exponential: ExponentialConversion,
+    t.distributions.Normal: NormalConversion,
+    t.distributions.Gamma: GammaConversion,
+    t.distributions.MultivariateNormal: MultivariateNormalConversion,
+}
