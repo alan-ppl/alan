@@ -9,6 +9,7 @@ from .utils import *
 from .TorchDimDist import TorchDimDist
 from .Sampler import Sampler
 from .Stores import BufferStore
+from .Param import QEMParam, OptParam, Param
 
 
 
@@ -63,9 +64,33 @@ class Dist(torch.nn.Module):
 
         self.sample_shape = sample_shape
 
-        #Converts args + kwargs to a unified dictionary mapping distargname2something,
-        #following distributions initialization signature.
-        self.distargname2func_val = inspect.signature(self.dist).bind(*args, **kwargs).arguments
+        #Dict mapping distargname (e.g. loc and scale in a Normal) to:
+        #OptParam
+        #QEMParam
+        #str
+        #Number
+        #Named Tensor.
+        #Lambda
+        distargname2func_val_param = inspect.signature(self.dist).bind(*args, **kwargs).arguments
+
+        #Dict mapping distargname (e.g. loc and scale in a Normal) to:
+        #str
+        #Number
+        #Named Tensor.
+        #Lambda
+        #Converted OptParam + QEMParam to strings + saved them to opt_params or qem_params.
+        distargname2func_val = {}
+        self.opt_qem_params = {}
+        for distargname, func_val_param in distargname2func_val_param.items():
+            if isinstance(func_val_param, Param):
+                name = f"{varname}_{distargname}"
+                self.opt_qem_params[name] = (distargname, func_val_param)
+                func_val_param = name
+            distargname2func_val[distargname] = func_val_param
+
+        n_qems = sum(isinstance(x, QEMParam) for x in self.opt_qem_params)
+        if 0<n_qems and (n_qems != len(distargname2func_val_param)):
+            raise Exception("If one parameter on a distribution is a QEMParam, then all parameters on that distribution should be QEM distributions")
 
         all_args = set()
 
@@ -74,7 +99,7 @@ class Dist(torch.nn.Module):
         tensor_args = {}
         self.val_args = {}
 
-        for distargname, func_val in self.distargname2func_val.items():
+        for distargname, func_val in distargname2func_val.items():
             if isinstance(func_val, str):
                 self.str_args[distargname] = func_val
                 all_args.update((func_val,))

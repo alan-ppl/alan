@@ -46,6 +46,10 @@ pip install -e .
     - TestProblem takes 
     - predicted_extended_moments is a function that takes an importance sample, and returns mean + variance of moment.
     - should really compare moments to 
+  * New way to specify params:
+    - Implement QEM
+    - Implement ignoring platenames
+    - Implement errors (e.g. errors when we lack all_platesizes).
 
 
 
