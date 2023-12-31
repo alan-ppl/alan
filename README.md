@@ -1,5 +1,7 @@
 # alan
 
+Software in development!! Not yet for external use!!
+
 ### Logistics:
 
 **Cleanup** It is probably best to start by removing previous alan or alan_simplified
