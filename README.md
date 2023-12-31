@@ -1,5 +1,7 @@
 # alan
 
+Software in development!! Not yet for external use!!
+
 ### Logistics:
 
 **Cleanup** It is probably best to start by removing previous alan or alan_simplified
@@ -150,14 +152,15 @@ See `moments.py`.  The basic idea is that we should have a uniform way of callin
  - `importance_sample.moments`
 
 Specifically, each of these methods can be called, with variable name(s) as a string/tuple of strings, and moments as a class:
-  - `sample.moments("a", Mean)`
-  - `sample.moments(("a", "b"), Cov)`
+  - `sample.moments('a', mean)`
+  - `sample.moments('a', var)`
 
-For multiple moments, we provide a dict, mapping variable name(s) to moment(s).
+For multiple moments, we can provide a list of tuples:
 ```
 sample.moments([
-    "a": Mean,
-    ("a", "b"): Cov
+    ('a', mean),
+    ('a', var),
+    ('b', mean),
 ])
 ```
 
