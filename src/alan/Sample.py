@@ -29,10 +29,15 @@ class Sample():
             reparam: bool,
         ):
         self.problem = problem
-        self.sample = sample
         self.groupvarname2Kdim = groupvarname2Kdim
         self.sampler = sampler
         self.reparam = reparam
+
+        if self.reparam:
+            self.reparam_sample = sample
+            self.detached_sample = detach_dict(sample)
+        else:
+            self.detached_sample = sample
 
     @property
     def device(self):
@@ -50,7 +55,7 @@ class Sample():
     def all_platedims(self):
         return self.problem.all_platedims
 
-    def _elbo(self, extra_log_factors, computation_strategy):
+    def _elbo(self, sample, extra_log_factors, computation_strategy):
         if extra_log_factors is None:
             extra_log_factors = {}
 
@@ -77,7 +82,7 @@ class Sample():
             name=None,
             P=self.P.plate, 
             Q=self.Q.plate, 
-            sample=self.sample,
+            sample=sample,
             inputs_params=self.problem.inputs_params(),
             data=self.problem.data,
             extra_log_factors=extra_log_factors,
@@ -93,18 +98,14 @@ class Sample():
     def elbo_vi(self, computation_strategy=checkpoint):
         if not self.reparam==True:
             raise Exception("To compute the ELBO with the right gradients for VI you must construct a reparameterised sample using `problem.sample(K, reparam=True)`")
-        return self._elbo(extra_log_factors=None, computation_strategy=computation_strategy)
+        return self._elbo(self.reparam_sample, extra_log_factors=None, computation_strategy=computation_strategy)
 
     def elbo_rws(self, computation_strategy=checkpoint):
-        if not self.reparam==False:
-            raise Exception("To compute the ELBO with the right gradients for RWS you must construct a non-reparameterised sample using `problem.sample(K, reparam=False)`")
-        return self._elbo(extra_log_factors=None, computation_strategy=computation_strategy)
+        return self._elbo(self.detached_sample, extra_log_factors=None, computation_strategy=computation_strategy)
 
     def elbo_nograd(self, computation_strategy=checkpoint):
-        if not self.reparam==False:
-            raise Exception("elbo_nograd has no gradients, so you should construct a non-reparameterised sample using `problem.sample(K, reparam=False)`")
         with t.no_grad():
-            result = self._elbo(extra_log_factors=None, computation_strategy=computation_strategy)
+            result = self._elbo(self.detached_sample, extra_log_factors=None, computation_strategy=computation_strategy)
         return result
     
     def _importance_sample_idxs(self, N:int, computation_strategy):
@@ -124,7 +125,7 @@ class Sample():
                 name=None,
                 P=self.P.plate, 
                 Q=self.Q.plate, 
-                sample=self.sample,
+                sample=self.detached_sample,
                 inputs_params=self.problem.inputs_params(),
                 data=self.problem.data,
                 extra_log_factors=extra_log_factors,
@@ -151,7 +152,7 @@ class Sample():
         """
         indices, N_dim = self._importance_sample_idxs(N=N, computation_strategy=computation_strategy)
 
-        samples = index_into_sample(self.sample, indices, self.groupvarname2Kdim, self.P.varname2groupvarname())
+        samples = index_into_sample(self.detached_sample, indices, self.groupvarname2Kdim, self.P.varname2groupvarname())
 
         return ImportanceSample(self.problem, samples, N_dim)
 
@@ -211,7 +212,7 @@ class Sample():
             J_torchdim_dict[groupvarnames_frozenset] = J_torchdim
 
         #Compute loss
-        L = self._elbo(extra_log_factors=J_torchdim_dict, computation_strategy=computation_strategy)
+        L = self._elbo(self.detached_sample, extra_log_factors=J_torchdim_dict, computation_strategy=computation_strategy)
         #marginals as a list
         marginals_list = grad(L, J_tensor_list)
 
@@ -231,8 +232,7 @@ class Sample():
         Note that these are groupvarnames, not varnames.
         """
         marginals = self._marginal_idxs(joints, computation_strategy=computation_strategy)
-        samples = flatten_tree(self.sample)
-        samples = {k:v.detach() for (k, v) in samples.items()}
+        samples = flatten_tree(self.detached_sample)
         return Marginals(samples, marginals, self.all_platedims, self.P.varname2groupvarname())
 
     def _moments_uniform_input(self, moms, computation_strategy=no_checkpoint):
@@ -246,7 +246,7 @@ class Sample():
             if not isinstance(m, RawMoment):
                 raise Exception("Moments in sample must be `RawMoment`s (i.e. you must be able to compute them as E[f(x)])")
 
-        flat_sample = flatten_dict(self.sample)
+        flat_sample = flatten_dict(self.detached_sample)
         flat_sample = {k: v.detach() for (k, v) in flat_sample.items()}
 
         #List of named Js to go into torch.autograd.grad
@@ -283,7 +283,7 @@ class Sample():
         
 
         #Compute loss
-        L = self._elbo(extra_log_factors=f_J_torchdim_dict, computation_strategy=computation_strategy)
+        L = self._elbo(self.detached_sample, extra_log_factors=f_J_torchdim_dict, computation_strategy=computation_strategy)
 
         #marginals as a list
         moments_list = grad(L, J_tensor_list)

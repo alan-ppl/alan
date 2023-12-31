@@ -51,6 +51,7 @@ def detach_dict(d):
         else:
             assert isinstance(v, Tensor)
             result[k] = v.detach()
+    return result
 
 def list_duplicates(xs:list):
     dups = set()
