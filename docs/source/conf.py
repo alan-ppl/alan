@@ -37,6 +37,7 @@ extensions = [
     'sphinx.ext.mathjax',
     "sphinx.ext.todo",
     "sphinx.ext.viewcode",
+    "sphinxcontrib.jquery",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
