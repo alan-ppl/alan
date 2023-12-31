@@ -8,7 +8,7 @@ setup(
     packages=['alan'],
     package_dir={'':'src'},
     install_requires=[
-        "torch>=2.0.0",
+        "torch",
         "opt_einsum",
     ],
     extras_requires=[
