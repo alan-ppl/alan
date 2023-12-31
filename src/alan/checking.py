@@ -20,7 +20,7 @@ def check_inputs_params(P:BoundPlate, Q:BoundPlate):
 
     for k in overlap:
         if inputs_params_P[k] is not inputs_params_Q[k]:
-            raise Exception(f"There is an input or parameter that is shared between P and Q, and isn't the same for both")
+            raise Exception(f"Input / parameter names must be different in P and Q (or they must refer to the same input/parameter).  However, {k} refers to different inputs/parameters in P and Q.  Note that this can happen if you use OptParam / QEMParam for the same parameters in P and Q.  In that case, you should use the explicit `name` kwarg on OptParam/QEMParam.  e.g. `OptParam(1., name='a_loc_P')`")
 
 
 def check_support(name:str, distP:Dist, distQ:Dist):
@@ -79,9 +79,9 @@ def check_PQ_plate(platename: Optional[str], P: Plate, Q: Plate, data: dict):
     data_names      = tree_values(data).keys()
     mismatch_names(
         data_names_in_Q, data_names,
-        prefix=f"There is a mismatch in the names for data in Q and in the provided data in plate {platename}, with",
-        AnotB_msg=f"present in Q but not in data",
-        BnotA_msg=f"present in data but not in Q",
+        prefix=f"There is a mismatch in the variable names in the data dict given as an argument to Problem ({list(data_names)}), and those given in Q using e.g. `varname=Data()` ({data_names_in_Q}). Specifically, there is an issue in plate {platename}, with",
+        AnotB_msg=f"present as `varname=Data()` in Q but not in the data dict provided to Problem",
+        BnotA_msg=f"present in the data dict provided to Problem, but not given as `=Data()` in Q",
     )
 
     #Now check names in Q 

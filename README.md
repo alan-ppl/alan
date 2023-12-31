@@ -17,7 +17,7 @@ pip install -e .
 **Tests** To run tests, navigate to `tests/` and use `pytest`.
 
 ### Recent updates
-
+* For an example, see `examples/example.py`
 * Devices should now work.  Just do `problem.to(device='cuda')`, and everything should work without modification.  (Though I have only extensively test sampling).
 * Split (an argument to e.g. `sample.elbo`)
 * Most of "Overall workflow design" should now be functional
@@ -26,6 +26,7 @@ pip install -e .
   - `sample.elbo_rws` (reparam=False, but allows gradients for log-probs)
   - `sample.elbo_nograd` (no gradients at all; useful for memory efficient estimation of marginal likelihood)
 * Extensive tests of sample, elbo for splits, devices, plates, unnamed batches and multivariate distributions (e.g. multivariate Normal).  But not extended sampling.
+* QEM == Natural RWS.
 
 ### Minor TODOs:
   * `importance_sample.dump` should output tensors with the `N` dimension first.
@@ -46,22 +47,14 @@ pip install -e .
     - TestProblem takes 
     - predicted_extended_moments is a function that takes an importance sample, and returns mean + variance of moment.
     - should really compare moments to 
-  * working example with all the features
+  * QEM distributions:
+    - Categorical
+    - Testing
 
 
 ### Long-run TODOs:
   * Friendly error messages:
-    - When dimensions on `all_platesizes` doesn't match `data`, `inputs` or `parameters`.
-    - No names on distribution parameters.
     - Marginals/moments make sense for variables on different plates if they're in the same heirarchy.
-    - Check that a param/input isn't used too early in the heirarchy (e.g. if param/input has plate dimensions 'p1' and 'p2', but is used at level 'p1').
-  * RWS:
-    - Should be able to implement in terms of sample.elbo_rws().
-    - Specifically, two optimizers: one which only has parameters on P, and the other which only has parameters on Q.
-    - P optimizer does ascent; Q optimizer does descent.
-    - uses `torch.optim.Adam(..., maximize=True)` kwarg.
-  * Massively parallel expectation maximization for approximate posteriors (acronym: QEM; used to be natural RWS).
-    - ...
   * Enumeration:
     - Enumeration is a class in Q (like Data), not P.
   * Timeseries:
@@ -81,25 +74,36 @@ plate = Plate(
     )
 )
 ```
-  * A better name for BoundPlate.
   * A `Samples` class that aggregates over multiple `Sample` in a memory efficient way.
     - Acts like it contains a list of e.g. 10 `Sample`s, but doesn't actually.
     - Instead, it generates the `Sample`s as necessary by using frozen random seed.
 
 ### Overall workflow design, in terms of user-accessible classes:
+For an example, see `examples/example.py`
+
+  * `OptParam` / `QEMParam`
+    - Used as a direct argument to a distribution (e.g. Normal(OptParam(1.), OptParam(1.))) inside the `Plate`.
+    - The first argument (1. above) is the initial value.
+    - Specifies that a parameter should be created.
   * `Plate` 
     - contains just the definition of P or Q.
-    - doesn't contain any inputs or parameters.
+    - doesn't know the platesizes, so cannot e.g. sample or initialize parameters.
   * `BoundPlate`
-    - created using `BoundPlate(plate)`
-    - binds `Plate`, defining P or Q, to parameters or inputs.
+    - created using `BoundPlate(plate, all_platesizes)`
+    - all_platesizes is a dict mapping platename -> int.
+    - initializes and stores all the parameters.
+    - does know the platesizes, so can be sampled.
+    - Has optional arguments for `inputs` + `extra_opt_params`.  These are provided as a dict, mapping inputname/paramname -> named Tensor.
     - user-facing methods include:
-      - `bound_plate.sample`
+      - `bound_plate.sample()` Draws a single sample from the distribution (e.g. to sample data from a generative model).
+      - `bound_plate.opt_params()` Returns a dict of all the optimized parameters.
+      - `bound_plate.inputs()` Returns a dict of all the inputs.
+      - `bound_plate.qem_params()` Returns a dict of all the QEM-learned parameters.
+      - `bound_plate.qem_means()` Returns a dict of all the means used in QEM.
   * `Problem`
-    - created using `Problem(P, Q, data, all_platesizes)`
+    - created using `Problem(P, Q, data)`
     - `P` and `Q` are `BoundPlate`s.
-    - `data: dict[str, torch named Tensor]` (any platedims are named).
-    - `all_platedims: dict[str, int]` (size of all platedims).
+    - `data` is a dict mapping the dataname to a named Tensor.
     - user-facing methods include:
       - `problem.sample(K=10)`: produces a `Sample`.
   * `Sample`
@@ -109,13 +113,12 @@ plate = Plate(
       - `sample.moments`
       - `sample.importance_sample` (creates a `ImportanceSample` class)
       - `sample.marginals` (creates a `Marginals` class)
+      - `sample.qem_update_params(lr)` (updates QEM params)
       - Three methods for the ELBO/marginal likelihood:
         - `sample.elbo_vi` (reparam=True) 
         - `sample.elbo_rws` (reparam=False, but allows gradients for log-probs)
         - `sample.elbo_nograd` (no gradients at all; useful for memory efficient estimation of marginal likelihood)
       - no `dump` method, at this stage, as samples here stage aren't user-interpretable.
-    - non-user-facing methods:
-      - `sample._importance_sample_idxs(N:int, repeats=1)` (Gets the importance-sampled indices).
   * `ImportanceSample`
     - created using `sample.importance_resample(N, repeats=1)`.
     - `repeats` runs a for loop to collect more samples.

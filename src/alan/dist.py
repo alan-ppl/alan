@@ -98,7 +98,7 @@ class Dist(torch.nn.Module):
         self.opt_qem_params = {}
         for distargname, func_val_param in distargname2func_val_param.items():
             if isinstance(func_val_param, Param):
-                name = f"{varname}_{distargname}"
+                name = func_val_param.name if (func_val_param.name is not None) else f"{varname}_{distargname}"
                 self.opt_qem_params[name] = (distargname, func_val_param)
                 func_val_param = name
             distargname2func_val[distargname] = func_val_param

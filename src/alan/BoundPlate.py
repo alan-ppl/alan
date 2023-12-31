@@ -5,7 +5,7 @@ from .utils import *
 from .Sampler import Sampler, PermutationSampler
 from .Plate import tensordict2tree, Plate, flatten_tree
 from .Stores import BufferStore, ParameterStore, ModuleStore
-from .moments import moments2raw_moments
+from .moments import moments_func2name
 from .Param import OptParam, QEMParam
 from .conversions import conversion_dict
 
@@ -29,7 +29,7 @@ def expand_named(x, names:list[str], all_platesizes:dict[str, int]):
     extra_platenames = list(set(names).difference(names_x))
 
     extra_plate_shape = [all_platesizes[name] for name in extra_platenames]
-    return x.expand(*extra_plate_shape, *x.shape).refine_names(*names, *x.names)
+    return x.expand(*extra_plate_shape, *x.shape).contiguous().refine_names(*names, *x.names)
 
 def non_none_names(x):
     return [name for name in x.names if name is not None]
@@ -51,12 +51,18 @@ class BoundPlate(nn.Module):
         #A tensor that e.g. moves to GPU when we call `problem.to(device='cuda')`.
         self.register_buffer("_device_tensor", t.zeros(()))
 
+        assert isinstance(plate, Plate)
         self.plate = plate
 
         if all_platesizes is None:
             all_platesizes = {}
         assert isinstance(all_platesizes, dict)
+
+        for platename in plate.all_platenames():
+            if platename not in all_platesizes:
+                raise Exception(f"Every plate must have a platesize specified in all_platesizes, but {platename} doesn't have a specified size")
         self.all_platesizes = all_platesizes
+
 
         if inputs is None:
             inputs = {}
@@ -156,7 +162,8 @@ class BoundPlate(nn.Module):
                 init_means = conversion.conv2mean(**init_conv_dict)
 
                 for i, rmkey in enumerate(rmkeys):
-                    meanname = f"{varname}_{i}"
+                    _, rawmoment = rmkey
+                    meanname = f"{varname}_{moments_func2name[rawmoment]}"
                     self.qem_rmkey2meanname[rmkey] = meanname
                     self.qem_meanname2rmkey[meanname] = rmkey
 
@@ -182,7 +189,7 @@ class BoundPlate(nn.Module):
         self._inputs = BufferStore(inputs)
         self._opt_params = ParameterStore(opt_paramname2tensor) 
         self._qem_params = BufferStore(qem_params)              #dict mapping paramname -> conventional parameter.
-        self._qem_meanname2mom = BufferStore(qem_meanname2mom)  #dict mapping meanname -> moving average mean parameter.
+        self._qem_means = BufferStore(qem_meanname2mom)  #dict mapping meanname -> moving average mean parameter.
         self._dists  = ModuleStore(plate.varname2dist())
 
         ###################################
@@ -217,6 +224,9 @@ class BoundPlate(nn.Module):
 
     def qem_params(self):
         return self._qem_params.to_dict()
+    
+    def qem_means(self):
+        return self._qem_means.to_dict()
 
     def opt_params(self):
         result = {}
@@ -229,7 +239,7 @@ class BoundPlate(nn.Module):
         Converts moving averages in self.qem_moving_average_moments to a flat dict mapping
         paramname -> conventional parameter
         """
-        meanname2mom = self._qem_meanname2mom.to_dict()
+        meanname2mom = self.qem_means()
 
         for varname, conversion, rmkeys in zip(self.qem_list_varname, self.qem_list_conversion, self.qem_list_rmkeys):
             means = [meanname2mom[self.qem_rmkey2meanname[rmkey]] for rmkey in rmkeys]
@@ -243,11 +253,13 @@ class BoundPlate(nn.Module):
     def _update_qem_moving_avg(self, lr, sample, computation_strategy):
         rmkey_list = self.qem_flat_list_rmkeys
         if 0 < len(rmkey_list):
-            new_moment_list = sample._moments_uniform_input(rmkey_list, computation_strategy=computation_strategy)
+            new_moment_list = sample.moments(rmkey_list, computation_strategy=computation_strategy)
             for rmkey, new_moment in zip(rmkey_list, new_moment_list):
                 meanname = self.qem_rmkey2meanname[rmkey]
 
-                tensor = getattr(self._qem_meanname2mom, meanname)
+                tensor = getattr(self._qem_means, meanname)
+                assert set(non_none_names(tensor)) == set(non_none_names(new_moment))
+                new_moment = new_moment.align_as(tensor)
                 tensor.mul_(1-lr).add_(new_moment, alpha=lr)
 
     def _update_qem_params(self, lr, sample, computation_strategy):

@@ -227,6 +227,15 @@ class Plate():
                 assert isinstance(dgpt, Data)
         return result
 
+    def all_platenames(self):
+        result = []
+        for groupvarname, dgpt in self.prog.items():
+            if isinstance(dgpt, Plate):
+                result = [*result, *dgpt.all_platenames()]
+            else:
+                assert isinstance(dgpt, (Group, Dist, Data))
+        return result
+
     #def varname2active_platedimnames(self):
     #    groupvarname2active_platedimnames = self.groupvarname2active_platedimnames()
 

@@ -69,6 +69,14 @@ mean_log1m = RawMoment(lambda x: t.log(1-x))
 var        = var_from_raw_moment(mean)
 mean_recip = RawMoment(lambda x: 1/x)
 
+moments_func2name = {
+    mean       : 'mean',
+    mean2      : 'mean2',
+    mean_log   : 'mean_log',
+    mean_log1m : 'mean_log1m',
+    mean_recip : 'mean_recip'
+}
+
 def vec_square(x):
     return x[..., :, None] @ x[..., None, :]
 mean_xxT   = RawMoment(vec_square)

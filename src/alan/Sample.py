@@ -221,7 +221,7 @@ class Sample():
 
         return result
 
-    def marginals(self, *joints, computation_strategy=checkpoint):
+    def marginals(self, joints=(), computation_strategy=checkpoint):
         """
         User-facing method that returns a marginals object
         Computes all univariate marginals + any multivariate marginals specified in the arguments.
