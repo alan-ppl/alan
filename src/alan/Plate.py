@@ -14,6 +14,9 @@ from .dist import Dist, _Dist
 
 
 class Plate():
+    """
+    The key class!
+    """
     def __init__(self, **kwargs):
         self.prog = {}
 

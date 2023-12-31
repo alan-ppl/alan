@@ -11,6 +11,7 @@ setup(
     install_requires=[
         "torch>=2.0.0",
         "opt_einsum",
+        "pytest",
     ],
     extras_requires=[
     ],

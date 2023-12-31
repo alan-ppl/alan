@@ -6,6 +6,10 @@ from .utils import *
 from .Sampler import Sampler
 
 class Group(): 
+    """
+    sdfsdf
+
+    """
     def __init__(self, **kwargs):
         #Groups can only contain Dist, not Plates/Timeseries/Data/other Groups.
         for varname, dist in kwargs.items():
