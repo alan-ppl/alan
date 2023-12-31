@@ -36,7 +36,6 @@ extensions = [
     'sphinx_rtd_theme'
     'sphinx.ext.autodoc', 
     'sphinx.ext.napoleon', 
-    'sphinx_math_dollar',
     'sphinx.ext.mathjax',
     "sphinx.ext.todo",
     "sphinx.ext.viewcode",  #
