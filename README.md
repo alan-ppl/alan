@@ -32,7 +32,6 @@ pip install -e .
   * `importance_sample.dump` should output tensors with the `N` dimension first.
   * `repeats` kwarg for `sample.importance_sample`.
   * check elbo_rws
-  * consider adding .sample_reparam and .sample_non_reparam to Sample (Sample with reparam=True has both).
   * Do we remember what the issue with trailing Ellipsis in e.g. generic_getitem was?
   * latent moments for `linear_gaussian_latents`
   * tests for mixture distributions.
