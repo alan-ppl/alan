@@ -11,7 +11,6 @@ setup(
         "torch>=2.0.0",
     ],
     extras_requires=[
-        "numpy",
     ],
     include_package_data = True,
     platforms = "any",
