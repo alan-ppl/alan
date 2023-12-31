@@ -15,6 +15,9 @@ def proc_init(init):
     return init
 
 class OptParam(Param):
+    """
+    A docstring!!!
+    """
     def __init__(self, init, trans=identity, ignore_platenames=(), name=None):
         self.init = proc_init(init)
         self.trans = trans
@@ -22,6 +25,9 @@ class OptParam(Param):
         self.name = name
 
 class QEMParam(Param):
+    """
+    A docstring!!!
+    """
     def __init__(self, init, ignore_platenames=(), name=None):
         self.init = proc_init(init)
         self.trans = identity

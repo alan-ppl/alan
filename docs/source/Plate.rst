@@ -12,7 +12,7 @@ This handles things such as:
  - Predictive samples and predictive log likelihood
  - updating parameters for exponential family approximate posteriors (SVI is handled using PyTorch optimizers)
  
-.. automodule:: alan.Plate
+.. automodule:: alan.Param
    :members:
    :undoc-members:
    :show-inheritance:
