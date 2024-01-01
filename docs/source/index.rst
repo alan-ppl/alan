@@ -7,10 +7,11 @@ Welcome to alan's documentation!
 ================================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Contents:
 
-   Plate
+   defining_PQ/index
+      
 
 
 

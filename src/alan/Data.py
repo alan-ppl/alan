@@ -1,5 +1,7 @@
 class Data():
     """
+    Used to specify a variable names that will be associated with data in the approximate posterior, Q.
+
     Usually, the prior, P, would specify the distribution over data, while 
     the approximate posterior, Q, wouldn't.  However, that causes problems,
     because it means that P and Q have different variables, and potentially

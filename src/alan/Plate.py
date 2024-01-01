@@ -15,7 +15,37 @@ from .dist import Dist, _Dist
 
 class Plate():
     """
-    The key class!
+    The key class used to define your model: all random variables, are defined within a ``Plate``.
+
+    An example plate definition:
+
+    .. code-block:: python
+
+       Plate(
+           a = Normal(0., 1.),
+           g = Group(
+               b = Normal('a', 1.),
+               c = Normal('b', 1.),
+           ),
+           p = Plate(
+               d = Data(),
+           ),
+       )
+
+    Everything in the plate is specified as a keyword argument (i.e. of the form ``name = thing``), where ``thing`` could be:
+    
+    * a distribution (e.g. Normal)
+    * a Group (see :class:`.Group`).
+    * a sub-plate Plate
+    * `Data()` (see :class:`.Data`).
+
+    Critically, the name becomes the name of that thing.  So in the above example, we have normal random variables named ``a``, ``b``, and ``c``, a group named ``g``, a sub-plate named ``p``, and a random variable that will be associated with data, (see :class:`.Data`).
+
+    Note: 
+        In standard Bayesian terminology, including a variable within a plate indicates that there is actually several of these variables.  That's precisely how we're using sub-plates: each subplates (``p`` in the example) with have an assigned platesize, and we'll replicate each variable within the plate that number of times.  
+
+        Note that we also use ``Plate`` at the top-layer, even though we only have one copy of the top-layer variables.
+
     """
     def __init__(self, **kwargs):
         self.prog = {}

@@ -3,11 +3,13 @@ Defining P and Q
 
 Here, we document all the alan functionality you need to define the structure of the prior, P, and approximate posterior, Q.
 
+A relatively complete example of all the features is given below:
+
 .. code-block:: python
 
    from alan import Plate, Normal, Group, Data, QEMParam, OptParam
    
-   P_plate = Plate( 
+   P = Plate( 
        a = Normal(0., 1),
        bc = Group(
            b = Normal('a', 1),
@@ -19,7 +21,7 @@ Here, we document all the alan functionality you need to define the structure of
        ),
    )
 
-   Q_plate = Plate( 
+   Q = Plate( 
        a = Normal(QEMParam(0.), QEMParam(1.)),
        bc = Group(
            b = Normal(QEMParam(0.), QEMParam(1.)),
@@ -30,16 +32,15 @@ Here, we document all the alan functionality you need to define the structure of
            e = Data(),
        ),
    )
-    
-.. autoclass:: alan.Plate
-   :members: sample
 
-.. autoclass:: alan.Group
+This example showcases several features:
 
-.. autoclass:: alan.Data
+.. toctree::
+   :maxdepth: 1
+   :caption: Contents:
 
-.. autoclass:: alan.OptParam
-
-.. autoclass:: alan.QEMParam
-
-Distributions...
+   plate
+   group
+   data
+   param
+   dist

@@ -1,0 +1,4 @@
+Data
+====
+
+.. autoclass:: alan.Data
