@@ -6,7 +6,10 @@ from .moments import torchdim_moments_mixin, named_moments_mixin
 class AbstractImportanceSample():
     def dump(self):
         """
-        User-facing method that returns a flat dict of named tensors, with N as the first dimension.
+        Returns the Importance samples as dictionary of named tensors, where the name ``N`` corresponds to the different samples, and the other names correspond to plates.
+
+        Warning:
+            You shouldn't really need to use this method.  e.g. if you're trying to compute moments you should directly use the dump method.
         """
         return dim2named_dict(self.samples_flatdict)
 

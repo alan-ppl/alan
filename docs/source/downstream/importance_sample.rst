@@ -2,6 +2,7 @@ Importance Sample
 ==== 
 
 .. autoclass:: alan.ImportanceSample
+   :members: dump
 
    .. automethod:: extend
 
