@@ -2,6 +2,11 @@ from .utils import *
 from .moments import torchdim_moments_mixin, named_moments_mixin
 
 class Marginals:
+    """
+    alan.Marginals()
+
+    Constructed by calling :func:`Sample.marginals <alan.Sample.marginals>`.  Represents the pre-computed marginals over the K samples for each latent variable.
+    """
     def __init__(
             self, 
             samples:dict[str, Tensor], 

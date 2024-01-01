@@ -1,5 +1,7 @@
 # alan
 
+[Read the Docs](https://alan-ppl.readthedocs.io/en/latest/)
+
 Software in development!! Not yet for external use!!
 
 ### Logistics:
@@ -51,6 +53,13 @@ pip install -e .
   * QEM distributions:
     - Categorical
     - Testing
+  * User-facing ESS
+
+### Meeting TODOs:
+  * Error if you try to extend a prior with plated parameters.
+  * Clarify `ExtendedImportanceSample.predictive_ll`.
+    - How does it deal with the N samples?
+    - How does it deal with the LL for the training data?
 
 
 ### Long-run TODOs:

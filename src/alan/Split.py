@@ -22,6 +22,15 @@ class Checkpoint(NoSplit):
 checkpoint = Checkpoint()
 
 class Split:
+    """
+    A class indicating how to split the computation along a plate.  Always used as a ``computation_strategy=Split(...)`` keyword argument.
+
+    Arguments:
+        platename (str):
+            The name of the plate to split.
+        split_size (str):
+            The size of each split.  Note that this is the size of an individual split, not the total number of splits.  That's useful, because you can set split_size so that the model fits in memory, and it should still fit in memory if the data gets bigger.
+    """
     def __init__(self, platename:str, split_size:int):
         assert isinstance(platename, str)
         assert isinstance(split_size, int)

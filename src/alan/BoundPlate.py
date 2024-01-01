@@ -36,15 +36,21 @@ def non_none_names(x):
 
 class BoundPlate(nn.Module):
     """
-    Binds a Plate to inputs (e.g. film features in MovieLens) and learned parameters
-    (e.g. approximate posterior parameters).
+    Binds a Plate representing P or Q to platesizes, and initializes parameters specified by OptParam or QEMParam.
 
-    Only makes sense at the very top layer. 
+    Arguments:
+        plate (Plate): 
+            The plate specifying P or Q.
+        all_platesizes (dict[str, int]):
+            Dictionary mapping string platename to integer platesize.
 
-    Inputs must be provided as a named tensor, with names corresponding to platenames.
+    Keyword Arguments:
+        inputs (dict[str, (named) torch.Tensor]):
+            Dictionary mapping string input name to input value, as a named ``torch.Tensor``.  This is used to represent e.g. features that the model is conditioned on, but that aren't sampled from the model.  Note that 
+        extra_opt_params (dict[str, (named) torch.Tensor]):
+            Dictionary mapping string parameter name to initial parameter value, as a named ``torch.Tensor``.  Usually you'd specify parameters to be optimized using OptParam.  But the OptParam approach is slightly restictive, as an OptParam can only be used as a direct argument to a distribution (e.g. `` a = Normal(OptParam(0.), 1.)``, whereas an parameter given here can be used anywhere in the program.
 
-    You can provide params in two formats
-    opt_params = 
+    Inputs or extra_opt_params are specified as named tensors, where the names corresond to the plates (as with data).
     """
     def __init__(self, plate: Plate, all_platesizes:dict[str, int], inputs=None, extra_opt_params=None):
         super().__init__()
@@ -220,15 +226,27 @@ class BoundPlate(nn.Module):
         return self._device_tensor.device
 
     def inputs(self):
+        """
+        Returns a dictionary of the inputs.
+        """
         return self._inputs.to_dict()
 
     def qem_params(self):
+        """
+        Returns a dictionary of the parameters learned using QEM.
+        """
         return self._qem_params.to_dict()
     
     def qem_means(self):
+        """
+        Returns a dictionary of the exponential moving average moments used for QEM.
+        """
         return self._qem_means.to_dict()
 
     def opt_params(self):
+        """
+        Returns a dictionary of the parameters learned by optimization.
+        """
         result = {}
         for paramname, tensor in self._opt_params.to_dict().items():
             result[paramname] = self.opt_paramname2trans[paramname](tensor)
@@ -335,11 +353,7 @@ class BoundPlate(nn.Module):
 
     def sample(self):
         """
-        User-facing sample method, so it should return flat-dict of named Tensors, with no K or N dimensions.
-
-        Note that self.all_platesizes has some platesizes that were originally used to construct the parameters.
-        However, that isn't necessarily all the platesizes.  So the remaining platesizes may be provided as an
-        argument to sample.
+        Returns a single sample from the model, as a flat dictionary of named tensors, where the names correspond to plate dimensions.
         """
 
         all_platedims = {platename: Dim(platename, size) for (platename, size) in self.all_platesizes.items()}

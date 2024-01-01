@@ -9,7 +9,7 @@ A relatively complete example of all the features is given below:
 
    from alan import Plate, Normal, Group, Data, QEMParam, OptParam
    
-   P = Plate( 
+   P_plate = Plate( 
        a = Normal(0., 1),
        bc = Group(
            b = Normal('a', 1),
@@ -21,7 +21,7 @@ A relatively complete example of all the features is given below:
        ),
    )
 
-   Q = Plate( 
+   Q_plate = Plate( 
        a = Normal(QEMParam(0.), QEMParam(1.)),
        bc = Group(
            b = Normal(QEMParam(0.), QEMParam(1.)),

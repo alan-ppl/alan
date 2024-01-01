@@ -17,6 +17,17 @@ PBP = Union[Plate, BoundPlate]
 
 
 class Problem(nn.Module):
+    """
+    Combines the prior, approximate posterior and data.
+
+    Arguments:
+        P (BoundPlate):
+            The prior, as a BoundPlate.
+        Q (BoundPlate):
+            The approximate posterior, as a BoundPlate.
+        data (dict[str, (named) torch.Tensor]):
+            A dict mapping the data variable name to a named ``torch.Tensor``, where the names correspond to plates.
+    """
     def __init__(self, P:BoundPlate, Q:BoundPlate, data: dict[str, t.Tensor]):
         super().__init__()
 
@@ -59,9 +70,19 @@ class Problem(nn.Module):
 
     def sample(self, K: int, reparam:bool=True, sampler:Sampler=PermutationSampler):
         """
-        Returns: 
-            globalK_sample: sample with different K-dimension for each variable.
-            logPQ: log-prob.
+        alan.sample(K:int, reparam=True, sampler=PermutationSampler)
+
+        Draws K samples for each latent variable from the approximate posterior, and returns the result as a Sample class.
+
+        Arguments:
+            K (int):
+                Number of samples to draw for each latent variable.
+
+        Keyword Arguments:
+            reparam (bool):
+                Whether to use the reparameterisation trick to differentiate through the sample generation process.  Note that whatever you want to do downstream, it is always safe to leave the default ``reparam=True``.  That's because once you've drawn a reparameterised sample, you can always detach it.  The only reason this parameter is still included is that if you don't need reparameterisation, it will save memory slightly to set ``reparam=False``.
+            sampler (Sampler):
+                When your approximate posterior is not factorised, there is a slightly subtle choice of which of the K samples of parent latent variables to depend on.  We currently have two choices.  ``alan.CategoricalSampler``, in which each downstream sample choose one parent particle at random.  However, that doesn't work so well, because of the "particle degeneracy" problem also encountered in particle filters.  Specifically, one upstream particle may have zero, or multiple downstream children, which reduces diversity.  To circumvent this problem, we also have ``alan.PermutationSampler``, in which each parent particle has exactly one child.  The default ``alan.PermutationSampler`` seems to work fine, and we don't really see a need for users to ever change the default.
         """
         self.check_device()
 

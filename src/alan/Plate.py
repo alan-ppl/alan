@@ -34,10 +34,10 @@ class Plate():
 
     Everything in the plate is specified as a keyword argument (i.e. of the form ``name = thing``), where ``thing`` could be:
     
-    * a distribution (e.g. Normal)
-    * a Group (see :class:`.Group`).
-    * a sub-plate Plate
-    * `Data()` (see :class:`.Data`).
+    * a distribution (see :ref:`Distributions`).
+    * a :class:`.Group`.
+    * a sub-plate Plate.
+    * :class:`Data() <.Data>`.
 
     Critically, the name becomes the name of that thing.  So in the above example, we have normal random variables named ``a``, ``b``, and ``c``, a group named ``g``, a sub-plate named ``p``, and a random variable that will be associated with data, (see :class:`.Data`).
 

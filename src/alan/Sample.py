@@ -20,6 +20,11 @@ from .moments import RawMoment, torchdim_moments_mixin, named_moments_mixin
 
 
 class Sample():
+    """
+    alan.Sample()
+
+    Constructed by calling :func:`Problem.sample <alan.Problem.sample>`, and represents K samples for each latent variable from the approximate posterior.
+    """
     def __init__(
             self,
             problem,
@@ -45,10 +50,16 @@ class Sample():
 
     @property 
     def P(self):
+        """
+        The prior, represented as a BoundPlate
+        """
         return self.problem.P
 
     @property 
     def Q(self):
+        """
+        The approximate posterior, represented as a BoundPlate
+        """
         return self.problem.Q
 
     @property 
@@ -96,23 +107,46 @@ class Sample():
         return lp
 
     def elbo_vi(self, computation_strategy=checkpoint):
+        """
+        elbo_vi(computation_strategy=checkpoint)
+
+        The ELBO, returned in a form that makes sense for doing VI (i.e. with reparameterised sampling).
+
+        Keyword Arguments:
+            computation_strategy: 
+                (see :ref:`Computation Strategy`)
+        """
         if not self.reparam==True:
             raise Exception("To compute the ELBO with the right gradients for VI you must construct a reparameterised sample using `problem.sample(K, reparam=True)`")
         return self._elbo(self.reparam_sample, extra_log_factors=None, computation_strategy=computation_strategy)
 
     def elbo_rws(self, computation_strategy=checkpoint):
+        """
+        elbo_rws(computation_strategy=checkpoint)
+
+        The ELBO, returned in a form that makes sense for doing RWS (i.e. with non-reparameterised sampling).
+
+        Keyword Arguments:
+            computation_strategy: 
+                (see :ref:`Computation Strategy`)
+        """
         return self._elbo(self.detached_sample, extra_log_factors=None, computation_strategy=computation_strategy)
 
     def elbo_nograd(self, computation_strategy=checkpoint):
+        """
+        elbo_nograd(computation_strategy=checkpoint)
+        
+        The ELBO, with no gradients at all (e.g. useful for reducing memory consumption when trying to estimate the model evidence).  Note that checkpoint vs no checkpoint won't make a difference here, as there are no gradients anyway.  But split will make a difference as it will reduce the size of the largest tensors being computed.
+
+        Keyword Arguments:
+            computation_strategy:
+                (see :ref:`Computation Strategy`)
+        """
         with t.no_grad():
             result = self._elbo(self.detached_sample, extra_log_factors=None, computation_strategy=computation_strategy)
         return result
     
     def _importance_sample_idxs(self, N:int, computation_strategy):
-        """
-        User-facing method that returns reweighted samples.
-        """
-
         #extra_log_factors doesn't make sense for posterior sampling, but is required for
         #one of the internal methods.
         extra_log_factors = empty_tree(self.P.plate)
@@ -148,7 +182,20 @@ class Sample():
 
     def importance_sample(self, N:int, computation_strategy=checkpoint):
         """
-        User-facing method that returns reweighted samples.
+        importance_sample(self, N:int, computation_strategy=checkpoint)
+
+        Uses importance sampling on all combinations of latent variables to draw N posterior samples, and returns them as an ImportanceSample object.
+
+        If you're just trying to get posterior moments, this is a bad idea, as the importance sampling adds extra randomness.  Instead, you should just use ``sample.moments`` or ``sample.marginals()``.  However, this is necessary e.g. for predictive log-likelihoods.
+
+        Arguments:
+            N (int):
+                The number of samples to draw.
+
+        Keyword Arguments:
+            computation_strategy: 
+                (see :ref:`Computation Strategy`)
+
         """
         indices, N_dim = self._importance_sample_idxs(N=N, computation_strategy=computation_strategy)
 
@@ -224,12 +271,16 @@ class Sample():
 
     def marginals(self, joints=(), computation_strategy=checkpoint):
         """
-        User-facing method that returns a marginals object
-        Computes all univariate marginals + any multivariate marginals specified in the arguments.
-        For instance, to compute the multivariate marginals for (a, b) and (b, c), we'd use:
-        sample.marginals(("a", "b"), ("b", "c"))
+        Returns a marginals object.
 
-        Note that these are groupvarnames, not varnames.
+        Using the ``sample.moments`` can be annoying for interactive use, as it must e.g. compute and propagate log-probabilities each time you ask for a new moment, which can be slow with larger models / larger K.  Using marginals speeds things up in this case.  In particular, the marginals object represents the marginal distribution over the K particles for each latent variable.  That allows you to compute new moments without needign to e.g. compute and propagate log-probabilities.
+
+        Keyword Arguments:
+            joints (list[tuple]):
+                By default, marginals will compute all univariate marginals, which allows you to compute all moments that depend on only a single variable.  However, that doesn't allow you to compute marginals that depends on multiple variables.  To do that, you include the relevant combination of variables in joints.  For instance, if we wanted to compute the covariance of ``a`` and ``b``, we'd use ``joints = [('a', 'b')]``.  Note that if a random variable is in a group, you should give the name of the group, not the name of the variable.
+
+            computation_strategy: 
+                (see :ref:`Computation Strategy`)
         """
         marginals = self._marginal_idxs(joints, computation_strategy=computation_strategy)
         samples = flatten_tree(self.detached_sample)

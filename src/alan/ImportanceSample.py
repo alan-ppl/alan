@@ -23,6 +23,11 @@ class AbstractImportanceSample():
     moments = named_moments_mixin
 
 class ImportanceSample(AbstractImportanceSample):
+    """
+    alan.ImportanceSample()
+
+    Constructed by calling :func:`Sample.importance_sample <alan.Sample.importance_sample>`. Represents N joint samples in the latent space.
+    """
     def __init__(self, problem, samples_tree, Ndim):
         """
         samples is tree-structured torchdim (as we might need to use it for extended).
@@ -34,11 +39,24 @@ class ImportanceSample(AbstractImportanceSample):
 
     def extend(self, extended_platesizes:dict[str, int], extended_inputs=None):
         """
-        User-facing method that extends sample by drawing the rest from the prior.
+        Does prediction by:
+        
+        * taking a posterior sample, represented by the ImportanceSample object.
+        * extending the plate sizes.
+        * sampling the extra latent variables from the prior.
 
-        Note: doesn't take any extended data!!!
+        It returns an :class:`.ExtendedImportanceSample` object.
 
-        returns ExtendedImportanceSample
+        Arguments:
+            extended_platesizes (dict[str, int]):
+                A dictionary mapping the platename to the extended platesize.  Must be the same as or bigger than the platesizes in the underlying model.
+            extended_inputs (dict[str, torch.Tensor]):
+                If the model has any e.g. features given as ``inputs`` to :class:`.BoundPlate`, then the extended versions of these inputs must be provided here.
+
+        Note:
+            Won't work if P has any plated parameters, as these won't be extended.
+
+
         """
 
         assert isinstance(extended_platesizes, dict)
@@ -77,6 +95,12 @@ class ImportanceSample(AbstractImportanceSample):
         return ExtendedImportanceSample(self.problem, extended_sample, self.Ndim, extended_platedims, extended_inputs)
 
 class ExtendedImportanceSample(AbstractImportanceSample):
+    """
+    alan.ExtendedImportanceSample()
+
+    Constructed by calling :func:`ImportanceSample.extend <alan.ImportanceSample.extend>`. Represents N samples from the posterior over all latent variables, that has subsequently been extended.
+
+    """
     def __init__(self, problem, samples_tree, Ndim, extended_platedims, extended_inputs):
         """
         samples is tree-structured torchdim (as we might need to use it for extended).
@@ -89,9 +113,14 @@ class ExtendedImportanceSample(AbstractImportanceSample):
         self.extended_inputs = extended_inputs
 
     def predictive_ll(self, data:dict[str, Tensor]):
-        '''
-        User-facing method that computes the predictive log-likelihood of the extended data.
-        '''
+        """
+        Computes the average predictive log-likelihood for extended data.
+
+        Arguments:
+            data (dict[str, torch.Tensor]):
+                Extended data, provided as a dictionary mapping the variable name to a torch.Tensor.  Note that this must be all data: both test and train.
+
+        """
         assert isinstance(data, dict)
 
         # Convert data to torchdim
