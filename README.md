@@ -42,7 +42,7 @@ See `examples/example.py`
     - tests (Kalman filter)
     - importance_sample
     - extend
-  * MovieLens/bus experiments with new code, with VI, RWS/ Natural RWS (see `example/example.py`):
+  * MovieLens/bus experiments with new code, with VI / RWS / QEM==Natural RWS (see `example/example.py`):
     - small scale (usual subsampling)
     - large scale using `computation_strategy=Split(...)`
   * User-facing Marginals.ess
