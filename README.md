@@ -40,7 +40,6 @@ pip install -e .
   * latent moments for `linear_gaussian_latents`
   * tests for mixture distributions.
   * tests for histograms from `_marginal_idxs` and `_importance_sample_idxs`
-  * make sure most of the tests have a split specified.
   * remove the random init from most of the tests.
   * tests for extended_sample
     - TestProblem takes extended_platesizes and predicted_extended_moments as arguments.
@@ -53,14 +52,12 @@ pip install -e .
   * QEM distributions:
     - Categorical
     - Testing
-  * User-facing ESS
-  * Errors:
-    - No Data / Enum in P.
 
 ### Meeting TODOs:
-  * Docs: clarify `ExtendedImportanceSample.predictive_ll`.
-    - How does it deal with the N samples?
-    - How does it deal with the LL for the training data?
+  * Docs:
+    - clarify `ExtendedImportanceSample.predictive_ll`.
+      - How does it deal with the N samples?
+      - How does it deal with the LL for the training data?
   * Think carefully about extended Plate errors.
     - e.g. if you try to extend a prior with plated parameters.
   * Friendly docs (Pyro is a good example).
@@ -68,6 +65,10 @@ pip install -e .
     - tests (Kalman filter)
     - sampling
     - extend
+  * MovieLens/bus experiments with new code, with VI, RWS/ Natural RWS (see `example/example.py`):
+    - small scale (usual subsampling)
+    - large scale using `computation_strategy=Split(...)`
+  * User-facing Marginals.ess
 
 ### Long-run TODOs:
   * Friendly error messages:
