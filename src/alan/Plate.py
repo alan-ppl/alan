@@ -9,6 +9,7 @@ from .dist import Dist
 from .Group import Group
 from .Data import Data
 from .dist import Dist, _Dist
+from .Timeseries import Timeseries
 
 
 
@@ -54,7 +55,7 @@ class Plate():
         for varname, dgpt in kwargs.items():
             if isinstance(dgpt, _Dist):
                 dgpt = dgpt.finalize(varname)
-            assert isinstance(dgpt, (Dist, Group, Data, Plate))
+            assert isinstance(dgpt, (Dist, Group, Data, Plate, Timeseries))
             self.prog[varname] = dgpt
 
 
@@ -184,7 +185,7 @@ class Plate():
         """
         result = {}
         for childname, childP in self.prog.items():
-            if isinstance(childP, (Dist, Group)):
+            if isinstance(childP, (Dist, Group, Timeseries)):
                 result[childname] = Dim(f"K_{childname}", K)
             elif isinstance(childP, Plate):
                 assert isinstance(childP, Plate)
@@ -202,7 +203,7 @@ class Plate():
             if isinstance(v, (Plate, Group)):
                 result = [*result, *v.all_prog_names()]
             else:
-                assert isinstance(v, (Dist, Data))
+                assert isinstance(v, (Dist, Data, Timeseries))
         return result
 
     def varname2groupvarname_dist(self):
@@ -212,6 +213,11 @@ class Plate():
                 varname = k
                 groupvarname = k
                 dist = v
+                result[varname] = (groupvarname, dist)
+            elif isinstance(v, Timeseries):
+                varname = k
+                groupvarname = k
+                dist = v.trans
                 result[varname] = (groupvarname, dist)
             elif isinstance(v, Group):
                 for gk, gv in v.prog.items():
@@ -244,7 +250,7 @@ class Plate():
         """
         result = {}
         for name, dgpt in self.prog.items():
-            if isinstance(dgpt, (Dist, Group)):
+            if isinstance(dgpt, (Dist, Group, Timeseries)):
                 result[name] = active_platenames
             elif isinstance(dgpt, Plate):
                 active_platenames = [*active_platenames, name]
@@ -259,7 +265,7 @@ class Plate():
             if isinstance(dgpt, Plate):
                 result = [*result, *dgpt.all_platenames()]
             else:
-                assert isinstance(dgpt, (Group, Dist, Data))
+                assert isinstance(dgpt, (Group, Dist, Data, Timeseries))
         return result
 
     #def varname2active_platedimnames(self):
@@ -285,7 +291,7 @@ def update_scope_samples(scope: dict[str, Tensor], Q_prog:dict, samples:dict):
         else:
             sample = samples[childname]
 
-            if isinstance(childQ, Dist):
+            if isinstance(childQ, (Dist, Timeseries)):
                 assert isinstance(sample, Tensor)
                 scope[childname] = sample
             elif isinstance(childQ, Group):
