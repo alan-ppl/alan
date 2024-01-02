@@ -63,6 +63,10 @@ pip install -e .
     - How does it deal with the N samples?
     - How does it deal with the LL for the training data?
   * Friendly docs (Pyro is a good example).
+  * Timeseries:
+    - tests
+    - sampling
+    - extend
 
 ### Long-run TODOs:
   * Friendly error messages:

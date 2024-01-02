@@ -44,3 +44,4 @@ This example showcases several features:
    data
    param
    dist
+   timeseries

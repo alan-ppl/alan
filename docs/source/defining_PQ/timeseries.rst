@@ -1,0 +1,4 @@
+Timeseries
+=====
+
+.. autoclass:: alan.Timeseries
