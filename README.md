@@ -49,7 +49,6 @@ See `examples/example.py`
 
 ### Ideas:
   * `importance_sample.dump` should output tensors with the `N` dimension first.
-  * `repeats` kwarg for `sample.importance_sample`.
   * latent moments for `linear_gaussian_latents`
   * tests for mixture distributions.
   * remove the random init from most of the tests.
