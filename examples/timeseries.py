@@ -2,10 +2,12 @@ import torch as t
 from alan import Normal, Plate, BoundPlate, Problem, Timeseries
 
 plate = Plate( 
-    ts_init = Normal(0., 1.),
+    ts1_init = Normal(0., 1.),
+    ts2_init = Normal(0., 1.),
     T = Plate(
-        ts = Timeseries('ts_init', Normal(lambda ts: 0.9*ts, 0.1)),
-        a = Normal('ts', 1.)
+        ts1 = Timeseries('ts1_init', Normal(lambda ts1: 0.9*ts1, 0.1)),
+        ts2 = Timeseries('ts2_init', Normal(lambda ts1, ts2: 0.9*ts1 + ts2, 0.1)),
+        a = Normal('ts2', 1.)
     ),
 )
 

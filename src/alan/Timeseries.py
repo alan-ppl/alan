@@ -60,7 +60,7 @@ class Timeseries:
             raise Exception("the second / `trans` argument in a Timeseries should be a distribution")
 
         if trans.sample_shape != t.Size([]):
-            raise Exception("sample_shape on the transition distribution must be default value; if you want a sample_shape, it needs to be on the initial state")
+            raise Exception("sample_shape on the transition distribution must not be set; if you want a sample_shape, it needs to be on the initial state")
 
         self.init = init
         self.trans = trans.finalize(varname=None) #varname=None raises exception when we use OptParam / QEMParam
@@ -79,6 +79,9 @@ class Timeseries:
             sampler:Sampler,
             reparam:bool,
             ):
+
+        if name not in self.trans.all_args:
+            raise Exception(f"The timeseries transition distribution for {name} must have some dependence on the previous timestep; you get that by including {name} as an argument in the transition distribution.")
 
         active_platedims, T_dim = (active_platedims[:-1], active_platedims[-1])
         K_dim = groupvarname2Kdim[name]
@@ -100,8 +103,15 @@ class Timeseries:
 
         results = []
 
-        for _ in range(T_dim.size):
-            scope = {**unresampled_scope}
+        for time in range(T_dim.size):
+            scope = {}
+
+            #select out the time'th element of anything with a time-dimension.
+            for k, v in unresampled_scope.items():
+                if T_dim in set(generic_dims(v)):
+                    v = v.order(T_dim)[time]
+                scope[k] = v
+
             scope[name] = prev_state
             scope = sampler.resample_scope(scope, active_platedims, K_dim)
 
@@ -110,7 +120,6 @@ class Timeseries:
 
             results.append(sample)
             prev_state = sample.order(K_dim)[Kprev_dim]
-
 
         return t.stack(results, 0)[T_dim]
 
