@@ -68,13 +68,6 @@ class Plate():
         if 0 != len(dup_names):
             raise Exception(f"Plate has duplicate names {dup_names}.")
 
-    def finalize_init(self, groupvarname):
-        for groupvarname, dgpt in self.prog.items():
-            if isinstance(dgpt, (Dist, Plate, Group)):
-                dgpt.finalize_init(groupvarname)
-            else:
-                assert isinstance(dgpt, Data)
-
     def sample(
             self,
             name:Optional[str],

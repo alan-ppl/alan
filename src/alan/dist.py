@@ -98,6 +98,8 @@ class Dist(torch.nn.Module):
         self.opt_qem_params = {}
         for distargname, func_val_param in distargname2func_val_param.items():
             if isinstance(func_val_param, Param):
+                if varname is None:
+                    raise Exception(f"You can't use QEMParam / OptParam in a timeseries at present")
                 name = func_val_param.name if (func_val_param.name is not None) else f"{varname}_{distargname}"
                 self.opt_qem_params[name] = (distargname, func_val_param)
                 func_val_param = name

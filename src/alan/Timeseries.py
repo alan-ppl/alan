@@ -1,4 +1,6 @@
 from .dist import _Dist
+from .utils import *
+from .Sampler import Sampler
 
 class Timeseries:
     """
@@ -50,9 +52,66 @@ class Timeseries:
        OptParam and QEMParam are currently banned in timeseries.
     """
     def __init__(self, init, trans):
-        assert isinstance(init, str)
-        assert isinstance(trans, _Dist)
+
+        if not isinstance(init, str):
+            raise Exception(f"the first / `init` argument in a Timeseries should be a string, representing a variable name in the above plate")
+
+        if not isinstance(trans, _Dist):
+            raise Exception("the second / `trans` argument in a Timeseries should be a distribution")
 
         self.init = init
-        self.trans = trans
+        self.trans = trans.finalize(varname=None) #varname=None raises exception when we use OptParam / QEMParam
+
+    def filter_scope(self, scope: dict[str, Tensor]):
+        return {k: v for (k,v) in scope.items() if k in self.dist.all_args}
+
+    def sample(
+            self,
+            name:str,
+            scope: dict[str, Tensor], 
+            inputs_params: dict,
+            active_platedims:list[Dim],
+            all_platedims:dict[str, Dim],
+            groupvarname2Kdim:dict[str, Dim],
+            sampler:Sampler,
+            reparam:bool,
+            ):
+
+        active_platedims, T_dim = (active_platedims[:-1], active_platedims[-1])
+        K_dim = groupvarname2Kdim[name]
+        Kprev_dim = Dim(str(K_dim), K_dim.size)
+        sample_dims = [Kdim, *active_platedims] #Don't sample T_dim.
+
+        if self.init not in scope:
+            raise Exception(f"Initial state, {init}, not in scope for timeseries {name}")
+
+        #Set previous state equal to initial state.
+        prev_state = scope[self.init]
+        #Make sure K-dimension for initial state is Kprev_dim.
+        prev_state = prev_state.order(groupvarname2Kdim[self.init])[Kprev_dim]
+        #Check that prev_state has the right dimensions
+        if set(prev_state.dims) != set(sample_dims):
+            raise Exception(f"Initial state, {init}, doesn't have the right dimensions for timeseries {name}; the initial state must be defined one step up in the plate heirarchy")
+
+        unresampled_scope = self.filter_scope(scope) #drops initial state.
+
+        results = []
+
+        for t in range(T):
+            scope = {**unresampled_scope}
+            scope[name] = prev_state
+            scope = sampler.resample_scope(scope, active_platedims, K_dim)
+
+            tdd = dist.tdd(scope)
+            sample = tdd.sample(reparam, sample_dims, dist.sample_shape)
+
+            results.append(sample)
+            prev_state = sample.order(K_dim)[Kprev_dim]
+
+
+        return result.stack(0)[T_dim]
+
+
+
+
 
