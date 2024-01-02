@@ -83,6 +83,9 @@ class Timeseries:
         if name not in self.trans.all_args:
             raise Exception(f"The timeseries transition distribution for {name} must have some dependence on the previous timestep; you get that by including {name} as an argument in the transition distribution.")
 
+        if 0 == len(active_platedims):
+            raise Exception(f"Timeseries can't be in the top-layer plate, as there's no platesize at the top")
+
         active_platedims, T_dim = (active_platedims[:-1], active_platedims[-1])
         K_dim = groupvarname2Kdim[name]
         Kprev_dim = Dim(f"{K_dim}_prev", K_dim.size)
@@ -122,8 +125,4 @@ class Timeseries:
             prev_state = sample.order(K_dim)[Kprev_dim]
 
         return t.stack(results, 0)[T_dim]
-
-
-
-
 

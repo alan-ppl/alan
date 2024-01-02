@@ -458,3 +458,35 @@ def corresponding_plates(platedims1 : dict[str, Tensor], platedims2 : dict[str, 
 
     return dims1, dims2
 
+def chain_reduce(f, ms):
+    assert 3==len(ms.shape)
+    assert ms.shape[-2] == ms.shape[-1]
+
+    while ms.shape[0] != 1:
+        prev = ms[::2]
+        curr = ms[1::2]
+        remainder = None
+
+        #If there's an odd number of tensors
+        if len(prev) > len(curr):
+            assert len(prev) == len(curr)+1
+            remainder = prev[-1:]
+            prev = prev[:-1]
+
+        ms = f(prev, curr)
+        if remainder is not None:
+            ms = t.cat([ms, remainder], 0)
+
+    return ms[0]
+
+def logmmexp(prev, curr):
+    """
+    Performs matmul, assuming both matrices are stored as logs.
+    """
+    prev_max = prev.amax(-1, keepdim=True)
+    curr_max = curr.amax(-2, keepdim=True)
+
+    return ((prev - prev_max).exp() @ (curr - curr_max).exp()).log + prev_max + curr_max
+
+def chain_logmmexp(ms):
+    return chain_reduce(logmmexp, ms)

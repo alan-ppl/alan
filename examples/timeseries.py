@@ -1,7 +1,7 @@
 import torch as t
 from alan import Normal, Plate, BoundPlate, Problem, Timeseries
 
-plate = Plate( 
+P = Plate( 
     ts1_init = Normal(0., 1.),
     ts2_init = Normal(0., 1.),
     T = Plate(
@@ -11,5 +11,20 @@ plate = Plate(
     ),
 )
 
-bound_plate = BoundPlate(plate, {'T': 3})
-sample = bound_plate.sample()
+Q = Plate( 
+    ts1_init = Normal(0., 1.),
+    ts2_init = Normal(0., 1.),
+    T = Plate(
+        ts1 = Normal(0., 1.),
+        ts2 = Normal(0., 1.),
+        a = Data(),
+    ),
+)
+
+bP = BoundPlate(P, {'T': 3})
+bQ = BoundPlate(Q, {'T': 3})
+
+data = {'a': bP.sample()['a']}
+
+problem = Problem(bP, bQ, data)
+sample = problem.sample(K=10)

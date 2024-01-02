@@ -6,6 +6,7 @@ from .BoundPlate import BoundPlate
 from .Group import Group
 from .dist import Dist
 from .Data import Data
+from .Timeseries import Timeseries
 
 #### Check the structure of the distributions match.
 
@@ -94,6 +95,14 @@ def check_PQ_plate(platename: Optional[str], P: Plate, Q: Plate, data: dict):
             if isinstance(distQ, Dist):
                 check_support(name, distP, distQ)
 
+        elif isinstance(dgpt_P, Timeseries):
+            timeseries_P = dgpt_P
+            timeseries_dist_Q = Q.prog[name]
+            if not isinstance(timeseries_dist_Q, (Dist, Timeseries, Data)):
+                raise Exception(f"{name} in P is a Timeseries, so {name} in Q should be a Timeseries or a Dist, but actually its a {type(groupQ)}.")
+            dist_Q = timeseries_dist_Q.trans if isinstance(timeseries_dist_Q, Timeseries) else timeseries_dist_Q
+            check_support(name, distP.trans, dist_Q)
+
         elif isinstance(dgpt_P, Group):
             groupP = dgpt_P
             groupQ = Q.prog[name]
@@ -101,6 +110,7 @@ def check_PQ_plate(platename: Optional[str], P: Plate, Q: Plate, data: dict):
                 raise Exception(f"{name} in P is a Group, so {name} in Q should also be a Group, but actually its a {type(groupQ)}.")
             #Recurse
             check_PQ_group(name, groupP, groupQ)
+
 
         elif isinstance(dgpt_P, Plate):
             plateP = dgpt_P
