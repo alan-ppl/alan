@@ -47,8 +47,19 @@ See `examples/example.py`
     - large scale using `computation_strategy=Split(...)`
   * User-facing Marginals.ess
 
+
+### Long-run TODOs:
+  * Friendly error messages:
+    - Marginals/moments make sense for variables on different plates if they're in the same heirarchy.
+  * Enumeration:
+    - Enumeration is a class in Q (like Data), not P.
+  * A `Samples` class that aggregates over multiple `Sample` in a memory efficient way.
+    - Acts like it contains a list of e.g. 10 `Sample`s, but doesn't actually.
+    - Instead, it generates the `Sample`s as necessary by using frozen random seed.
+   
+
 ### Ideas:
-  * `importance_sample.dump` should output tensors with the `N` dimension first.
+  * `importance_sample.dump` should output tensors with the `N` dimension first?
   * latent moments for `linear_gaussian_latents`
   * tests for mixture distributions.
   * remove the random init from most of the tests.
@@ -63,12 +74,3 @@ See `examples/example.py`
   * QEM distributions:
     - Categorical
     - Testing
-
-### Long-run TODOs:
-  * Friendly error messages:
-    - Marginals/moments make sense for variables on different plates if they're in the same heirarchy.
-  * Enumeration:
-    - Enumeration is a class in Q (like Data), not P.
-  * A `Samples` class that aggregates over multiple `Sample` in a memory efficient way.
-    - Acts like it contains a list of e.g. 10 `Sample`s, but doesn't actually.
-    - Instead, it generates the `Sample`s as necessary by using frozen random seed.
