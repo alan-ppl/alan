@@ -59,6 +59,7 @@ See `examples/example.py`
    
 
 ### Ideas:
+  * timeseries within groups.
   * `importance_sample.dump` should output tensors with the `N` dimension first?
   * latent moments for `linear_gaussian_latents`
   * tests for mixture distributions.
