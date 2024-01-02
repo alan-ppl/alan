@@ -48,7 +48,7 @@ def logPQ_sample(
     scope = update_scope(scope, Q, sample, inputs_params)
     
     #all_Ks doesn't include Ks from timeseries.
-    lps, all_Ks, _, _, _ = lp_getter(
+    lps, all_Ks, _, _ = lp_getter(
         name=name,
         P=P, 
         Q=Q, 

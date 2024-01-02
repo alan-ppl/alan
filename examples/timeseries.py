@@ -1,5 +1,5 @@
 import torch as t
-from alan import Normal, Plate, BoundPlate, Problem, Timeseries
+from alan import Normal, Plate, BoundPlate, Problem, Timeseries, Data
 
 P = Plate( 
     ts1_init = Normal(0., 1.),
@@ -28,3 +28,6 @@ data = {'a': bP.sample()['a']}
 
 problem = Problem(bP, bQ, data)
 sample = problem.sample(K=10)
+
+elbo = sample.elbo_vi()
+

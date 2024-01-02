@@ -95,7 +95,7 @@ def _logPQ_plate(
 
     scope = update_scope(scope, Q, sample, inputs_params)
 
-    lps, all_Ks, K_inits, K_prevs, K_currs = lp_getter(
+    lps, all_Ks, K_inits, K_currs = lp_getter(
         name=name,
         P=P, 
         Q=Q, 
@@ -120,25 +120,30 @@ def _logPQ_plate(
 
     #Sum over new_platedim
     if name is not None:
-        if 0 < len(K_prevs):
+        if 0 < len(K_inits):
             #Timeseries
-            lp = lp.order(new_platedim, K_prevs, K_currs)    # Removes torchdims from T, and Ks
+            lp = lp.order(new_platedim, K_inits, K_currs)    # Removes torchdims from T, and Ks
             lp = chain_logmmexp(lp)# Kprevs x Kcurrs
             assert 2 == lp.ndim
 
-            #Backpropagating info.
-            if prev_lpq is None:
-                #No prev_lpq, so we're either not split or we're on the last split;
-                #sum over Kcurr.
-                lp = lp.logsumexp(-1)
-            else:
-                #prev_lpq, so we're split.
-                prev_lpq = prev_lpq.order(K_currs)[:, None] #Unnamed dims: Kcurrs x 1
-                lp = logmmexp(lp, prev_lpq).squeeze(-1)     #Unnamed dims: Kprevs
+            lp = lp.logsumexp(-1)
             assert 1 == lp.ndim
+            #Put torchdim back. 
+            #Stupid trailing None is necessary, because otherwise the list of K_inits is just splatted in, rather than being treated as a group.
+            lp = lp[K_inits, None].squeeze(-1)
 
-            #Label unnamed K_inits
-            lp = generic_getitem(lp, K_inits)
+            assert prev_lpq is None
+
+            #Backpropagating info.
+            #if prev_lpq is None:
+            #    #No prev_lpq, so we're either not split or we're on the last split;
+            #    #sum over Kcurr.
+            #    lp = lp.logsumexp(-1)
+            #else:
+            #    #prev_lpq, so we're split.
+            #    prev_lpq = prev_lpq.order(K_currs)[:, None] #Unnamed dims: Kcurrs x 1
+            #    lp = logmmexp(lp, prev_lpq).squeeze(-1)     #Unnamed dims: Kprevs
+            #assert 1 == lp.ndim
 
         else:
             #No timeseries
@@ -198,7 +203,7 @@ def logPQ_dist(
 
 def logPQ_timeseries(
         name:str,
-        P:Group, 
+        P:Timeseries,
         Q:Group, 
         sample: dict, 
         inputs_params: dict,
@@ -212,7 +217,7 @@ def logPQ_timeseries(
         computation_strategy:Optional[Split]):
 
     assert isinstance(P, Timeseries)
-    assert isinstance(Q, (Timeseries, Plate, Data))
+    assert isinstance(Q, (Timeseries, Dist, Data))
 
     assert isinstance(sample, OptionalTensor)
     assert inputs_params is None
@@ -227,27 +232,26 @@ def logPQ_timeseries(
     else: 
         #sample is not None
         assert data is None
-        assert isinstance(Q, Dist)
+        assert isinstance(Q, (Dist, Timeseries))
         sample_data = sample
 
 
-    T_dim = active_platedims[-1]
-    K_dim = groupvarname2Kdim[name]
+    T_dim     = active_platedims[-1]
+    K_dim     = groupvarname2Kdim[name]
+    Kinit_dim = groupvarname2Kdim[P.init]
 
-    lpq, Kprev_dim = P.log_prob(sample=sample_data, scope=scope, T_dim=T_dim, K_dim=K_dim)
-
-    initial_state = None
-    if initial_state is None:
-        initial_state = scope[self.init]
+    initial_state = scope[P.init]
+    sample_prev = sample.order(K_dim)[Kinit_dim]
 
     sample_prev = t.cat([
-        initial_state,
-        sample.order[T_dim][:[-1]],
+        initial_state[None, ...],
+        sample.order(T_dim)[:-1],
     ], 0)[T_dim]
 
     scope = {**scope}
     scope[name] = sample_prev
-    self.trans.log_prob(sample=sample_data, scope=scope)
+
+    lpq = P.trans.log_prob(sample=sample_data, scope=scope)
 
     if sample is not None:
         Kdim = groupvarname2Kdim[name]
@@ -256,7 +260,7 @@ def logPQ_timeseries(
 
         lpq = lpq - lq - math.log(Kdim.size)
         
-    return (lpq, K_dim, K_prev)
+    return lpq, Kinit_dim, K_dim
 
 
 def logPQ_group(
@@ -333,7 +337,6 @@ def lp_getter(
 
     lps = list(tree_values(extra_log_factors).values())
     K_inits = []
-    K_prevs = []
     K_currs = []
 
     for childname, childP in P.prog.items():
@@ -371,19 +374,19 @@ def lp_getter(
             sampler=sampler,
             computation_strategy=computation_strategy)
         if isinstance(lp, tuple):
-            lp, K_init, K_prev, K_curr = lp
+            lp, K_init, K_curr = lp
             K_inits.append(K_init)
-            K_prevs.append(K_prev)
             K_currs.append(K_curr)
         
         lps.append(lp)
 
-    #Collect all Ks in the plate
+    #Collect all non-timeseries Ks in the plate (note: iterating through Q!!)
     all_Ks = []
     for varname, dist in Q.prog.items():
         if isinstance(dist, (Dist, Group)):
-            all_Ks.append(groupvarname2Kdim[varname])
+            if not isinstance(P.prog[varname], Timeseries):
+                all_Ks.append(groupvarname2Kdim[varname])
         else:
             assert isinstance(dist, (Plate, Data, Timeseries))
             
-    return lps, all_Ks, K_inits, K_prevs, K_currs
+    return lps, all_Ks, K_inits, K_currs

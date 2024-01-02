@@ -486,7 +486,7 @@ def logmmexp(prev, curr):
     prev_max = prev.amax(-1, keepdim=True)
     curr_max = curr.amax(-2, keepdim=True)
 
-    return ((prev - prev_max).exp() @ (curr - curr_max).exp()).log + prev_max + curr_max
+    return ((prev - prev_max).exp() @ (curr - curr_max).exp()).log() + prev_max + curr_max
 
 def chain_logmmexp(ms):
     return chain_reduce(logmmexp, ms)

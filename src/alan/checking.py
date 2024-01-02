@@ -101,7 +101,7 @@ def check_PQ_plate(platename: Optional[str], P: Plate, Q: Plate, data: dict):
             if not isinstance(timeseries_dist_Q, (Dist, Timeseries, Data)):
                 raise Exception(f"{name} in P is a Timeseries, so {name} in Q should be a Timeseries or a Dist, but actually its a {type(groupQ)}.")
             dist_Q = timeseries_dist_Q.trans if isinstance(timeseries_dist_Q, Timeseries) else timeseries_dist_Q
-            check_support(name, distP.trans, dist_Q)
+            check_support(name, timeseries_P.trans, dist_Q)
 
         elif isinstance(dgpt_P, Group):
             groupP = dgpt_P
