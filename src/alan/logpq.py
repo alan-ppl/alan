@@ -35,11 +35,11 @@ def logPQ_plate(
         all_platedims=all_platedims,
     )
 
-    lpq = _logPQ_plate if computation_strategy is no_checkpoint else _logPQ_plate_checkpointed
+    lpq_func = _logPQ_plate if computation_strategy is no_checkpoint else _logPQ_plate_checkpointed
 
-    lps = []
+    lpq = None
     for sieda in siedas:
-        lps.append(lpq(
+        lpq = lpq_func(
             name=name,
             P=P,
             Q=Q,
@@ -48,10 +48,11 @@ def logPQ_plate(
             groupvarname2Kdim=groupvarname2Kdim,
             sampler=sampler,
             computation_strategy=computation_strategy,
-            **sieda
-        ))
+            **sieda,
+            prev_lpq = lpq
+        )
 
-    return sum(lps)
+    return lpq
 
 def _logPQ_plate_checkpointed(*args, **kwargs):
     return t.utils.checkpoint.checkpoint(_logPQ_plate_args_kwargs, args, kwargs, use_reentrant=False)
@@ -72,7 +73,8 @@ def _logPQ_plate(
         all_platedims:dict[str: Dim],
         groupvarname2Kdim:dict[str, Tensor],
         sampler:Sampler,
-        computation_strategy:Optional[Split]):
+        computation_strategy:Optional[Split],
+        prev_lpq):
 
     assert isinstance(P, Plate)
     assert isinstance(Q, Plate)
@@ -113,6 +115,9 @@ def _logPQ_plate(
     if name is not None:
         lp = lp.sum(active_platedims[-1])
 
+    if prev_lpq is not None:
+        assert set(generic_dims(lp)) == set(generic_dims(prev_lpq))
+        lp = prev_lpq + lp
 
     return lp
 
