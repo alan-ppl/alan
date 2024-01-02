@@ -54,37 +54,62 @@ pip install -e .
     - Categorical
     - Testing
   * User-facing ESS
+  * Errors:
+    - No Data / Enum in P.
 
 ### Meeting TODOs:
   * Error if you try to extend a prior with plated parameters.
   * Clarify `ExtendedImportanceSample.predictive_ll`.
     - How does it deal with the N samples?
     - How does it deal with the LL for the training data?
-
+  * Friendly docs (Pyro is a good example).
 
 ### Long-run TODOs:
   * Friendly error messages:
     - Marginals/moments make sense for variables on different plates if they're in the same heirarchy.
   * Enumeration:
     - Enumeration is a class in Q (like Data), not P.
-  * Timeseries:
-    - Lives within a plate; can only be the first thing in a plate.
-    - log prob algorithm:
-      - sum out all the other K's on the plate, but keep `K_timeseries`.
-      - sum out the plate by handing sample of timeseries + log prob with everything else summed out to a method on Timeseries.
-    - Syntax:
-```
-plate = Plate(
-    T = Plate(
-        timeseries = Timeseries(
-            initial_dist = Normal(0, 1),
-            transition = lambda x: Normal(0.9*x, 0.1),
-        )
-        noisy_timeseries = Normal('timeseries', 0.3),
-    )
-)
-```
   * A `Samples` class that aggregates over multiple `Sample` in a memory efficient way.
     - Acts like it contains a list of e.g. 10 `Sample`s, but doesn't actually.
     - Instead, it generates the `Sample`s as necessary by using frozen random seed.
+  * Timeseries (see below)
 
+### Timeseries plan:
+* Timeseries acts as a replacement for a Dist.
+```
+plate = Plate(
+    T = Plate(
+        a = Timeseries(...)
+        bc = Group(
+            b = Timeseries(...),
+            c = Timeseries(...),
+        )
+    )
+)
+```
+* Note that if there's dependencies across timeseries (say, timeseries named a and b, where b depends on a), then b_t depends on a_t, not a_{t-1}. (That's consistent with what has to happen if e.g. you have a timeseries depending on a variable that's independent across the plate, or vice-versa).
+* Two timeseries `log_pq` algorithms:
+  - initial state 
+  - strategy 1: 
+    - do reduce_Ks on everything to get a single enormous T x (K_timeseries...) x (K_timeseries...) tensor.
+    - do a chain matmul
+    - few tensor operations (because of chain matmul), but lots of memory (K^{2N}), where N is the number of timeseries variables.
+    - makes sense with split, because we can easily return and combine T x (K_timeseries...) x (K_timeseries...) tensors.
+    - initial log_prob is annoying, but can be dealt with.
+    - Need to introduce extra K_timeseries dimensions for log_prob.  As these are immediately summed out, I think they can be created + destroyed locally, and don't need to be managed globally.
+    - At the final step, log_PQ returns a tensor with just a single K_dimension (as we've summed out the initial state).
+    - Detail alg:
+      - All log_PQ methods return tensor, prev_Ks, curr_Ks.
+        - Mostly, prev_Ks, curr_Ks are empty tuples.
+      - Go though all variables in a plate, collecting log_PQ, prev_Ks, curr_Ks.
+      - Sum out Ks that aren't in the previous plate, prev_Ks or curr_Ks.
+      - Gives one big tensor you can chain_matmul.
+      - Split strategy:
+        - Split the timeseries samples along T.
+        - But then you want the initial sample to be the same K-dimension as the rest of the timeseries.
+        - Give plate_log_PQ samples of length split_T, get back K_start x K_end.
+  - strategy 2:
+    - But you can actually do quite a bit better than strategy 1 in terms of asymptotic complexity, though at the cost of far, far more tensor ops.
+    - This is evident if you consider using the usual within-plate reduction strategy. 
+    - In particular, the most efficient approach is to sum out variables, starting at the end and working backwards.
+    - Requries more complex implementation + far more tensor ops, but gives asymptotic reductions in complexity.
