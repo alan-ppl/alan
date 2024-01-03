@@ -59,7 +59,21 @@ See `examples/example.py`
    
 
 ### Ideas:
-  * timeseries within groups (and consider making timeseries behave like a dist, e.g. with all_args etc.)
+  * Can have multiple Timeseries within a group.
+```
+ab = Group(
+    a = Timeseries('a_init', Normal(lambda a: 0.9* a, 0.1))
+    b = Timeseries('a_init', Normal(lambda b: 0.9* b, 0.1))
+)
+```
+  * But that means lots of duplicated code e.g. for filtering/resampling the scope in Dist.sample, Timeseries.sample and Group.sample.
+  * Solution is that Dist/Timeseries is always wrapped in a Group.
+    - The wrapping happens in the initializer for Plate.
+    - Group has a single, complicated sampling + log_prob method, which handles, e.g.
+      - filtering / resampling the scope.
+      - fiddling with the Q log-probs.
+    - Means we don't duplicate this code in methods that live in Dist and Timeseries.
+    - When combining Group and timeseries, we sample all timesteps of each variable before moviong on to the next variable.
   * `importance_sample.dump` should output tensors with the `N` dimension first?
   * latent moments for `linear_gaussian_latents`
   * tests for mixture distributions.

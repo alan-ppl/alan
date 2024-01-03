@@ -61,7 +61,6 @@ class Timeseries:
             raise Exception("sample_shape on the transition distribution must not be set; if you want a sample_shape, it needs to be on the initial state")
 
         self.init = init
-        self.trans = trans.finalize(varname=None) #varname=None raises exception when we use OptParam / QEMParam
 
     def filter_scope(self, scope: dict[str, Tensor]):
         return {k: v for (k,v) in scope.items() if k in self.trans.all_args}
