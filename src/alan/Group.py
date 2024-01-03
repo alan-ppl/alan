@@ -46,7 +46,7 @@ class Group():
     def __init__(self, **kwargs):
         #Groups can only contain Dist, not Plates/Timeseries/Data/other Groups.
         for varname, dist in kwargs.items():
-            if not isinstance(dist, (_Dist, Timeseries)):
+            if not isinstance(dist, (_Dist)):
                 raise Exception("{varname} in a Group should be a Dist or Timeseries, but is actually {type(dist)}")
 
         if len(kwargs) < 2:

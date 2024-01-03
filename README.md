@@ -67,12 +67,7 @@ ab = Group(
 )
 ```
   * But that means lots of duplicated code e.g. for filtering/resampling the scope in Dist.sample, Timeseries.sample and Group.sample.
-  * Solution is that Dist/Timeseries is always wrapped in a Group.
-    - The wrapping happens in the initializer for Plate.
-    - Group has a single, complicated sampling + log_prob method, which handles, e.g.
-      - filtering / resampling the scope.
-      - fiddling with the Q log-probs.
-    - Means we don't duplicate this code in methods that live in Dist and Timeseries.
+  * Solution: function for sample/log_prob that works for Group. Dist / Timeseries call this code, by looking like a one-element Group.  This code handles filtering / resampling the scope, fiddling with the Q log-probs.
     - When combining Group and timeseries, we sample all timesteps of each variable before moviong on to the next variable.
   * `importance_sample.dump` should output tensors with the `N` dimension first?
   * latent moments for `linear_gaussian_latents`
