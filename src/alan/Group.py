@@ -79,7 +79,6 @@ class Group():
             active_platedims=active_platedims,
             sampler=sampler,
             reparam=reparam,
-            all_args=self.all_args,
         )
     
     def sample_extended(
