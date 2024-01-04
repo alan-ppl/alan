@@ -98,6 +98,48 @@ class Timeseries:
             sampler=sampler,
             reparam=reparam,
         )[name]
+
+    def tdd(self, scope):
+        return TorchDimTimeseries(self.dist, **self.paramname2val(scope))
+
+    def log_prob(self, x, active_platedims:list[Dim], K_dim:Dim):
+        pass
+
+    def sample(self, scope, reparam: bool, active_platedims:list[Dim], K_dim:Dim, timeseries_perm):
+        assert 0 <= len(active_platedims)
+        (other_platedims, T_dim) = (active_platedims[:-1], active_platedims[-1])
+
+        #Set previous state equal to initial state.
+        prev_state = scope[self.init]
+        #Check that prev_state has the right dimensions
+        if set(prev_state.dims) != set([K_dim, *other_platedims]):
+            raise Exception(f"Initial state, {self.init}, doesn't have the right dimensions for timeseries {name}; the initial state must be defined one step up in the plate heirarchy")
+
+        sample_timesteps = []
+
+        for time in range(T_dim.size):
+            #new scope, where we select out the time'th timestep for any tensor with a time dimension.
+            #all these variables have already been resampled.
+            timeseries_scope = {}
+            for k, v in scope.items():
+                if T_dim in set(generic_dims(v)):
+                    v = v.order(T_dim)[time]
+                timeseries_scope[k] = v
+            #Put previous timestep for self into scope
+            timeseries_scope[name] = prev_state
+
+            #sample the next timestep
+            sample_timestep = self.trans.sample(timeseries_scope, reparam, sample_dims)
+            sample_timesteps.append(sample_timestep)
+
+            #Permute this timestep, ready for being used as prev_state.
+            if timeseries_perm is not None:
+                timestep_perm = timeseries_perm.order(T_dim)[time]
+                sample_timestep = sample_timestep.order(K_dim)[timestep_perm, ...][K_dim]
+            prev_state = sample_timestep
+
+        sample = t.stack(sample_timesteps, 0)[T_dim]
+            
 #    def sample(
 #            self,
 #            name:str,

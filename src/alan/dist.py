@@ -64,46 +64,8 @@ def sample_gdt(
     timeseries_perm = sampler.perm(dims=set(sample_dims), Kdim=K_dim)
 
     for name, dist in prog.items():
-        if not dist.is_timeseries:
-            #Not timeseries!!
-            tdd = dist.tdd(scope)
-            sample = tdd.sample(reparam, sample_dims, dist.sample_shape)
-        else:
-            #Timeseries!!
+        sample = dist.sample(scope, reparam, active_platedims, K_dim, timeseries_perm)
 
-            #Set previous state equal to initial state.
-            prev_state = scope[dist.init]
-            #Check that prev_state has the right dimensions
-            if set(prev_state.dims) != set([K_dim, *other_platedims]):
-                raise Exception(f"Initial state, {dist.init}, doesn't have the right dimensions for timeseries {name}; the initial state must be defined one step up in the plate heirarchy")
-
-            sample_timesteps = []
-
-            for time in range(T_dim.size):
-                #new scope, where we select out the time'th timestep for any tensor with a time dimension.
-                #all these variables have already been resampled.
-                timeseries_scope = {}
-                for k, v in scope.items():
-                    if T_dim in set(generic_dims(v)):
-                        v = v.order(T_dim)[time]
-                    timeseries_scope[k] = v
-                #Put previous timestep for self into scope
-                timeseries_scope[name] = prev_state
-
-                #sample the next timestep
-                tdd = dist.trans.tdd(timeseries_scope)
-                sample_timestep = tdd.sample(reparam, sample_dims, sample_shape=t.Size([]))
-
-                sample_timesteps.append(sample_timestep)
-
-                #Permute this timestep, ready for being used as prev_state.
-                timestep_perm = timeseries_perm.order(T_dim)[time]
-                prev_state = sample_timestep.order(K_dim)[timestep_perm, ...][K_dim]
-
-            sample = t.stack(sample_timesteps, 0)[T_dim]
-
-        #Timestep t of one variable depends on timestep t of previous variables, whether
-        #timeseries or not.  That means no resampling between variables in the same group.
         scope[name]  = sample
         result[name] = sample
 
@@ -260,28 +222,6 @@ class Dist(torch.nn.Module):
 
     def tdd(self, scope: dict[str, Tensor]):
         return TorchDimDist(self.dist, **self.paramname2val(scope))
-
-    def sample(
-            self,
-            name:Optional[str],
-            scope: dict[str, Tensor], 
-            inputs_params: dict,
-            active_platedims:list[Dim],
-            all_platedims:dict[str, Dim],
-            groupvarname2Kdim:dict[str, Dim],
-            sampler:Sampler,
-            reparam:bool,
-            ):
-
-        return sample_gdt(
-            prog={name: self},
-            scope=scope,
-            K_dim=groupvarname2Kdim[name],
-            groupvarname2Kdim=groupvarname2Kdim,
-            active_platedims=active_platedims,
-            sampler=sampler,
-            reparam=reparam,
-        )[name]
     
     def sample_extended(
             self,
@@ -352,6 +292,13 @@ class Dist(torch.nn.Module):
 
         assert self.device == sample.device
         return self.tdd(scope).log_prob(sample)
+
+    def sample(self, scope, reparam, active_platedims, K_dim, timeseries_perm=None):
+        return self.tdd(scope).sample(
+            reparam=reparam, 
+            sample_dims=[*active_platedims, K_dim],
+            sample_shape=self.sample_shape,
+        )
 
     def move_number_device(self, param_name, param):
         assert isinstance(param, Number)
