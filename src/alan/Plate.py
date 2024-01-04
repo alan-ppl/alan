@@ -268,14 +268,6 @@ class Plate():
                 assert isinstance(dgpt, (Group, Dist, Data, Timeseries))
         return result
 
-    #def varname2active_platedimnames(self):
-    #    groupvarname2active_platedimnames = self.groupvarname2active_platedimnames()
-
-    #    result = {}
-    #    for (varname, groupvarname) in self.varname2groupvarname().items():
-    #        result[varname] = groupvarname2active_platedimnames[groupvarname]
-    #    return result
-
 
 #Functions to update the scope
 
@@ -384,28 +376,6 @@ def tensordict2tree(plate:Plate, tensor_dict:dict[str, Tensor]):
         current_branch[name] = tensor
     return root
 
-def treemap(f, *trees):
-    assert 1 <= len(trees)
-
-    if any(isinstance(tree, dict) in trees):
-        #If one argument is a dict, they're all dicts
-        assert all(isinstance(tree, dict) in trees)
-
-        #If they're all dicts, they have the same keys.
-        keys0 = set(trees[0].keys())
-        assert all(keys0 == set(tree.keys()) for tree in trees[1:])
-
-        #If they're dicts, then you can't apply the function yet,
-        #so keep recursing.
-        result = {}
-        for key in keys0:
-            result[key] = treemap(f, *[tree[key] for tree in trees])
-
-        return result
-    else:
-        #If they aren't dicts finally apply the function.
-        return f(*trees)
-
 def flatten_tree(tree):
     result = {}
     for k, v in tree.items():
@@ -416,4 +386,46 @@ def flatten_tree(tree):
             result = {**result, **flatten_tree(v)}
     return result
 
-
+#def treemap(map_func, reduce_func):
+#    def inner(*trees):
+#        assert 1 <= len(trees)
+#
+#        if any(isinstance(tree, dict) in trees):
+#            #If one argument is a dict, they're all dicts
+#            assert all(isinstance(tree, dict) in trees)
+#
+#            #If they're all dicts, they have the same keys.
+#            keys0 = set(trees[0].keys())
+#            assert all(keys0 == set(tree.keys()) for tree in trees[1:])
+#
+#            #If they're dicts, then you can't apply the function yet,
+#            #so keep recursing.
+#            result = {}
+#            for key in keys0:
+#                result[key] = treemap(f, *[tree[key] for tree in trees])
+#            return reduce_func(result)
+#        else:
+#            #If they aren't dicts finally apply the function.
+#            return map_func(*trees)
+#
+#
+#def progmap(map_func, reduce_func):
+#    def inner(name, trees, active_platedims, **consts):
+#        #Push an extra plate, if not the top-layer plate (top-layer plate is signalled
+#        #by name=None.
+#        if name is not None:
+#            new_platedim = all_platedims[name]
+#            active_platedims = [*active_platedims, new_platedim]
+#
+#        plate = trees[0]
+#        assert isinstance(plate, Plate)
+#
+#        result = {}
+#        for k, v in plate.prog.items():
+#            if isinstance(v, Plate):
+#                assert isinstance(tree[k], (Plate, dict))
+#                result[k] = inner(k, [tree[k] for tree in trees], active_platedims, **consts)
+#            else:
+#                result[k] = map_func(k, v, **consts)
+#
+#        return reduce_func(result, **consts)
