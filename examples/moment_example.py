@@ -1,5 +1,5 @@
 import torch as t
-from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, IndependentSample, Data
+from alan import Normal, Plate, BoundPlate, Group, Problem, Data, mean, var, mean2
 
 t.manual_seed(0)
 
@@ -31,46 +31,50 @@ Q = Plate(
     ),
 )
 
-Q = BoundPlate(Q, params={'a_mean': t.zeros(()), 'd_mean':t.zeros(3, names=('p1',))})
-
 platesizes = {'p1': 3, 'p2': 4}
 data = {'e': t.randn(3, 4, names=('p1', 'p2'))}
 
-prob = Problem(P, Q, platesizes, data)
+P = BoundPlate(P, platesizes)
+Q = BoundPlate(Q, platesizes, extra_opt_params={'a_mean': t.zeros(()), 'd_mean':t.zeros(3, names=('p1',))})
+
+prob = Problem(P, Q, data)
 
 # Get some initial samples (with K dims)
-sampling_type = IndependentSample
-sample = prob.sample(3, True, sampling_type)
+sample = prob.sample(3, True)
 
+print("ELBO")
 for K in [1,3,10,30,100]:
-    print(prob.sample(K, True, sampling_type).elbo())
-# # Obtain K indices from posterior
-# post_idxs = sample.sample_posterior(num_samples=10)
+    print(prob.sample(K, True).elbo_nograd())
+print()
 
-def mean(x):
-    sample = x
-    dim = x.dims[0]
-    
-    w = 1/dim.size
-    return (w * sample).sum(dim)
+print("Moments from marginals:")
+marginals = sample.marginals()
+marginal_moments = marginals.moments([('d', mean), ('d', mean2), ('c', mean2), ('c', var)])
 
-def second_moment(x):
-    return mean(t.square(x))
+print(marginal_moments)
 
-def square(x):
-    return x**2
+print("Moments from approximate posterior samples:")
+moments = sample.moments((('d', mean), ('d', mean2), ('c', mean2)))
+print(moments)
 
-def var(x):
-    return mean(square(x)) - square(mean(x))
+# below doesn't work because var is not a raw moment
+# print(sample.moments(('d', var)))
 
-# moments = sample.moments({'d': [mean, var], 'c': [second_moment]})
-# print(moments)
+print()
 
-# #Getting moments from posterior samples:
+#Getting moments from posterior samples:
+print("Moments from importance samples:")
+importance_samples = sample.importance_sample(N=1000)
 
-# posterior_samples = sample.sample_posterior(num_samples=1000)
+posterior_moments = importance_samples.moments((('d', mean), ('d', mean2), ('c', mean2)))
+print(posterior_moments)
 
-# print(posterior_samples['d'].mean('N'))
-# print((posterior_samples['d']**2).mean('N') - posterior_samples['d'].mean('N')**2)
+print()
 
-# print((posterior_samples['c']**2).mean('N'))
+print("Moments directly from dumped importance samples:")
+importance_samples_flat = importance_samples.dump()
+
+print(importance_samples_flat['d'].mean('N'))
+print((importance_samples_flat['d']**2).mean('N'))
+
+print((importance_samples_flat['c']**2).mean('N'))
