@@ -60,6 +60,8 @@ See `examples/example.py`
 
 ### Ideas:
   * Grouped Timeseries init subtleties.
+    * As you create the model, put (grouped) timeseries init in the plate above.
+  * Check timeseries permutation is the right size.
   * Simplify sampler.resample_scope, by noting that:
     * all variables in scope are either parameters (no K's)
     * random variables drawn from a dist (unique K)

@@ -8,6 +8,8 @@ from .dist import Dist
 from .Data import Data
 from .Timeseries import Timeseries
 
+
+
 #### Check the structure of the distributions match.
 
 def check_inputs_params(P:BoundPlate, Q:BoundPlate):

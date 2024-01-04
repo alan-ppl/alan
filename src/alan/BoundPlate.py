@@ -8,6 +8,7 @@ from .Stores import BufferStore, ParameterStore, ModuleStore
 from .moments import moments_func2name
 from .Param import OptParam, QEMParam
 from .conversions import conversion_dict
+from .Timeseries import Timeseries
 
 def named2torchdim_flat2tree(flat_named:dict, all_platedims, plate):
     flat_torchdim = named2dim_dict(flat_named, all_platedims)
@@ -92,6 +93,9 @@ class BoundPlate(nn.Module):
                         raise Exception("Dimension name {name} used on input/extra_opt_param {k}, but not provided in all_platesizes")
                     if v.size(name) != all_platesizes[name]:
                         raise Exception("Dimension mismatch for input {k} along dimension {name}; all_platesizes gives {all_platesizes[name]}, while {k} is {v.size(name)}")
+
+        #Check that timeseries inits are in the right place
+        check_timeseries(plate)
 
         #Check that inputs/extra_log_params are used in a place that makes sense with regard to plates.
         groupvarname2platenames = self.plate.groupvarname2platenames()
@@ -376,4 +380,39 @@ class BoundPlate(nn.Module):
     def varname2groupvarname(self):
         return self.plate.varname2groupvarname()
 
+def check_timeseries(top_plate:Plate):
+    assert isinstance(top_plate, Plate)
+    for k, v in top_plate.grouped_prog.items():
+        if isinstance(v, Plate):
+            check_timeseries_inner(v, top_plate)
+        else:
+            assert isinstance(v, dict)
 
+
+def check_timeseries_inner(current_plate:Plate, upper_plate:Plate):
+    assert isinstance(current_plate, Plate)
+    assert isinstance(upper_plate, Plate)
+    upper_varname2groupvarname = upper_plate.varname2groupvarname()
+
+    for k, v in current_plate.grouped_prog.items():
+        if isinstance(v, dict):
+            #Gather timeseries inits.
+            init_groupnames = []
+            for gk, gv in v.items():
+                if isinstance(gv, Timeseries):
+                    init_varname = gv.init
+                    if init_varname not in upper_plate.flat_prog:
+                        raise Exception("Timeseries must have an initializer that is present in the immediate parent plate.  However, the initializer for timeseries {gk}, i.e. {init_varname} doesn't seem to be present in the immediate parent plate.")
+
+                    init_groupname = upper_varname2groupvarname[init_varname]
+                    init_groupnames.append(upper_varname2groupvarname[gv.init])
+
+            #Check all init_groupnames are the same
+            if 1 <= len(init_groupnames):
+                tsg0 = init_groupnames[0]
+                for tsg in init_groupnames[1:]:
+                    if tsg != tsg0:
+                        raise Exception(f"The initializers for a plate must be grouped in the same way as the timeseries themselves.  However, the initializers for timeseries {list(v.keys())}, on group {k} seemed to be grouped differently")
+        else:
+            assert isinstance(v, Plate)
+            check_timeseries_inner(v, current_plate)
