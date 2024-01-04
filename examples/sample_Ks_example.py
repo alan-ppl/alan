@@ -7,9 +7,9 @@ from functorch.dim import Dim
 from torch.utils.checkpoint import checkpoint
 import torch.distributions as td
 
-from alan_simplified.TorchDimDist import TorchDimDist
-from alan_simplified.utils import generic_dims, logmeanexp_dims, logsumexp_dims
-from alan_simplified.reduce_Ks import reduce_Ks, sample_Ks
+from alan.TorchDimDist import TorchDimDist
+from alan.utils import generic_dims, logmeanexp_dims, logsumexp_dims
+from alan.reduce_Ks import reduce_Ks, sample_Ks
 
 Kdim = Dim('K')
 
