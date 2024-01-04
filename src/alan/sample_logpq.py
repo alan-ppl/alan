@@ -26,6 +26,7 @@ def logPQ_sample(
     active_platedims:list[Dim],
     all_platedims:dict[str: Dim],
     groupvarname2Kdim:dict[str, Tensor],
+    varname2groupvarname:dict[str, str],
     sampler:Sampler,
     computation_strategy:Optional[Split],
     indices:dict[str, Tensor],
@@ -61,6 +62,7 @@ def logPQ_sample(
         active_platedims=active_platedims,
         all_platedims=all_platedims,
         groupvarname2Kdim=groupvarname2Kdim,
+        varname2groupvarname=varname2groupvarname,
         sampler=sampler,
         computation_strategy=computation_strategy)
 
@@ -90,6 +92,7 @@ def logPQ_sample(
                 active_platedims=active_platedims,
                 all_platedims=all_platedims,
                 groupvarname2Kdim=groupvarname2Kdim,
+                varname2groupvarname=varname2groupvarname,
                 sampler=sampler,
                 computation_strategy=computation_strategy,
                 indices=indices,

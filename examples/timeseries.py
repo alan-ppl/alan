@@ -1,5 +1,5 @@
 import torch as t
-from alan import Normal, Plate, BoundPlate, Problem, Timeseries, Data
+from alan import Normal, Plate, BoundPlate, Problem, Timeseries, Data, Group
 
 P = Plate( 
     ts1_init = Normal(0., 1.),
@@ -12,11 +12,15 @@ P = Plate(
 )
 
 Q = Plate( 
-    ts1_init = Normal(0., 1.),
-    ts2_init = Normal(0., 1.),
+    ts_init = Group(
+        ts1_init = Normal(0., 1.),
+        ts2_init = Normal(0., 1.),
+    ),
     T = Plate(
-        ts1 = Normal(0., 1.),
-        ts2 = Normal(0., 1.),
+        ts = Group(
+            ts1 = Normal(0., 1.),
+            ts2 = Normal(0., 1.),
+        ),
         a = Data(),
     ),
 )

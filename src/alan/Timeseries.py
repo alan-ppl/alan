@@ -86,34 +86,6 @@ class Timeseries(nn.Module):
     def opt_qem_params(self):
         return self.trans.opt_qem_params
 
-    def sample(
-            self,
-            name:str,
-            scope: dict[str, Tensor], 
-            inputs_params: dict,
-            active_platedims:list[Dim],
-            all_platedims:dict[str, Dim],
-            groupvarname2Kdim:dict[str, Dim],
-            sampler:Sampler,
-            reparam:bool,
-            ):
-
-        return sample_gdt(
-            prog={name: self},
-            scope=scope,
-            K_dim=groupvarname2Kdim[name],
-            groupvarname2Kdim=groupvarname2Kdim,
-            active_platedims=active_platedims,
-            sampler=sampler,
-            reparam=reparam,
-        )[name]
-
-    def tdd(self, scope):
-        return TorchDimTimeseries(self.dist, **self.paramname2val(scope))
-
-    def log_prob(self, x, active_platedims:list[Dim], K_dim:Dim):
-        pass
-
     def sample(self, scope, reparam: bool, active_platedims:list[Dim], K_dim:Dim, timeseries_perm):
         assert 0 <= len(active_platedims)
         (other_platedims, T_dim) = (active_platedims[:-1], active_platedims[-1])
@@ -148,3 +120,24 @@ class Timeseries(nn.Module):
             prev_state = sample_timestep
 
         return t.stack(sample_timesteps, 0)[T_dim]
+
+    def log_prob(self, sample, scope:dict, T_dim:Dim, Kinit_dim:Dim, K_dim:Dim):
+
+        assert isinstance(scope, dict)
+        assert isinstance(sample, Tensor)
+        assert isinstance(T_dim, Dim)
+        assert isinstance(Kinit_dim, Dim)
+        assert isinstance(K_dim, Dim)
+
+        initial_state = scope[self.init]
+        sample_prev = sample.order(K_dim)[Kinit_dim]
+
+        sample_prev = t.cat([
+            initial_state[None, ...],
+            sample.order(T_dim)[:-1],
+        ], 0)[T_dim]
+
+        scope = {**scope}
+        scope['prev'] = sample_prev
+
+        return self.trans.log_prob(sample, scope, None, None, None)

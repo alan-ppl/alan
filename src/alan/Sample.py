@@ -101,6 +101,7 @@ class Sample():
             active_platedims=[],
             all_platedims=self.all_platedims,
             groupvarname2Kdim=self.groupvarname2Kdim,
+            varname2groupvarname=self.problem.Q.varname2groupvarname(),
             sampler=self.sampler,
             computation_strategy=computation_strategy)
 
@@ -167,6 +168,7 @@ class Sample():
                 active_platedims=[],
                 all_platedims=self.all_platedims,
                 groupvarname2Kdim=self.groupvarname2Kdim,
+                varname2groupvarname=self.problem.Q.varname2groupvarname(),
                 sampler=self.sampler,
                 computation_strategy=computation_strategy,
                 indices={},

@@ -59,8 +59,7 @@ See `examples/example.py`
    
 
 ### Ideas:
-  * Grouped Timeseries init subtleties.
-    * As you create the model, put (grouped) timeseries init in the plate above.
+  * Check P: Timeseries, Q:Plate/Timeseries, but not P:Plate, Q:Timeseries, or P:Plate, Q:Data.
   * Check timeseries permutation is the right size.
   * Simplify sampler.resample_scope, by noting that:
     * all variables in scope are either parameters (no K's)

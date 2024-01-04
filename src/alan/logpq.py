@@ -24,6 +24,7 @@ def logPQ_plate(
         active_platedims:list[Dim],
         all_platedims:dict[str: Dim],
         groupvarname2Kdim:dict[str, Tensor],
+        varname2groupvarname:dict[str, str],
         sampler:Sampler,
         computation_strategy:Optional[Split]):
 
@@ -48,6 +49,7 @@ def logPQ_plate(
             scope=scope,
             active_platedims=active_platedims,
             groupvarname2Kdim=groupvarname2Kdim,
+            varname2groupvarname=varname2groupvarname,
             sampler=sampler,
             computation_strategy=computation_strategy,
             **sieda,
@@ -74,6 +76,7 @@ def _logPQ_plate(
         active_platedims:list[Dim],
         all_platedims:dict[str: Dim],
         groupvarname2Kdim:dict[str, Tensor],
+        varname2groupvarname:dict[str, str],
         sampler:Sampler,
         computation_strategy:Optional[Split],
         prev_lpq):
@@ -108,6 +111,7 @@ def _logPQ_plate(
         active_platedims=active_platedims,
         all_platedims=all_platedims,
         groupvarname2Kdim=groupvarname2Kdim,
+        varname2groupvarname=varname2groupvarname,
         sampler=sampler,
         computation_strategy=computation_strategy)
 
@@ -156,69 +160,6 @@ def _logPQ_plate(
 
     return lp
 
-
-
-def logPQ_timeseries(
-        name:str,
-        P:Timeseries,
-        Q:Group, 
-        sample: dict, 
-        inputs_params: dict,
-        data: None,
-        extra_log_factors: None, 
-        scope: dict[str, Tensor], 
-        active_platedims:list[Dim],
-        all_platedims:dict[str: Dim],
-        groupvarname2Kdim:dict[str, Tensor],
-        sampler:Sampler,
-        computation_strategy:Optional[Split]):
-
-    assert isinstance(P, Timeseries)
-    assert isinstance(Q, (Timeseries, Dist, Data))
-
-    assert isinstance(sample, OptionalTensor)
-    assert inputs_params is None
-    assert isinstance(data, OptionalTensor)
-    assert extra_log_factors is None
-
-    #Either sample or data is None.
-    if sample is None:
-        assert data is not None
-        assert isinstance(Q, Data)
-        sample_data = data
-    else: 
-        #sample is not None
-        assert data is None
-        assert isinstance(Q, (Dist, Timeseries))
-        sample_data = sample
-
-
-    T_dim     = active_platedims[-1]
-    K_dim     = groupvarname2Kdim[name]
-    Kinit_dim = groupvarname2Kdim[P.init]
-
-    initial_state = scope[P.init]
-    sample_prev = sample.order(K_dim)[Kinit_dim]
-
-    sample_prev = t.cat([
-        initial_state[None, ...],
-        sample.order(T_dim)[:-1],
-    ], 0)[T_dim]
-
-    scope = {**scope}
-    scope[name] = sample_prev
-
-    lpq = P.trans.log_prob(sample=sample_data, scope=scope)
-
-    if sample is not None:
-        Kdim = groupvarname2Kdim[name]
-        lq = Q.log_prob(sample=sample, scope=scope)
-        lq = sampler.reduce_logQ(lq, active_platedims, Kdim) # Think about whether this makes sense for timeseries.
-
-        lpq = lpq - lq - math.log(Kdim.size)
-        
-    return lpq, Kinit_dim, K_dim
-
 def logPQ_gdt(
         name:str,
         P:dict,
@@ -231,6 +172,7 @@ def logPQ_gdt(
         active_platedims:list[Dim],
         all_platedims:dict[str: Dim],
         groupvarname2Kdim:dict[str, Tensor],
+        varname2groupvarname:dict[str, str],
         sampler:Sampler,
         computation_strategy:Optional[Split]):
 
@@ -255,24 +197,35 @@ def logPQ_gdt(
         assert sample[k] is None
         assert isinstance(data[k], Tensor)
 
-        return prog_P[k].log_prob(sample=data[k], scope=scope)
+        return prog_P[k].log_prob(data[k], scope, None, None, None)
 
     Kdim = groupvarname2Kdim[name]
     total_logP = 0.
     total_logQ = 0.
 
+    #Gather extra dimensions for timeseries
+    Kinit_dims = []
+    for v in prog_P.values():
+        if isinstance(v, Timeseries):
+            Kinit_dims.append(groupvarname2Kdim[varname2groupvarname[v.init]])
+    Kinit_dim = Kinit_dims[0] if 1<=len(Kinit_dims) else None
+    for Kid in Kinit_dims:
+        assert Kid is Kinit_dim 
+
+    T_dim = active_platedims[-1] if 1<=len(active_platedims) else None
+
     for k in prog_P:
-        dist_P = prog_P[k]
-        dist_Q = prog_Q[k]
-        samp   = sample[k]
+        dist_P   = prog_P[k]
+        dist_Q   = prog_Q[k]
+        sample_k = sample[k]
 
         assert isinstance(dist_P, (Dist, Timeseries))
         assert isinstance(dist_Q, (Dist, Timeseries))
-        assert isinstance(samp, Tensor)
+        assert isinstance(sample_k, Tensor)
         assert data[k] is None
 
-        total_logP = total_logP + dist_P.log_prob(sample=samp, scope=scope)
-        total_logQ = total_logQ + dist_Q.log_prob(sample=samp, scope=scope)
+        total_logP = total_logP + dist_P.log_prob(sample_k, scope=scope, T_dim=T_dim, Kinit_dim=Kinit_dim, K_dim=Kdim)
+        total_logQ = total_logQ + dist_Q.log_prob(sample_k, scope=scope, T_dim=T_dim, Kinit_dim=Kinit_dim, K_dim=Kdim)
 
     total_logQ = sampler.reduce_logQ(total_logQ, active_platedims, Kdim)
     return total_logP - total_logQ - math.log(Kdim.size)
@@ -289,6 +242,7 @@ def lp_getter(
         active_platedims:list[Dim],
         all_platedims:dict[str: Dim],
         groupvarname2Kdim:dict[str, Tensor],
+        varname2groupvarname:dict[str, str],
         sampler:Sampler,
         computation_strategy:Optional[Split]):
     """Traverses Q according to the structure of P collecting log probabilities
@@ -330,6 +284,7 @@ def lp_getter(
             active_platedims=active_platedims,
             all_platedims=all_platedims,
             groupvarname2Kdim=groupvarname2Kdim,
+            varname2groupvarname=varname2groupvarname,
             sampler=sampler,
             computation_strategy=computation_strategy)
         if isinstance(lp, tuple):
