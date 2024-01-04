@@ -82,10 +82,10 @@ class Plate():
         if 0 != len(dup_names):
             raise Exception(f"Plate has duplicate names {dup_names}.")
 
-    def groupindex(self, d, groupname):
+    def grouped_get(self, d, groupname):
         gv = self.grouped_prog[groupname]
         if isinstance(gv, dict):
-            return {k: d[k] for k in grouped_prog}
+            return {k: d.get(k) for k in gv}
         else:
             assert isinstance(gv, Plate)
             return d[groupname]
