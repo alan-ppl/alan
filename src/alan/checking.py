@@ -33,16 +33,6 @@ def check_support(name:str, distP:Dist, distQ:Dist):
     if supportQ != supportP:
         raise Exception(f"Distributions in P and Q for {nameP} have different support.  For P: {supportP}.  While for Q: {supportQ}")
 
-def check_PQ_group(groupname: str, groupP: Group, groupQ: Group):
-    mismatch_pg_varnames(groupP.prog.keys(), groupQ.prog.keys(), area=f"group {groupname}")
-
-    for varname, distP in groupP.prog.items():
-        distQ = groupQ.prog[varname]
-        if isinstance(distQ, Data):
-            raise Exception("Cannot have data inside a Group")
-
-        check_support(varname, distP, distQ)
-
 def mismatch_names(A: list[str], B: list[str], prefix="", AnotB_msg="", BnotA_msg=""):
     #Check for mismatches between two lists of names
     inAnotB = list(set(A).difference(B))
@@ -52,7 +42,7 @@ def mismatch_names(A: list[str], B: list[str], prefix="", AnotB_msg="", BnotA_ms
     if 0 < len(inBnotA):
         raise Exception(f"{prefix} {inBnotA} {BnotA_msg}.")
     
-def mismatch_pg_varnames(P:list[str], Q:list[str], area:str):
+def mismatch_PG_varnames(P:list[str], Q:list[str], area:str):
     mismatch_names(
         P, Q,
         prefix=f"In {area}, there is a mismatch in the variable names, with",
@@ -71,12 +61,12 @@ def check_PQ_plate(platename: Optional[str], P: Plate, Q: Plate, data: dict):
     """
 
     #Check for mismatches in the varnames between.
-    namesP = P.prog.keys()
-    namesQ = Q.prog.keys()
-    mismatch_pg_varnames(namesP, namesQ, area=f"plate {platename}")
+    namesP = P.flat_prog.keys()
+    namesQ = Q.flat_prog.keys()
+    mismatch_PG_varnames(namesP, namesQ, area=f"plate {platename}")
 
     #Check data names match between Q and data.
-    data_names_in_Q = [k for (k, v) in Q.prog.items() if isinstance(v, Data)]
+    data_names_in_Q = [k for (k, v) in Q.flat_prog.items() if isinstance(v, Data)]
     data_names      = tree_values(data).keys()
     mismatch_names(
         data_names_in_Q, data_names,
@@ -86,10 +76,10 @@ def check_PQ_plate(platename: Optional[str], P: Plate, Q: Plate, data: dict):
     )
 
     #Now check names in Q 
-    for name, dgpt_P in P.prog.items():
+    for name, dgpt_P in P.flat_prog.items():
         if isinstance(dgpt_P, Dist):
             distP = dgpt_P
-            distQ = Q.prog[name]
+            distQ = Q.flat_prog[name]
             if not isinstance(distQ, (Dist, Data)):
                 raise Exception(f"{name} in P is a Dist, so {name} in Q should be a Data/Dist, but actually its a {type(distQ)}.")
             if isinstance(distQ, Dist):
@@ -97,7 +87,7 @@ def check_PQ_plate(platename: Optional[str], P: Plate, Q: Plate, data: dict):
 
         elif isinstance(dgpt_P, Timeseries):
             timeseries_P = dgpt_P
-            timeseries_dist_Q = Q.prog[name]
+            timeseries_dist_Q = Q.flat_prog[name]
             if not isinstance(timeseries_dist_Q, (Dist, Timeseries, Data)):
                 raise Exception(f"{name} in P is a Timeseries, so {name} in Q should be a Timeseries or a Dist, but actually its a {type(groupQ)}.")
             dist_Q = timeseries_dist_Q.trans if isinstance(timeseries_dist_Q, Timeseries) else timeseries_dist_Q
@@ -105,16 +95,13 @@ def check_PQ_plate(platename: Optional[str], P: Plate, Q: Plate, data: dict):
 
         elif isinstance(dgpt_P, Group):
             groupP = dgpt_P
-            groupQ = Q.prog[name]
+            groupQ = Q.flat_prog[name]
             if not isinstance(groupQ, Group):
                 raise Exception(f"{name} in P is a Group, so {name} in Q should also be a Group, but actually its a {type(groupQ)}.")
-            #Recurse
-            check_PQ_group(name, groupP, groupQ)
-
 
         elif isinstance(dgpt_P, Plate):
             plateP = dgpt_P
-            plateQ = Q.prog[name]
+            plateQ = Q.flat_prog[name]
             if not isinstance(plateQ, Plate):
                 raise Exception(f"{name} in P is a Plate, so {name} in Q should also be a Plate, but actually its a {type(plateQ)}.")
 

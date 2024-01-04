@@ -199,7 +199,7 @@ class Sample():
         """
         indices, N_dim = self._importance_sample_idxs(N=N, computation_strategy=computation_strategy)
 
-        samples = index_into_sample(self.detached_sample, indices, self.groupvarname2Kdim, self.P.varname2groupvarname())
+        samples = index_into_sample(self.detached_sample, indices, self.groupvarname2Kdim, self.Q.varname2groupvarname())
 
         return ImportanceSample(self.problem, samples, N_dim)
 
@@ -231,7 +231,7 @@ class Sample():
         #dimension names
         dimss = []
 
-        groupvarname2platenames = self.problem.P.groupvarname2platenames()
+        groupvarname2platenames = self.problem.Q.groupvarname2platenames()
 
         for groupvarnames_frozenset in joints:
             #Convert frozenset groupvarnames to tuple.
@@ -284,7 +284,7 @@ class Sample():
         """
         marginals = self._marginal_idxs(joints, computation_strategy=computation_strategy)
         samples = flatten_tree(self.detached_sample)
-        return Marginals(samples, marginals, self.all_platedims, self.P.varname2groupvarname())
+        return Marginals(samples, marginals, self.all_platedims, self.Q.varname2groupvarname())
 
     def _moments_uniform_input(self, moms, computation_strategy=no_checkpoint):
         """

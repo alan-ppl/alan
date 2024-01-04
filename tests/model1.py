@@ -2,10 +2,9 @@ import torch as t
 from alan import Normal, Plate, BoundPlate, Group, Problem, Data, mean, Split, OptParam, QEMParam
 from TestProblem import TestProblem
 
-P = Plate( ab = Group(
-        a = Normal(0, 1),
-        b = Normal("a", 1),
-    ),
+P = Plate(
+    a = Normal(0, 1),
+    b = Normal("a", 1),
     c = Normal(0, lambda a: a.exp()),
     p1 = Plate(
         d = Normal("a", 1),

@@ -9,7 +9,7 @@ from .reduce_Ks import reduce_Ks, sample_Ks
 from .Split import Split
 from .Sampler import Sampler
 from .dist import Dist
-from .logpq import logPQ_dist, logPQ_group, logPQ_plate, lp_getter
+from .logpq import lp_getter
 from .Data import Data
 
 PBP = Union[Plate, BoundPlate]
@@ -45,7 +45,8 @@ def logPQ_sample(
     if name is not None:
         active_platedims = [*active_platedims, all_platedims[name]]
 
-    scope = update_scope(scope, Q, sample, inputs_params)
+    scope = update_scope(scope, inputs_params)
+    scope = update_scope(scope, sample)
     
     #all_Ks doesn't include Ks from timeseries.
     lps, all_Ks, _, _ = lp_getter(
@@ -72,27 +73,29 @@ def logPQ_sample(
     if len(all_Ks) > 0:
         indices = {**indices, **sample_Ks(lps, all_Ks,N_dim, num_samples)}
         
-    for childname, childP in P.prog.items():
-        childQ = Q.prog.get(childname)
-        
-        if isinstance(childP, Plate):
-            assert isinstance(childQ, Plate)
-            indices = logPQ_sample(name=childname,
-            P=childP, 
-            Q=childQ, 
-            sample=sample.get(childname),
-            data=data.get(childname),
-            inputs_params=inputs_params.get(childname),
-            extra_log_factors=extra_log_factors.get(childname),
-            scope=scope,
-            active_platedims=active_platedims,
-            all_platedims=all_platedims,
-            groupvarname2Kdim=groupvarname2Kdim,
-            sampler=sampler,
-            computation_strategy=computation_strategy,
-            indices=indices,
-            num_samples=num_samples,
-            N_dim = N_dim)
+    for childname, childQ in Q.grouped_prog.items():
+        if isinstance(childQ, Plate):
+            childP = P.flat_prog[childname]
+            assert isinstance(childP, Plate)
+
+            indices = logPQ_sample(
+                name=childname,
+                P=childP, 
+                Q=childQ, 
+                sample=Q.grouped_get(sample, childname),
+                data=Q.grouped_get(data, childname),
+                inputs_params=inputs_params.get(childname),
+                extra_log_factors=extra_log_factors.get(childname),
+                scope=scope,
+                active_platedims=active_platedims,
+                all_platedims=all_platedims,
+                groupvarname2Kdim=groupvarname2Kdim,
+                sampler=sampler,
+                computation_strategy=computation_strategy,
+                indices=indices,
+                num_samples=num_samples,
+                N_dim = N_dim
+            )
 
     return indices
 
