@@ -96,9 +96,6 @@ class Group():
         
         result = {}       #This is the sample returned.
 
-        #resampled scope is the scope used in here when sampling from the Group
-        scope = self.filter_scope(scope)
-
         # Loop through all dists in the group and sample from them (plus potentially get 
         # logprobs of original and extended data IF extended_data is provided, i.e. not None)
         for name, dist in self.prog.items():
@@ -131,9 +128,6 @@ class Group():
         extended_platedims:dict[str, Dim],
         original_data: dict[str, Tensor],
         extended_data: dict[str, Tensor]):
-        
-        #resampled scope is the scope used in here when sampling from the Group
-        scope = self.filter_scope(scope)
 
         original_lls, extended_lls = {}, {}
 
