@@ -37,7 +37,7 @@ def sample_gdt(
     #All arguments on prog
     set_all_arg_list = set([arg for dist in prog.values() for arg in dist.all_args])
     #Remove references to self (either for previous things in the Group, or timeseries refs to self).
-    all_args = set_all_arg_list.difference(prog.keys()) #remove dependencies on other variables in the group.
+    all_args = set_all_arg_list.difference([*prog.keys(), 'prev']) #remove dependencies on other variables in the group.
 
     #Used mainly for non-timeseries
     sample_dims = [K_dim, *active_platedims] #Don't sample T_dim.
@@ -50,7 +50,7 @@ def sample_gdt(
 
     for k in all_args:
         if k not in scope:
-            raise Exception("{k} is not in scope") #!!!
+            raise Exception(f"{k} is not in scope") #!!!
 
     #Filter scope, to include only variables that are actually used.
     #Just for efficiency.

@@ -1,3 +1,4 @@
+import torch.nn as nn
 from .dist import _Dist, sample_gdt
 from .utils import *
 from .Sampler import Sampler
@@ -13,7 +14,7 @@ from .Sampler import Sampler
 #    raise Exception(f"The timeseries transition distribution for {name} must have some dependence on the previous timestep; you get that by including {name} as an argument in the transition distribution.")
 
 
-class Timeseries:
+class Timeseries(nn.Module):
     """
     In progress!!!!
 
@@ -61,6 +62,9 @@ class Timeseries:
        OptParam and QEMParam are currently banned in timeseries.
     """
     def __init__(self, init, trans):
+        super().__init__()
+
+        self.qem_dist = False
         self.is_timeseries = True
 
         if not isinstance(init, str):
@@ -74,8 +78,13 @@ class Timeseries:
 
         self.init = init
         self.trans = trans.finalize(None)
+        assert not self.trans.qem_dist
         #Will include own name, but that'll be eliminated in the first step of sample_gdt
         self.all_args = [init, *self.trans.all_args] 
+
+    @property
+    def opt_qem_params(self):
+        return self.trans.opt_qem_params
 
     def sample(
             self,
@@ -126,10 +135,10 @@ class Timeseries:
                     v = v.order(T_dim)[time]
                 timeseries_scope[k] = v
             #Put previous timestep for self into scope
-            timeseries_scope[name] = prev_state
+            timeseries_scope['prev'] = prev_state
 
             #sample the next timestep
-            sample_timestep = self.trans.sample(timeseries_scope, reparam, sample_dims)
+            sample_timestep = self.trans.sample(timeseries_scope, reparam, other_platedims, K_dim, None)
             sample_timesteps.append(sample_timestep)
 
             #Permute this timestep, ready for being used as prev_state.
@@ -138,63 +147,4 @@ class Timeseries:
                 sample_timestep = sample_timestep.order(K_dim)[timestep_perm, ...][K_dim]
             prev_state = sample_timestep
 
-        sample = t.stack(sample_timesteps, 0)[T_dim]
-            
-#    def sample(
-#            self,
-#            name:str,
-#            scope: dict[str, Tensor], 
-#            inputs_params: dict,
-#            active_platedims:list[Dim],
-#            all_platedims:dict[str, Dim],
-#            groupvarname2Kdim:dict[str, Dim],
-#            sampler:Sampler,
-#            reparam:bool,
-#            ):
-#
-#        if name not in self.trans.all_args:
-#            raise Exception(f"The timeseries transition distribution for {name} must have some dependence on the previous timestep; you get that by including {name} as an argument in the transition distribution.")
-#
-#        if 0 == len(active_platedims):
-#            raise Exception(f"Timeseries can't be in the top-layer plate, as there's no platesize at the top")
-#
-#        active_platedims, T_dim = (active_platedims[:-1], active_platedims[-1])
-#        K_dim = groupvarname2Kdim[name]
-#        Kprev_dim = Dim(f"{K_dim}_prev", K_dim.size)
-#        sample_dims = [K_dim, *active_platedims] #Don't sample T_dim.
-#
-#        if self.init not in scope:
-#            raise Exception(f"Initial state, {self.init}, not in scope for timeseries {name}")
-#
-#        #Set previous state equal to initial state.
-#        prev_state = scope[self.init]
-#        #Make sure K-dimension for initial state is Kprev_dim.
-#        prev_state = prev_state.order(groupvarname2Kdim[self.init])[Kprev_dim]
-#        #Check that prev_state has the right dimensions
-#        if set(prev_state.dims) != set([Kprev_dim, *active_platedims]):
-#            raise Exception(f"Initial state, {self.init}, doesn't have the right dimensions for timeseries {name}; the initial state must be defined one step up in the plate heirarchy")
-#
-#        unresampled_scope = self.filter_scope(scope) #drops initial state.
-#
-#        results = []
-#
-#        for time in range(T_dim.size):
-#            scope = {}
-#
-#            #select out the time'th element of anything with a time-dimension.
-#            for k, v in unresampled_scope.items():
-#                if T_dim in set(generic_dims(v)):
-#                    v = v.order(T_dim)[time]
-#                scope[k] = v
-#
-#            scope[name] = prev_state
-#            scope = sampler.resample_scope(scope, active_platedims, K_dim)
-#
-#            tdd = self.trans.tdd(scope)
-#            sample = tdd.sample(reparam, sample_dims, sample_shape=t.Size([]))
-#
-#            results.append(sample)
-#            prev_state = sample.order(K_dim)[Kprev_dim]
-#
-#        return t.stack(results, 0)[T_dim]
-#
+        return t.stack(sample_timesteps, 0)[T_dim]

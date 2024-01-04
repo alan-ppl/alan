@@ -5,8 +5,8 @@ P = Plate(
     ts1_init = Normal(0., 1.),
     ts2_init = Normal(0., 1.),
     T = Plate(
-        ts1 = Timeseries('ts1_init', Normal(lambda ts1: 0.9*ts1, 0.1)),
-        ts2 = Timeseries('ts2_init', Normal(lambda ts1, ts2: 0.9*ts1 + ts2, 0.1)),
+        ts1 = Timeseries('ts1_init', Normal(lambda prev: 0.9*prev, 0.1)),
+        ts2 = Timeseries('ts2_init', Normal(lambda ts1, prev: 0.9*ts1 + prev, 0.1)),
         a = Normal('ts2', 1.)
     ),
 )

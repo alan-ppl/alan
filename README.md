@@ -59,13 +59,12 @@ See `examples/example.py`
    
 
 ### Ideas:
+  * Grouped Timeseries init subtleties.
   * Simplify sampler.resample_scope, by noting that:
     * all variables in scope are either parameters (no K's)
     * random variables drawn from a dist (unique K)
     * random variable drawn from a group (non-unique K).
     * can reason about these more easily if we e.g. pass in varname2groupvarname.
-  * Another alternative:
-    - When indexing, leave the top-layer name inplace.
   * `importance_sample.dump` should output tensors with the `N` dimension first?
   * latent moments for `linear_gaussian_latents`
   * tests for mixture distributions.
