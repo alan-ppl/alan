@@ -92,6 +92,9 @@ class Sampler:
         """
 
         new_scope = {}
+        #Iterate through all tensors in the scope associated with a K-dimension
+        #each variable in scope has been directly sampled, so one K-dimension is
+        #associated with multiple tensors due to Groups.
         for var_Kdim,varname2tensor in Kdim2varname2tensors(scope, active_platedims).items():
             tensor0 = next(iter(varname2tensor.values()))
 

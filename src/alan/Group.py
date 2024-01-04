@@ -1,9 +1,10 @@
 import torch as t
 
 from typing import Optional
-from .dist import _Dist
+from .dist import _Dist, sample_gdt
 from .utils import *
 from .Sampler import Sampler
+
 
 class Group(): 
     """
@@ -58,9 +59,6 @@ class Group():
         set_all_arg_list = set([arg for dist in self.prog.values() for arg in dist.all_args])
         self.all_args = set_all_arg_list.difference(self.prog.keys()) #remove dependencies on other variables in the group.
 
-    def filter_scope(self, scope: dict[str, Tensor]):
-        return {k: v for (k,v) in scope.items() if k in self.all_args}
-
     def sample(
             self,
             name:Optional[str],
@@ -73,23 +71,16 @@ class Group():
             reparam:bool,
             ):
 
-        result = {}       #This is the sample returned.
-
-        Kdim = groupvarname2Kdim[name]
-        sample_dims = [Kdim, *active_platedims]
-
-        #resampled scope is the scope used in here when sampling from the Group
-        scope = self.filter_scope(scope)
-        scope = sampler.resample_scope(scope, active_platedims, Kdim)
-
-        for name, dist in self.prog.items():
-            tdd = dist.tdd(scope)
-            sample = tdd.sample(reparam, sample_dims, dist.sample_shape)
-
-            scope[name]  = sample
-            result[name] = sample
-
-        return result
+        return sample_gdt(
+            prog=self.prog,
+            scope=scope,
+            K_dim=groupvarname2Kdim[name],
+            groupvarname2Kdim=groupvarname2Kdim,
+            active_platedims=active_platedims,
+            sampler=sampler,
+            reparam=reparam,
+            all_args=self.all_args,
+        )
     
     def sample_extended(
             self,

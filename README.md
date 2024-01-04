@@ -66,9 +66,16 @@ ab = Group(
     b = Timeseries('a_init', Normal(lambda b: 0.9* b, 0.1))
 )
 ```
-  * But that means lots of duplicated code e.g. for filtering/resampling the scope in Dist.sample, Timeseries.sample and Group.sample.
-  * Solution: function for sample/log_prob that works for Group. Dist / Timeseries call this code, by looking like a one-element Group.  This code handles filtering / resampling the scope, fiddling with the Q log-probs.
-    - When combining Group and timeseries, we sample all timesteps of each variable before moviong on to the next variable.
+    - But that means lots of duplicated code e.g. for filtering/resampling the scope in Dist.sample, Timeseries.sample and Group.sample.
+    - Solution: function for sample/log_prob that works for Group. Dist / Timeseries call this code, by looking like a one-element Group.  This code handles filtering / resampling the scope, fiddling with the Q log-probs.
+      - When combining Group and timeseries, we sample all timesteps of each variable before moviong on to the next variable.
+  * An alternative:
+    - We don't have Group as part of internal datastructures.
+    - Instead, we have list of variables in Q representing group structure, [('a',), ('b', 'c')].
+    - When sampling / computing log-prob, we iterate through this list.
+    - Groups only on Q.
+  * Another alternative:
+    - When indexing, leave the top-layer name inplace.
   * `importance_sample.dump` should output tensors with the `N` dimension first?
   * latent moments for `linear_gaussian_latents`
   * tests for mixture distributions.

@@ -1,6 +1,17 @@
-from .dist import _Dist
+from .dist import _Dist, sample_gdt
 from .utils import *
 from .Sampler import Sampler
+
+
+
+
+
+#Checks to Timeseries init.
+#if 0 == len(active_platedims):
+#    raise Exception(f"Timeseries can't be in the top-layer plate, as there's no platesize at the top")
+#if name not in self.trans.all_args:
+#    raise Exception(f"The timeseries transition distribution for {name} must have some dependence on the previous timestep; you get that by including {name} as an argument in the transition distribution.")
+
 
 class Timeseries:
     """
@@ -26,7 +37,7 @@ class Timeseries:
            )
        )
 
-    In the expmlae:
+    In the exmplae:
 
     * ``T`` is the plate (i.e. ``all_platesizes['T']``) is the length of the timeseries.  Note that this is a slight abuse of the term "Plate", which is usually only used to refer to independent variables.
     * ``ts`` is the name of the timeseries random variable itself.
@@ -50,6 +61,7 @@ class Timeseries:
        OptParam and QEMParam are currently banned in timeseries.
     """
     def __init__(self, init, trans):
+        self.is_timeseries = True
 
         if not isinstance(init, str):
             raise Exception(f"the first / `init` argument in a Timeseries should be a string, representing a variable name in the above plate")

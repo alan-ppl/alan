@@ -12,6 +12,85 @@ from .Stores import BufferStore
 from .Param import QEMParam, OptParam, Param
 
 
+def sample_gdt(
+        prog:dict,
+        scope: dict[str, Tensor], 
+        active_platedims:list[Dim],
+        K_dim: Dim,
+        groupvarname2Kdim,
+        sampler:Sampler,
+        reparam:bool,
+        all_args:list[Dim],
+        ):
+
+    if 1<len(active_platedims):
+        other_platedims, T_dim = (active_platedims[:-1], active_platedims[-1])
+    Kprev_dim = Dim(f"{K_dim}_prev", K_dim.size)
+    sample_dims = [K_dim, *active_platedims] #Don't sample T_dim.
+
+    result = {}       #This is the sample returned.
+
+    for k in all_args:
+        if k not in scope:
+            raise Exception("{k} is not in scope") #!!!
+
+    #Filter scope, to include only variables that are actually used.
+    #Just for efficiency.
+    scope = {k: v for (k,v) in scope.items() if k in all_args}
+    #Resample K-dimensions.
+    scope = sampler.resample_scope(scope, active_platedims, K_dim)
+
+    #Resample permutation across timesteps
+    timeseries_perm = sampler.perm(dims=set(sample_dims), Kdim=K_dim)
+
+    for name, dist in prog.items():
+        if not dist.is_timeseries:
+            #Not timeseries!!
+            tdd = dist.tdd(scope)
+            sample = tdd.sample(reparam, sample_dims, dist.sample_shape)
+        else:
+            #Timeseries!!
+
+            #Set previous state equal to initial state.
+            prev_state = scope[self.init]
+            #Make sure K-dimension for initial state is Kprev_dim.
+            prev_state = prev_state.order(groupvarname2Kdim[self.init])[K_dim]
+            #Check that prev_state has the right dimensions
+            if set(prev_state.dims) != set([Kprev_dim, *other_platedims]):
+                raise Exception(f"Initial state, {self.init}, doesn't have the right dimensions for timeseries {name}; the initial state must be defined one step up in the plate heirarchy")
+
+            sample_timesteps = []
+
+            for time in range(T_dim.size):
+                #new scope, where we select out the time'th timestep for any tensor with a time dimension.
+                #all these variables have already been resampled.
+                timeseries_scope = {}
+                for k, v in scope.items():
+                    if T_dim in set(generic_dims(v)):
+                        v = v.order(T_dim)[time]
+                    timeseries_scope[k] = v
+
+                #Permute the previous timestep
+                timestep_perm = timeseries_perm.order(T_dim)[time]
+                prem_prev_state = prev_state.order(K_dim)[timestep_perm, ...][Kprev_dim]
+                #add previous timestep for this variable to scope.
+                timeseries_scope[name] = perm_prev_state
+
+                #sample the next timestep
+                tdd = self.trans.tdd(ts_scope)
+                sample_timestep = tdd.sample(reparam, sample_dims, sample_shape=t.Size([]))
+
+                sample_timesteps.append(sample_timestep)
+                prev_state = sample_timestep
+
+            sample = t.stack(results, 0)[T_dim]
+
+        scope[name]  = sample
+        result[name] = sample
+
+    return result
+
+
 
 def apply_func_val(func_val, scope):
     if isinstance(func_val, str):
@@ -58,6 +137,8 @@ class Dist(torch.nn.Module):
     def __init__(self, varname, dist, args, sample_shape, kwargs):
         super().__init__()
         #A tensor that e.g. moves to GPU when we call `problem.to(device='cuda')`.
+        self.is_timeseries = False
+
         self.dist = dist
 
         self.register_buffer("_device_tensor", t.zeros(()))
@@ -173,15 +254,16 @@ class Dist(torch.nn.Module):
             reparam:bool,
             ):
 
-        Kdim = groupvarname2Kdim[name]
-        sample_dims = [Kdim, *active_platedims]
-
-        filtered_scope = self.filter_scope(scope)
-        resampled_scope = sampler.resample_scope(filtered_scope, active_platedims, Kdim)
-
-        sample = self.tdd(resampled_scope).sample(reparam, sample_dims, self.sample_shape)
-
-        return sample
+        return sample_gdt(
+            prog={name: self},
+            scope=scope,
+            K_dim=groupvarname2Kdim[name],
+            groupvarname2Kdim=groupvarname2Kdim,
+            active_platedims=active_platedims,
+            sampler=sampler,
+            reparam=reparam,
+            all_args=self.all_args,
+        )[name]
     
     def sample_extended(
             self,
