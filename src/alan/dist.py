@@ -10,6 +10,14 @@ from .TorchDimDist import TorchDimDist
 from .Sampler import Sampler
 from .Stores import BufferStore
 from .Param import QEMParam, OptParam, Param
+from .Data import Data
+
+def datagroup(group):
+    assert isinstance(group, dict)
+    hasdata = any(isinstance(v, Data) for v in group.values())
+    more_than_one = 2 <= len(group)
+    assert not ((more_than_one) and hasdata)
+    return hasdata
 
 
 def sample_gdt(
@@ -21,6 +29,10 @@ def sample_gdt(
         sampler:Sampler,
         reparam:bool,
         ):
+
+    assert not datagroup(prog)
+
+
 
     #All arguments on prog
     set_all_arg_list = set([arg for dist in prog.values() for arg in dist.all_args])

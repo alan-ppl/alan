@@ -8,9 +8,8 @@ from .Sampler import Sampler
 from .dist import Dist
 from .Group import Group
 from .Data import Data
-from .dist import Dist, _Dist
+from .dist import Dist, _Dist, sample_gdt, datagroup
 from .Timeseries import Timeseries
-
 
 
 
@@ -49,14 +48,28 @@ class Plate():
 
     """
     def __init__(self, **kwargs):
-        self.prog = {}
 
-        #Finalize the distributions by passing in the varname, and check types
-        for varname, dgpt in kwargs.items():
-            if isinstance(dgpt, _Dist):
-                dgpt = dgpt.finalize(varname)
-            assert isinstance(dgpt, (Dist, Group, Data, Plate, Timeseries))
-            self.prog[varname] = dgpt
+        #Finalise any dists
+        kwargs = {k: v.finalize(k) if isinstance(v, _Dist) else v for (k, v) in kwargs.items()}
+
+        self.grouped_prog = {}
+        self.flat_prog = {}
+        for k, v in kwargs.items():
+            if isinstance(v, Plate):
+                self.grouped_prog[k] = v
+                self.flat_prog[k] = v
+            else:
+                assert isinstance(v, (Group, Dist, Timeseries, Data))
+
+                if isinstance(v, Group):
+                    group = v.prog
+                else:
+                    group = {k: v}
+
+                self.grouped_prog[k] = {}
+                for gk, gv in group.items():
+                    self.grouped_prog[k][gk] = gv
+                    self.flat_prog[gk] = gv
 
 
         #Error checking: plate/variable/group names aren't reserved
@@ -68,6 +81,14 @@ class Plate():
         dup_names = list_duplicates(all_prog_names)
         if 0 != len(dup_names):
             raise Exception(f"Plate has duplicate names {dup_names}.")
+
+    def groupindex(self, d, groupname):
+        gv = self.grouped_prog[groupname]
+        if isinstance(gv, dict):
+            return {k: d[k] for k in grouped_prog}
+        else:
+            assert isinstance(gv, Plate)
+            return d[groupname]
 
     def sample(
             self,
@@ -84,12 +105,28 @@ class Plate():
         if name is not None:
             active_platedims = [*active_platedims, all_platedims[name]]
 
-        scope = update_scope_inputs_params(scope, inputs_params)
+        scope = update_scope(scope, inputs_params)
         sample = {}
-        
-        for childname, dgpt in self.prog.items():
-            if not isinstance(dgpt, Data):
-                childsample = dgpt.sample(
+
+        for childname, prog in self.grouped_prog.items():
+            if isinstance(prog, dict):
+                if not datagroup(prog):
+                    childsample = sample_gdt(
+                        prog=prog if isinstance(prog, dict) else {name: prog},
+                        scope=scope,
+                        active_platedims=active_platedims,
+                        K_dim=groupvarname2Kdim[childname],
+                        groupvarname2Kdim=groupvarname2Kdim,
+                        sampler=sampler,
+                        reparam=True
+                    )
+
+                    for k, v in childsample.items():
+                        sample[k] = childsample[k]
+                        scope[k] = childsample[k]
+            else:
+                assert isinstance(prog, Plate)
+                platesample = prog.sample(
                     name=childname,
                     scope=scope, 
                     inputs_params=inputs_params.get(childname),
@@ -100,8 +137,8 @@ class Plate():
                     reparam=reparam,
                 )
 
-                sample[childname] = childsample
-                scope = update_scope_sample(scope, childname, dgpt, childsample)
+                sample[childname] = platesample
+                scope[childname] = platesample
 
         return sample
 
@@ -121,7 +158,7 @@ class Plate():
         if name is not None:
             active_extended_platedims = [*active_extended_platedims, extended_platedims[name]]
 
-        scope = update_scope_inputs_params(scope, inputs_params)
+        scope = update_scope(scope, inputs_params)
 
         for childname, childP in self.prog.items():
 
@@ -139,7 +176,7 @@ class Plate():
             )
 
             sample[childname] = childsample
-            scope = update_scope_sample(scope, childname, childP, childsample)
+            scope = update_scope(scope, childsample)
 
         return sample
     
@@ -154,7 +191,7 @@ class Plate():
             original_data:dict[str, Tensor],
             extended_data:dict[str, Tensor]):
 
-        scope = update_scope_inputs_params(scope, inputs_params)
+        scope = update_scope(scope, inputs_params)
 
         original_lls, extended_lls = {}, {}
 
@@ -171,7 +208,7 @@ class Plate():
                 extended_data=extended_data
             )
 
-            scope = update_scope_sample(scope, childname, childP, sample.get(childname))
+            scope = update_scope(scope, sample.get(childname))
 
             original_lls = {**original_lls, **child_original_lls}
             extended_lls = {**extended_lls, **child_extended_lls}
@@ -184,12 +221,13 @@ class Plate():
         K-dimension for each.
         """
         result = {}
-        for childname, childP in self.prog.items():
-            if isinstance(childP, (Dist, Group, Timeseries)):
-                result[childname] = Dim(f"K_{childname}", K)
-            elif isinstance(childP, Plate):
-                assert isinstance(childP, Plate)
-                result = {**result, **childP.groupvarname2Kdim(K)}
+        for groupname, v in self.grouped_prog.items():
+            if isinstance(v, dict):
+                if not datagroup(v):
+                    result[groupname] = Dim(f"K_{groupname}", K)
+            else:
+                assert isinstance(v, Plate)
+                result = {**result, **v.groupvarname2Kdim(K)}
         return result
 
     def all_prog_names(self):
@@ -198,38 +236,27 @@ class Plate():
         Used to check that all names in the program are unique.
         """
         result = []
-        for k, v in self.prog.items():
+        for k, v in self.grouped_prog.items():
             result.append(k)
-            if isinstance(v, (Plate, Group)):
-                result = [*result, *v.all_prog_names()]
+            if isinstance(v, dict):
+                if 2 <= len(v):
+                    result = [*result, *v.keys()]
             else:
-                assert isinstance(v, (Dist, Data, Timeseries))
+                assert isinstance(v, Plate)
+                result = [*result, *v.all_prog_names()]
         return result
 
     def varname2groupvarname_dist(self):
         result = {}
-        for k, v in self.prog.items():
-            if isinstance(v, Dist):
-                varname = k
-                groupvarname = k
-                dist = v
-                result[varname] = (groupvarname, dist)
-            elif isinstance(v, Timeseries):
-                varname = k
-                groupvarname = k
-                dist = v.trans
-                result[varname] = (groupvarname, dist)
-            elif isinstance(v, Group):
-                for gk, gv in v.prog.items():
-                    varname = gk
-                    groupvarname = k
-                    dist = gv
-                    assert isinstance(dist, Dist)
-                    result[varname] = (groupvarname, dist)
-            elif isinstance(v, Plate):
-                result = {**result, **v.varname2groupvarname_dist()}
+        for k, v in self.grouped_prog.items():
+            if isinstance(v, dict):
+                if not datagroup(v):
+                    for gk, gv in v.items():
+                        assert isinstance(gv, (Dist, Timeseries))
+                        result[gk] = (k, gv)
             else:
-                assert isinstance(v, Data)
+                assert isinstance(v, Plate)
+                result = {**result, **v.varname2groupvarname_dist()}
         return result
 
     def varname2groupvarname(self):
@@ -249,64 +276,38 @@ class Plate():
         Used for constructing Js for marginals + posterior sampling
         """
         result = {}
-        for name, dgpt in self.prog.items():
-            if isinstance(dgpt, (Dist, Group, Timeseries)):
+        for name, dgpt in self.grouped_prog.items():
+            if isinstance(dgpt, dict):
                 result[name] = active_platenames
-            elif isinstance(dgpt, Plate):
+            else:
+                assert isinstance(dgpt, Plate)
                 active_platenames = [*active_platenames, name]
                 result = {**result, **dgpt._groupvarname2platenames(active_platenames)}
-            else:
-                assert isinstance(dgpt, Data)
         return result
 
     def all_platenames(self):
         result = []
-        for groupvarname, dgpt in self.prog.items():
+        for varname, dgpt in self.flat_prog.items():
             if isinstance(dgpt, Plate):
                 result = [*result, *dgpt.all_platenames()]
             else:
-                assert isinstance(dgpt, (Group, Dist, Data, Timeseries))
+                assert isinstance(dgpt, (Dist, Data, Timeseries))
         return result
 
 
 #Functions to update the scope
 
-def update_scope_sample(scope: dict[str, Tensor], name:str, dgpt, sample):
-    return update_scope_samples(scope, {name:dgpt}, {name: sample})
+def update_scope(scope: dict[str, Tensor], samples_inputs_params:dict):
+    assert isinstance(scope, dict)
+    assert isinstance(samples_inputs_params, dict)
 
-def update_scope_samples(scope: dict[str, Tensor], Q_prog:dict, samples:dict):
     scope = {**scope}
 
-    for childname, childQ in Q_prog.items():
-        if isinstance(childQ, Data):
-            assert childname not in samples
-        else:
-            sample = samples[childname]
-
-            if isinstance(childQ, (Dist, Timeseries)):
-                assert isinstance(sample, Tensor)
-                scope[childname] = sample
-            elif isinstance(childQ, Group):
-                assert isinstance(sample, dict)
-                for gn, gs in sample.items():
-                    assert isinstance(gs, Tensor)
-                    scope[gn] = gs
-            else:
-                assert isinstance(childQ, Plate)
-    return scope
-
-def update_scope_inputs_params(scope:dict[str, Tensor], inputs_params:dict):
-    scope = {**scope}
-    for n, v in inputs_params.items():
-        if isinstance(v, Tensor):
-            scope[n] = v
-        else:
-            assert isinstance(v, dict)
-    return scope
-
-def update_scope(scope:dict[str, Tensor], P:Plate, sample:dict, inputs_params:dict):
-    scope = update_scope_inputs_params(scope, inputs_params)
-    scope = update_scope_samples(scope, P.prog, sample)
+    for k, v in samples_inputs_params.items():
+        assert k not in scope
+        if not isinstance(v, dict):
+            assert isinstance(v, Tensor)
+            scope[k] = v
     return scope
 
 
@@ -317,7 +318,7 @@ def empty_tree(plate: Plate):
     assert isinstance(plate, Plate)
 
     result = {}
-    for n, v in plate.prog.items():
+    for n, v in plate.flat_prog.items():
         if isinstance(v, Plate):
             result[n] = empty_tree(v)
     return result
@@ -329,7 +330,7 @@ def all_platenames(plate: Plate):
     assert isinstance(plate, Plate)
 
     result = []
-    for n, v in plate.prog.items():
+    for n, v in plate.flat_prog.items():
         if isinstance(v, Plate):
             result = [*result, n, *all_platenames(v)]
     return result

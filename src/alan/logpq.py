@@ -93,7 +93,8 @@ def _logPQ_plate(
         new_platedim = all_platedims[name]
         active_platedims = [*active_platedims, new_platedim]
 
-    scope = update_scope(scope, Q, sample, inputs_params)
+    scope = update_scope(scope, inputs_params)
+    scope = update_scope(scope, sample)
 
     lps, all_Ks, K_inits, K_currs = lp_getter(
         name=name,
@@ -307,6 +308,67 @@ def logPQ_group(
     logPQ = total_logP - total_logQ - math.log(Kdim.size)
     return logPQ
 
+def logPQ_gdt(
+        name:str,
+        prog_P:dict,
+        prog_Q:dict,
+        sample: dict, 
+        inputs_params: dict,
+        data: None,
+        extra_log_factors: None, 
+        scope: dict[str, Tensor], 
+        active_platedims:list[Dim],
+        all_platedims:dict[str: Dim],
+        groupvarname2Kdim:dict[str, Tensor],
+        sampler:Sampler,
+        computation_strategy:Optional[Split]):
+
+    assert isinstance(sample, dict)
+    assert inputs_params is None
+    assert extra_log_factors is None
+
+    assert len(prog_P) == len(prog_Q)
+    assert 1<=len(prog_P) 
+
+    isgroup = 2<=len(prog_P)
+    hasdata = (not isgroup) and isinstance(next(iter(prog_Q.values())), Data)
+
+    for dist_P in prog_P.values():
+        assert isinstance(prog_P, (Dist, Timeseries))
+
+    if hasdata:
+        1==len(prog_Q)
+        for k, dist_Q in prog_Q:
+            assert isinstance(dist_Q, Data)
+            assert sample[k] is None
+            assert isinstance(data[k], Tensor)
+    else:
+        for k in prog_Q:
+            assert isinstance(dist_Q, (Dist, Timeseries))
+            assert isinstance(sample[k], Tensor)
+            assert data[k] is None
+
+    Kdim = groupvarname2Kdim[name]
+
+    total_logP = 0.
+    total_logQ = 0.
+
+    for childname, dist_P in prog_P.items():
+        dist_Q = Q.prog[childname]
+        sample_data = data[childname] if hasdata else sample[childname]
+        assert isinstance(sample_data, Tensor)
+
+        total_logP = total_logP + dist_P.log_prob(sample=sample_data, scope=scope)
+
+        if not hasdata:
+            total_logQ = total_logQ + childQ.log_prob(sample=sample_data, scope=scope)
+
+    lpq = total_logP
+    if not hasdata:
+        total_logQ = sampler.reduce_logQ(total_logQ, active_platedims, Kdim)
+        lpq = lpq - total_logQ - math.log(Kdim.size)
+
+    return logPQ
 
 def lp_getter(
         name:Optional[str],
@@ -345,19 +407,15 @@ def lp_getter(
         #childQ doesn't necessarily have a distribution if sample_data is data.
         #childQ defaults to None in that case.
 
-        if isinstance(childP, Dist):
-            assert isinstance(childQ, (Dist, Data))
-            method = logPQ_dist
+        if isinstance(childP, (Dist, Group)):
+            method = logPQ_gdt
         elif isinstance(childP, Timeseries):
             assert isinstance(childQ, (Dist, Timeseries, Data))
             method = logPQ_timeseries
-        elif isinstance(childP, Plate):
+        else:
+            assert isinstance(childP, Plate)
             assert isinstance(childQ, Plate)
             method = logPQ_plate
-        else:
-            isinstance(childP, Group)
-            assert isinstance(childQ, Group)
-            method = logPQ_group
 
         lp = method(
             name=childname,
