@@ -1,5 +1,5 @@
 import torch as t
-from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, IndependentSample, Data
+from alan import Normal, Plate, BoundPlate, Group, Problem, Data
 
 t.manual_seed(0)
 
@@ -31,24 +31,23 @@ Q = Plate(
     ),
 )
 
-P = BoundPlate(P)
-Q = BoundPlate(Q, params={'a_mean': t.zeros(()), 'd_mean':t.zeros(3, names=('p1',))})
-
 platesizes = {'p1': 3, 'p2': 4}
 data = {'e': t.randn(3, 4, names=('p1', 'p2'))}
 
-prob = Problem(P, Q, platesizes, data)
+P = BoundPlate(P, platesizes)
+Q = BoundPlate(Q, platesizes, extra_opt_params={'a_mean': t.zeros(()), 'd_mean':t.zeros(3, names=('p1',))})
+
+prob = Problem(P, Q, data)
 
 # Get some initial samples (with K dims)
-sampling_type = IndependentSample
-sample = prob.sample(5, True, sampling_type)
+sample = prob.sample(5, True)
 
 # Get importance samples (with N dims)
-importance_sample = sample.importance_sample(num_samples=10)
+importance_sample = sample.importance_sample(N=10)
 
 # Get predictive (extended) samples (with N dims)
 extended_platesizes = {'p1': 5, 'p2': 6}
-predictive_samples = importance_sample.extend(extended_platesizes, True, None)
+predictive_samples = importance_sample.extend(extended_platesizes, None)
 print(predictive_samples.dump())
 
 # Sample fake extended data (really the first (3,4) of this should be the same as the original data)

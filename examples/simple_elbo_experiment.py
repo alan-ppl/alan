@@ -1,5 +1,5 @@
 import torch as t
-from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, IndependentSample, Data
+from alan import Normal, Plate, BoundPlate, Group, Problem, Data
 
 device = t.device('cuda' if t.cuda.is_available() else 'cpu')
 
@@ -12,7 +12,7 @@ platesizes = {'p1': 3, 'p2': 4}
 print("Scalar-valued random variable model")
 elbos = t.zeros((len(Ks), num_runs)).to(device)
 
-data = {'e': t.randn(3, 4, names=('p1', 'p2')).to(device)}
+data = {'e': t.randn(3, 4, names=('p1', 'p2'))}
 
 for num_run in range(num_runs):
     # if num_run % 100 == 0: 
@@ -46,16 +46,16 @@ for num_run in range(num_runs):
             ),
         )
 
-        P = BoundPlate(P)
-        Q = BoundPlate(Q, params={'a_mean': t.zeros(()).to(device),
-                                  'd_mean':t.zeros(3, names=('p1',)).to(device)})
+        P = BoundPlate(P, platesizes)
+        Q = BoundPlate(Q, platesizes, extra_opt_params={'a_mean': t.zeros(()),
+                                                        'd_mean':t.zeros(3, names=('p1',))})
 
-        prob = Problem(P, Q, platesizes, data)
+        prob = Problem(P, Q, data)
+        prob.to(device)
 
-        sampling_type = IndependentSample
-        sample = prob.sample(K, True, sampling_type)
+        sample = prob.sample(K, True)
 
-        elbo = sample.elbo()
+        elbo = sample.elbo_nograd()
 
         elbos[K_idx, num_run] = elbo
 
@@ -69,7 +69,7 @@ print("Vector-valued random variable model")
 elbos = t.zeros((len(Ks), num_runs)).to(device)
 
 d = 25
-data = {'e': t.randn(3, 4, d, names=('p1', 'p2', None)).to(device)}
+data = {'e': t.randn(3, 4, d, names=('p1', 'p2', None))}
 
 for num_run in range(num_runs):
     # if num_run % 100 == 0: 
@@ -77,42 +77,42 @@ for num_run in range(num_runs):
     for K_idx, K in enumerate(Ks):
         P = Plate(
             ab = Group(
-                a = Normal(t.zeros((d,)).to(device), t.ones((d,)).to(device)),
-                b = Normal("a", t.ones((d,)).to(device)),
+                a = Normal(t.zeros((d,)), t.ones((d,))),
+                b = Normal("a", t.ones((d,))),
             ),
-            c = Normal(t.ones((d,)).to(device), lambda a: a.exp()),
+            c = Normal(t.ones((d,)), lambda a: a.exp()),
             p1 = Plate(
-                d = Normal("a", t.ones((d,)).to(device)),
+                d = Normal("a", t.ones((d,))),
                 p2 = Plate(
-                    e = Normal("d", t.ones((d,)).to(device)),
+                    e = Normal("d", t.ones((d,))),
                 ),
             ),
         )
 
         Q = Plate(
             ab = Group(
-                a = Normal("a_mean", t.ones((d,)).to(device)),
-                b = Normal("a", t.ones((d,)).to(device)),
+                a = Normal("a_mean", t.ones((d,))),
+                b = Normal("a", t.ones((d,))),
             ),
-            c = Normal(t.zeros((d,)).to(device), lambda a: a.exp()),
+            c = Normal(t.zeros((d,)), lambda a: a.exp()),
             p1 = Plate(
-                d = Normal("d_mean", t.ones((d,)).to(device)),
+                d = Normal("d_mean", t.ones((d,))),
                 p2 = Plate(
                     e = Data()
                 ),
             ),
         )
 
-        P = BoundPlate(P)
-        Q = BoundPlate(Q, params={'a_mean': t.zeros((d,)).to(device),
-                                  'd_mean':t.zeros((3,d), names=('p1',None)).to(device)})        
+        P = BoundPlate(P, platesizes)
+        Q = BoundPlate(Q, platesizes, extra_opt_params={'a_mean': t.zeros((d,)),
+                                                        'd_mean': t.zeros((3,d), names=('p1',None))})        
 
-        prob = Problem(P, Q, platesizes, data)
+        prob = Problem(P, Q, data)
+        prob.to(device)
 
-        sampling_type = IndependentSample
-        sample = prob.sample(K, True, sampling_type)
+        sample = prob.sample(K, True)
 
-        elbo = sample.elbo()
+        elbo = sample.elbo_nograd()
 
         elbos[K_idx, num_run] = elbo
 

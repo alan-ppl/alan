@@ -1,8 +1,5 @@
 import torch as t
-import functorch.dim
-from functorch.dim import Dim, dims
-
-from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, IndependentSample, Data
+from alan import Normal, Plate, BoundPlate, Group, Problem, Data
 
 t.manual_seed(127)
 
@@ -20,19 +17,19 @@ pred_dist = t.distributions.Normal(posterior_mean, (1 + posterior_var)**(1/2))
 true_pred_lik = pred_dist.log_prob(t.tensor([3.0])).sum()
 
 
-sampling_type = IndependentSample
-
 P = Plate(mu = Normal(0, 1), 
-                        p1 = Plate(obs = Normal("mu", 1)))
+          p1 = Plate(obs = Normal("mu", 1)))
         
 Q = Plate(mu = Normal("mu_mean", 1),
-                 p1 = Plate(obs = Data()))
+          p1 = Plate(obs = Data()))
 
-P = BoundPlate(P)
-Q = BoundPlate(Q, params={'mu_mean': t.zeros(())})
 platesizes = {'p1': 3}
 data = {'obs': data.refine_names('p1')}
-prob = Problem(P, Q, platesizes, data)
+
+P = BoundPlate(P, platesizes)
+Q = BoundPlate(Q, platesizes, extra_opt_params={'mu_mean': t.zeros(())})
+
+prob = Problem(P, Q, data)
 
 Ks = [1,3,10,30,100,300]
 Ns = [1,10,100,1000,10000,100000,1000000,10000000]
@@ -43,9 +40,9 @@ results = t.zeros((len(Ks), len(Ns), num_runs))
 for i, K in enumerate(Ks):
     for j, num_samples in enumerate(Ns):
         for k in range(num_runs):
-            sample = prob.sample(K, True, sampling_type)
+            sample = prob.sample(K, True)
             importance_sample = sample.importance_sample(num_samples)
-            predictive_samples = importance_sample.extend(extended_platesizes, True, None)
+            predictive_samples = importance_sample.extend(extended_platesizes, None)
             ll = predictive_samples.predictive_ll(extended_data)
 
             print(f"K={K}, N={num_samples}, run {k}: {ll['obs']}")

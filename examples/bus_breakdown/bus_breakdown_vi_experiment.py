@@ -1,6 +1,6 @@
 import torch as t
 import torchopt
-from alan_simplified import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, IndependentSample, Data
+from alan import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, Data
 import pickle
 import time
 from bus_breakdown import load_data_covariates, generate_problem
@@ -34,19 +34,17 @@ for num_run in range(num_runs):
 
             prob = generate_problem(device, platesizes, data, covariates)
 
-            sampling_type = IndependentSample
-
             # opt = t.optim.Adam(prob.Q.parameters(), lr=lr)
             opt = torchopt.Adam(prob.Q.parameters(), lr=lr)
 
             for i in range(num_iters+1):
                 opt.zero_grad()
 
-                sample = prob.sample(K, True, sampling_type)
-                elbo = sample.elbo()
+                sample = prob.sample(K, True)
+                elbo = sample.elbo_vi()
 
-                importance_sample = sample.importance_sample(num_samples=10)
-                extended_importance_sample = importance_sample.extend(all_platesizes, False, all_covariates)
+                importance_sample = sample.importance_sample(N=10)
+                extended_importance_sample = importance_sample.extend(all_platesizes, all_covariates)
                 ll = extended_importance_sample.predictive_ll(all_data)
 
                 if i % 50 == 0 or True:

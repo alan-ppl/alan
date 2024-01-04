@@ -1,5 +1,5 @@
 import torch as t
-from alan_simplified import Normal, Binomial, Plate, BoundPlate, Group, Problem, IndependentSample, Data
+from alan import Normal, Binomial, Plate, BoundPlate, Group, Problem, Data
 
 def load_data_covariates(device, run=0):
     M, J, I = 3, 3, 30
@@ -83,32 +83,32 @@ def generate_problem(device, platesizes, data, covariates):
         )
     )
 
-    P = BoundPlate(P, inputs = covariates)
+    P = BoundPlate(P, platesizes, inputs = covariates)
 
-    Q = BoundPlate(Q, inputs = covariates,
-                      params = {"log_sigma_phi_psi_loc":   t.zeros(()),
-                                "log_sigma_phi_psi_scale": t.ones(()),
+    Q = BoundPlate(Q, platesizes, inputs = covariates,
+                      extra_opt_params = {"log_sigma_phi_psi_loc":   t.zeros(()),
+                                          "log_sigma_phi_psi_scale": t.ones(()),
 
-                                "psi_loc":   t.zeros((run_type_dim,)),
-                                "psi_scale": t.ones((run_type_dim,)),
-                                "phi_loc":   t.zeros((bus_company_name_dim,)),
-                                "phi_scale": t.ones((bus_company_name_dim,)),
-                                
-                                "sigma_beta_loc":   t.zeros(()), 
-                                "sigma_beta_scale": t.ones(()),
-                                "mu_beta_loc":      t.zeros(()), 
-                                "mu_beta_scale":    t.ones(()),
+                                          "psi_loc":   t.zeros((run_type_dim,)),
+                                          "psi_scale": t.ones((run_type_dim,)),
+                                          "phi_loc":   t.zeros((bus_company_name_dim,)),
+                                          "phi_scale": t.ones((bus_company_name_dim,)),
+                                        
+                                          "sigma_beta_loc":   t.zeros(()), 
+                                          "sigma_beta_scale": t.ones(()),
+                                          "mu_beta_loc":      t.zeros(()), 
+                                          "mu_beta_scale":    t.ones(()),
 
-                                "beta_loc":         t.zeros((M,), names=('plate_Year',)),
-                                "beta_scale":       t.ones((M,),  names=('plate_Year',)),
-                                
-                                "sigma_alpha_loc":   t.zeros((M,), names=('plate_Year',)),
-                                "sigma_alpha_scale": t.ones((M,), names=('plate_Year',)),
-                                
-                                "alpha_loc":         t.zeros((M,J,), names=('plate_Year','plate_Borough')),
-                                "alpha_scale":       t.ones((M,J,),  names=('plate_Year','plate_Borough'))})
+                                          "beta_loc":         t.zeros((M,), names=('plate_Year',)),
+                                          "beta_scale":       t.ones((M,),  names=('plate_Year',)),
 
-    prob = Problem(P, Q, platesizes, data)
+                                          "sigma_alpha_loc":   t.zeros((M,), names=('plate_Year',)),
+                                          "sigma_alpha_scale": t.ones((M,), names=('plate_Year',)),
+                                        
+                                          "alpha_loc":         t.zeros((M,J,), names=('plate_Year','plate_Borough')),
+                                          "alpha_scale":       t.ones((M,J,),  names=('plate_Year','plate_Borough'))})
+
+    prob = Problem(P, Q, data)
     prob.to(device)
 
     return prob
@@ -122,18 +122,16 @@ if __name__ == "__main__":
     device = t.device('cuda' if t.cuda.is_available() else 'cpu')
     prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device)
 
-    sampling_type = IndependentSample
-
     K = 3
     opt = t.optim.Adam(prob.Q.parameters(), lr=0.01)
-    for i in range(100):
+    for i in range(10):
         opt.zero_grad()
 
-        sample = prob.sample(K, True, sampling_type)
-        elbo = sample.elbo()
+        sample = prob.sample(K, True)
+        elbo = sample.elbo_vi()
 
-        importance_sample = sample.importance_sample(num_samples=10)
-        extended_importance_sample = importance_sample.extend(all_platesizes, False, extended_inputs=all_covariates)
+        importance_sample = sample.importance_sample(N=10)
+        extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
         ll = extended_importance_sample.predictive_ll(all_data)
         print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
 
