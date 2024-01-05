@@ -98,7 +98,7 @@ def load_and_generate_problem(device, Q_param_type, run=0, data_dir='data/'):
     return problem, all_data, all_covariates, all_platesizes
 
 if __name__ == "__main__":
-    import torchopt
+    # import torchopt
     DO_PLOT   = True
     DO_PREDLL = False
     NUM_ITERS = 250
@@ -125,8 +125,8 @@ if __name__ == "__main__":
         prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, 'opt')
 
         K = 3
-        # opt = t.optim.Adam(prob.Q.parameters(), lr=0.01)
-        opt = torchopt.Adam(prob.Q.parameters(), lr=0.01)
+        opt = t.optim.Adam(prob.Q.parameters(), lr=0.01)
+        # opt = torchopt.Adam(prob.Q.parameters(), lr=0.01)
         for i in range(NUM_ITERS):
             opt.zero_grad()
 

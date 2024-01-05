@@ -118,7 +118,7 @@ class Plate():
                         K_dim=groupvarname2Kdim[childname],
                         groupvarname2Kdim=groupvarname2Kdim,
                         sampler=sampler,
-                        reparam=True
+                        reparam=reparam
                     )
 
                     for k, v in childsample.items():

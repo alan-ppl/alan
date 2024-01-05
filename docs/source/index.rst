@@ -10,7 +10,7 @@ Welcome to alan's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   introduction_to_alan
+   getting_started
    defining_PQ/index
    downstream/index
       
