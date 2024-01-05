@@ -1,0 +1,14 @@
+---
+  model: ???
+  method: ???
+  num_runs: 5
+  num_iters: 1000
+  plate_names: []
+  plate_sizes: []
+  Ks: [3,10,30] #,100]
+  predll:
+    do_predll: False
+    N_predll: 10
+  lrs: [1e-2, 1e-3, 1e-4]
+  dataset_seed: 0
+  write_job_status: True
