@@ -114,7 +114,10 @@ def _logPQ_plate(
         groupvarname2Kdim=groupvarname2Kdim,
         varname2groupvarname=varname2groupvarname,
         sampler=sampler,
-        computation_strategy=computation_strategy)
+        computation_strategy=computation_strategy
+    )
+
+    assert len(K_currs) == len(K_inits)
 
     #Sum out Ks for non-timeseries variables.
     #Returns a single tensor, with dimensions:
@@ -127,29 +130,36 @@ def _logPQ_plate(
     #Sum over new_platedim
     if name is not None:
         if 0 < len(K_inits):
+            ##Timeseries
+            #lp = lp.order(new_platedim, K_inits, K_currs)    # Removes torchdims from T, and Ks
+            #lp = chain_logmmexp(lp)# Kprevs x Kcurrs
+            #assert 2 == lp.ndim
+
+            #lp = lp.logsumexp(-1)
+            #assert 1 == lp.ndim
+            ##Put torchdim back. 
+            ##Stupid trailing None is necessary, because otherwise the list of K_inits is just splatted in, rather than being treated as a group.
+            #lp = lp[K_inits, None].squeeze(-1)
+
+            #assert prev_lpq is None
+
+            assert 1==len(K_inits)
+            K_init = K_inits[0]
+            K_curr = K_currs[0]
+
+
             #Timeseries
-            lp = lp.order(new_platedim, K_inits, K_currs)    # Removes torchdims from T, and Ks
-            lp = chain_logmmexp(lp)# Kprevs x Kcurrs
+            lp = lp.order(new_platedim, K_init, K_curr)    # Removes torchdims from T, and Ks
+            lp = chain_logmmexp(lp) #t.linalg.multi_dot(t.unbind(lp.exp(), dim=0)).log()# K_init x K_curr
             assert 2 == lp.ndim
 
             lp = lp.logsumexp(-1)
             assert 1 == lp.ndim
             #Put torchdim back. 
             #Stupid trailing None is necessary, because otherwise the list of K_inits is just splatted in, rather than being treated as a group.
-            lp = lp[K_inits, None].squeeze(-1)
+            lp = lp[K_init]
 
             assert prev_lpq is None
-
-            #Backpropagating info.
-            #if prev_lpq is None:
-            #    #No prev_lpq, so we're either not split or we're on the last split;
-            #    #sum over Kcurr.
-            #    lp = lp.logsumexp(-1)
-            #else:
-            #    #prev_lpq, so we're split.
-            #    prev_lpq = prev_lpq.order(K_currs)[:, None] #Unnamed dims: Kcurrs x 1
-            #    lp = logmmexp(lp, prev_lpq).squeeze(-1)     #Unnamed dims: Kprevs
-            #assert 1 == lp.ndim
 
         else:
             #No timeseries
