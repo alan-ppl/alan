@@ -14,7 +14,7 @@ from alan.moments import var_from_raw_moment, RawMoment
 
 tp_names = [
     "model1",
-    #"bernoulli_no_plate",
+    "bernoulli_no_plate",
     "linear_gaussian",
     "linear_gaussian_two_params",
     "linear_gaussian_two_params_corr_Q",
