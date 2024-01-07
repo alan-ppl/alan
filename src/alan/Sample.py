@@ -89,7 +89,7 @@ class Sample():
         #extra_log_factors comes in as a flat dict; convert to tree.
         extra_log_factors = tensordict2tree(self.P.plate, extra_log_factors)
 
-        lp = logPQ_plate(
+        lp, _, _, _ = logPQ_plate(
             name=None,
             P=self.P.plate, 
             Q=self.Q.plate, 

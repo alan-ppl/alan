@@ -59,6 +59,7 @@ See `examples/example.py`
    
 
 ### Ideas:
+  * Ensure 'prev' is reserved.
   * Check P: Timeseries, Q:Plate/Timeseries, but not P:Plate, Q:Timeseries, or P:Plate, Q:Data.
   * Check timeseries permutation is the right size.
   * Simplify sampler.resample_scope, by noting that:

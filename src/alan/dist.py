@@ -286,12 +286,12 @@ class Dist(torch.nn.Module):
         return original_ll, extended_ll
 
 
-    def log_prob(self, sample: Tensor, scope: dict, T_dim, Kinit_dim, K_dim):
+    def log_prob(self, sample: Tensor, scope: dict, T_dim, K_dim):
         #T_dim, Kinit_dim, K_dim are deliberately ignored; they're only there so that 
         #interface matches Timeseries.
 
         assert self.device == sample.device
-        return self.tdd(scope).log_prob(sample)
+        return self.tdd(scope).log_prob(sample), None
 
     def sample(self, scope, reparam, active_platedims, K_dim, timeseries_perm=None):
         return self.tdd(scope).sample(

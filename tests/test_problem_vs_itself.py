@@ -9,7 +9,7 @@ import torch as t
 
 from alan import samplers, Sample, PermutationSampler, CategoricalSampler, checkpoint, no_checkpoint
 from alan.Marginals import Marginals
-from alan.utils import generic_dims, generic_order, generic_getitem, generic_all, multi_order
+from alan.utils import generic_dims, generic_order, generic_getitem, generic_all, multi_order, dim2named_tensor
 from alan.moments import var_from_raw_moment, RawMoment
 
 tp_names = [
@@ -26,6 +26,7 @@ tp_names = [
     "linear_multivariate_gaussian",
     "linear_multivariate_gaussian_batch",
     "linear_multivariate_gaussian_param",
+    #"timeseries",
 ]
 
 #dict[str, TestProblem]
@@ -138,9 +139,16 @@ def test_moments_ground_truth(tp_name, reparam, sampler):
 
         upper_bound = marginal_moment + 7*stderr
         lower_bound = marginal_moment - 7*stderr
+
+        upper_bound = dim2named_tensor(upper_bound)
+        lower_bound = dim2named_tensor(lower_bound)
+
+        set_names_true_moment = set(true_moment.names)
+        assert set_names_true_moment == set(upper_bound.names)
+        assert set_names_true_moment == set(lower_bound.names)
         
-        assert generic_all(              true_moment < upper_bound)
-        assert generic_all(lower_bound < true_moment)
+        assert generic_all(                                    true_moment < upper_bound.align_as(true_moment))
+        assert generic_all(lower_bound.align_as(true_moment) < true_moment)
 
 @pytest.mark.parametrize("tp_name,sampler", tp_samplers)
 def test_elbo_ground_truth(tp_name, sampler):

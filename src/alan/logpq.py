@@ -55,8 +55,9 @@ def logPQ_plate(
             **sieda,
             prev_lpq = lpq
         )
+    assert isinstance(lpq, Tensor)
 
-    return lpq
+    return lpq, (), (), ()
 
 def _logPQ_plate_checkpointed(*args, **kwargs):
     return t.utils.checkpoint.checkpoint(_logPQ_plate_args_kwargs, args, kwargs, use_reentrant=False)
@@ -99,7 +100,7 @@ def _logPQ_plate(
     scope = update_scope(scope, inputs_params)
     scope = update_scope(scope, sample)
 
-    lps, all_Ks, K_inits, K_currs = lp_getter(
+    lps, all_Ks, K_currs, K_inits = lp_getter(
         name=name,
         P=P, 
         Q=Q, 
@@ -197,7 +198,9 @@ def logPQ_gdt(
         assert sample[k] is None
         assert isinstance(data[k], Tensor)
 
-        return prog_P[k].log_prob(data[k], scope, None, None, None)
+        lp, _ = prog_P[k].log_prob(data[k], scope, None, None)
+
+        return lp, (), (), ()
 
     Kdim = groupvarname2Kdim[name]
     total_logP = 0.
@@ -208,12 +211,10 @@ def logPQ_gdt(
     for v in prog_P.values():
         if isinstance(v, Timeseries):
             Kinit_dims.append(groupvarname2Kdim[varname2groupvarname[v.init]])
-    Kinit_dim = Kinit_dims[0] if 1<=len(Kinit_dims) else None
-    for Kid in Kinit_dims:
-        assert Kid is Kinit_dim 
 
     T_dim = active_platedims[-1] if 1<=len(active_platedims) else None
 
+    Kinits = []
     for k in prog_P:
         dist_P   = prog_P[k]
         dist_Q   = prog_Q[k]
@@ -224,11 +225,38 @@ def logPQ_gdt(
         assert isinstance(sample_k, Tensor)
         assert data[k] is None
 
-        total_logP = total_logP + dist_P.log_prob(sample_k, scope=scope, T_dim=T_dim, Kinit_dim=Kinit_dim, K_dim=Kdim)
-        total_logQ = total_logQ + dist_Q.log_prob(sample_k, scope=scope, T_dim=T_dim, Kinit_dim=Kinit_dim, K_dim=Kdim)
+        lp, Kinit_p = dist_P.log_prob(sample_k, scope=scope, T_dim=T_dim, K_dim=Kdim)
+        lq, Kinit_q = dist_Q.log_prob(sample_k, scope=scope, T_dim=T_dim, K_dim=Kdim)
+
+        if Kinit_q is not None:
+            assert Kinit_p is Kinit_Q
+
+        if Kinit_p is not None:
+            assert isinstance(Kinit_p, Dim)
+            Kinits.append(Kinit_p)
+
+        total_logP = total_logP + lp
+        total_logQ = total_logQ + lq
 
     total_logQ = sampler.reduce_logQ(total_logQ, active_platedims, Kdim)
-    return total_logP - total_logQ - math.log(Kdim.size)
+    lp = total_logP - total_logQ - math.log(Kdim.size)
+
+    if 1 <= len(Kinits):
+        #There's at least one timeseries in the group.
+        Kinit0 = Kinits[0]
+        for Kid in Kinit_dims:
+            assert Kid is Kinit0
+        Knon_timeseries = ()
+        Ktimeseries = (Kdim,)
+        Kinits = (Kinit0,)
+    else:
+        #No timeseries in the group.
+        Knon_timeseries = (Kdim,)
+        Ktimeseries = ()
+        Kinit = ()
+        
+    return lp, Knon_timeseries, Ktimeseries, Kinits
+
 
 def lp_getter(
         name:Optional[str],
@@ -259,8 +287,9 @@ def lp_getter(
     assert set(P.flat_prog.keys()) == set(Q.flat_prog.keys())
 
     lps = list(tree_values(extra_log_factors).values())
-    K_inits = []
-    K_currs = []
+    Knon_timeseries = []
+    Ktimeseries = []
+    Kinits = []
 
     for childname, childQ in Q.grouped_prog.items():
         if isinstance(childQ, dict):
@@ -272,7 +301,7 @@ def lp_getter(
             assert isinstance(childP, Plate)
             method = logPQ_plate
 
-        lp = method(
+        lp, _Knon_timeseries, _Ktimeseries, _Kinits = method(
             name=childname,
             P=childP, 
             Q=childQ, 
@@ -286,21 +315,22 @@ def lp_getter(
             groupvarname2Kdim=groupvarname2Kdim,
             varname2groupvarname=varname2groupvarname,
             sampler=sampler,
-            computation_strategy=computation_strategy)
-        if isinstance(lp, tuple):
-            lp, K_init, K_curr = lp
-            K_inits.append(K_init)
-            K_currs.append(K_curr)
-        
+            computation_strategy=computation_strategy
+        )
+
         lps.append(lp)
+        Knon_timeseries.extend(_Knon_timeseries)
+        Ktimeseries.extend(_Ktimeseries)
+        Kinits.extend(_Kinits)
+        
 
     #Collect all non-timeseries Ks in the plate (note: iterating through Q!!)
-    all_Ks = []
-    for varname, dist in Q.grouped_prog.items():
-        if isinstance(dist, dict):
-            if not datagroup(dist):
-                all_Ks.append(groupvarname2Kdim[varname])
-        else:
-            assert isinstance(dist, Plate)
+    #all_Ks = []
+    #for varname, dist in Q.grouped_prog.items():
+    #    if isinstance(dist, dict):
+    #        if not datagroup(dist):
+    #            all_Ks.append(groupvarname2Kdim[varname])
+    #    else:
+    #        assert isinstance(dist, Plate)
             
-    return lps, all_Ks, K_inits, K_currs
+    return lps, Knon_timeseries, Ktimeseries, Kinits

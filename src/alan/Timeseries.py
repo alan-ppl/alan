@@ -121,23 +121,46 @@ class Timeseries(nn.Module):
 
         return t.stack(sample_timesteps, 0)[T_dim]
 
-    def log_prob(self, sample, scope:dict, T_dim:Dim, Kinit_dim:Dim, K_dim:Dim):
+    def log_prob(self, sample, scope:dict, T_dim:Dim, K_dim:Dim):
 
         assert isinstance(scope, dict)
         assert isinstance(sample, Tensor)
         assert isinstance(T_dim, Dim)
-        assert isinstance(Kinit_dim, Dim)
         assert isinstance(K_dim, Dim)
 
+        set_dims_sample = set(generic_dims(sample))
+        assert K_dim in set_dims_sample
+        assert T_dim in set_dims_sample
+
         initial_state = scope[self.init]
+        set_dims_initial = set(generic_dims(initial_state))
+        assert T_dim not in set_dims_initial
+        assert len(set_dims_initial) + 1 == len(set_dims_sample)
+
+        diff_dims = list(set_dims_initial.difference(set_dims_sample))
+        assert 1 == len(diff_dims)
+        Kinit_dim = diff_dims[0]
+        assert Kinit_dim in set_dims_initial
+
         sample_prev = sample.order(K_dim)[Kinit_dim]
 
         sample_prev = t.cat([
             initial_state[None, ...],
-            sample.order(T_dim)[:-1],
+            sample_prev.order(T_dim)[:-1],
         ], 0)[T_dim]
+        set_dims_prev_sample = set(generic_dims(sample_prev))
+        assert Kinit_dim in set_dims_prev_sample
+        assert K_dim not in set_dims_prev_sample
+        assert T_dim     in set_dims_prev_sample
 
         scope = {**scope}
         scope['prev'] = sample_prev
 
-        return self.trans.log_prob(sample, scope, None, None, None)
+        lp, _ = self.trans.log_prob(sample, scope, None, None)
+        set_dims_lp = set(generic_dims(lp))
+
+        assert Kinit_dim in set_dims_lp
+        assert K_dim in set_dims_lp
+        assert T_dim in set_dims_lp
+
+        return lp, Kinit_dim
