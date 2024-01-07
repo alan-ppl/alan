@@ -131,33 +131,15 @@ def _logPQ_plate(
     if name is not None:
         if 0 < len(K_inits):
             ##Timeseries
-            #lp = lp.order(new_platedim, K_inits, K_currs)    # Removes torchdims from T, and Ks
-            #lp = chain_logmmexp(lp)# Kprevs x Kcurrs
-            #assert 2 == lp.ndim
-
-            #lp = lp.logsumexp(-1)
-            #assert 1 == lp.ndim
-            ##Put torchdim back. 
-            ##Stupid trailing None is necessary, because otherwise the list of K_inits is just splatted in, rather than being treated as a group.
-            #lp = lp[K_inits, None].squeeze(-1)
-
-            #assert prev_lpq is None
-
-            assert 1==len(K_inits)
-            K_init = K_inits[0]
-            K_curr = K_currs[0]
-
-
-            #Timeseries
-            lp = lp.order(new_platedim, K_init, K_curr)    # Removes torchdims from T, and Ks
-            lp = chain_logmmexp(lp) #t.linalg.multi_dot(t.unbind(lp.exp(), dim=0)).log()# K_init x K_curr
+            lp = lp.order(new_platedim, K_inits, K_currs)    # Removes torchdims from T, and Ks
+            lp = chain_logmmexp(lp)# Kprevs x Kcurrs
             assert 2 == lp.ndim
 
             lp = lp.logsumexp(-1)
             assert 1 == lp.ndim
             #Put torchdim back. 
             #Stupid trailing None is necessary, because otherwise the list of K_inits is just splatted in, rather than being treated as a group.
-            lp = lp[K_init]
+            lp = lp[K_inits, None].squeeze(-1)
 
             assert prev_lpq is None
 

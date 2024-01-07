@@ -483,18 +483,11 @@ def logmmexp(prev, curr):
     """
     Performs matmul, assuming both matrices are stored as logs.
     """
-    assert prev.dtype == curr.dtype
-    dtype = prev.dtype
-
-    prev = prev.to(dtype=t.float64)
-    curr = curr.to(dtype=t.float64)
     prev_max = prev.amax(-1, keepdim=True)
     curr_max = curr.amax(-2, keepdim=True)
 
-    result = ((prev - prev_max).exp() @ (curr - curr_max).exp()).log() 
-    print(generic_order(result, generic_dims(result)).isnan().any())
-    result = result + prev_max + curr_max
-    return result.to(dtype=dtype)
+    result_nolog = (prev - prev_max).exp() @ (curr - curr_max).exp() 
+    return (result_nolog + t.finfo(result_nolog.dtype).eps).log() + prev_max + curr_max
 
 def chain_logmmexp(ms):
     return chain_reduce(logmmexp, ms)

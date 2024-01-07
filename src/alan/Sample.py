@@ -105,8 +105,6 @@ class Sample():
             sampler=self.sampler,
             computation_strategy=computation_strategy)
 
-        print(lp)
-
         return lp
 
     def elbo_vi(self, computation_strategy=checkpoint):
