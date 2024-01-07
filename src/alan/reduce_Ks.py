@@ -92,6 +92,8 @@ def logsumexp_sum(_Ks_to_sum, *lps_to_reduce):
     #Needs a strange argument order, because checkpoint doesn't work with lists of lps.
     return logsumexp_dims(sum(lps_to_reduce), _Ks_to_sum, ignore_extra_dims=True)
 
+
+
 def collect_lps(lps, Ks_to_sum):
     """
     Helper method that sums over Ks and returns a list of the reduced tensors along with a list of which Ks were reduced over for each reduced tensor.

@@ -73,6 +73,7 @@ def multi_order(x, y):
     return generic_order(x, dims), generic_order(y, dims)
 
 reserved_names = [
+    "prev",
     "plate", 
     "prog", 
     "sample", 
@@ -200,9 +201,26 @@ def reduce_dims(func):
 sum_dims        = reduce_dims(t.sum)
 prod_dims       = reduce_dims(t.prod)
 mean_dims       = reduce_dims(t.mean)
-min_dims        = reduce_dims(lambda x, dim: t.min(x, dim).values)
-max_dims        = reduce_dims(lambda x, dim: t.max(x, dim).values)
-logsumexp_dims  = reduce_dims(t.logsumexp)
+amin_dims       = reduce_dims(t.amin)
+amax_dims       = reduce_dims(t.amax)
+#logsumexp_dims  = reduce_dims(t.logsumexp)
+
+def logsumexp_dims(x, dims, ignore_extra_dims=False):
+    assert_unique_dim_iter(dims)
+
+    set_x_dims = set(generic_dims(x)) 
+    if ignore_extra_dims:
+        dims = tuple(dim for dim in dims if dim in set_x_dims)
+
+    if not all(dim in set_x_dims for dim in dims):
+        raise Exception("dims provided that aren't in x; can ignore them by providing ignore_extra_dims=True kwarg")
+
+    if 0<len(dims):
+        x_max = x.amax(dims)
+        x = (x-x_max).exp().sum(dims)
+        x = (x + t.finfo(x.dtype).eps).log() + x_max
+
+    return x
 
 def logmeanexp_dims(x, dims):
     return logsumexp_dims(x, dims) - sum([math.log(dim.size) for dim in dims])

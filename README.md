@@ -61,7 +61,6 @@ See `examples/example.py`
 ### Ideas:
   * Remove checkpointing from reduce_Ks?
   * Numerically stable logsumexp_dims, by adding t.finfo(lp.dtype).eps before log
-  * Ensure 'prev' is reserved.
   * Check P: Timeseries, Q:Plate/Timeseries, but not P:Plate, Q:Timeseries, or P:Plate, Q:Data.
   * Check timeseries permutation is the right size.
   * Simplify sampler.resample_scope, by noting that:
