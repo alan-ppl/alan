@@ -203,7 +203,6 @@ prod_dims       = reduce_dims(t.prod)
 mean_dims       = reduce_dims(t.mean)
 amin_dims       = reduce_dims(t.amin)
 amax_dims       = reduce_dims(t.amax)
-#logsumexp_dims  = reduce_dims(t.logsumexp)
 
 def logsumexp_dims(x, dims, ignore_extra_dims=False):
     assert_unique_dim_iter(dims)
