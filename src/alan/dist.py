@@ -89,7 +89,7 @@ class _Dist:
         self.sample_shape = sample_shape
         self.kwargs = kwargs
 
-        if len(args) + len(kwargs) != len(self.dist.arg_constraints):
+        if len(args) + len(kwargs) != self.nargs:
             raise Exception(f"Wrong number of arguments provided to {type(self)}")
 
     def finalize(self, varname):
@@ -315,52 +315,55 @@ class Dist(torch.nn.Module):
 
 
 
-distributions = [
-"Bernoulli",
-"Beta",
-"Binomial",
-"Categorical",
-"Cauchy",
-"Chi2",
-"ContinuousBernoulli",
-"Dirichlet",
-"Exponential",
-"FisherSnedecor",
-"Gamma",
-"Geometric",
-"Gumbel",
-"HalfCauchy",
-"HalfNormal",
-"Kumaraswamy",
-"LKJCholesky",
-"Laplace",
-"LogNormal",
-"LowRankMultivariateNormal",
-"Multinomial",
-"MultivariateNormal",
-"NegativeBinomial",
-"Normal",
-"Pareto",
-"Poisson",
-"RelaxedBernoulli",
-"RelaxedOneHotCategorical",
-"StudentT",
-"Uniform",
-"VonMises",
-"Weibull",
-"Wishart",
+distributions_nargs = [
+("Bernoulli", 1),
+("Beta", 2),
+("Binomial", 2),
+("Categorical", 1),
+("Cauchy", 2),
+("Chi2", 1),
+("ContinuousBernoulli", 1),
+("Dirichlet", 1),
+("Exponential", 1),
+("FisherSnedecor", 2),
+("Gamma", 2),
+("Geometric", 1),
+("Gumbel", 2),
+("HalfCauchy", 1),
+("HalfNormal", 1),
+("Kumaraswamy", 2),
+("LKJCholesky", 2),
+("Laplace", 2),
+("LogNormal", 2),
+("LowRankMultivariateNormal", 3),
+("Multinomial", 2),
+("MultivariateNormal", 2),
+("NegativeBinomial", 2),
+("Normal", 2),
+("OneHotCategorical", 1),
+("Pareto", 2),
+("Poisson", 1),
+("RelaxedBernoulli", 2),
+("LogitRelaxedBernoulli", 2),
+("RelaxedOneHotCategorical", 2),
+("StudentT", 3),
+("Uniform", 2),
+("VonMises", 2),
+("Weibull", 2),
+("Wishart", 2),
 ]
 
-def new_dist(name, dist):
+def new_dist(name, dist, nargs):
     """
     This is the function called by external code to add a new distribution to Alan.
     Arguments:
         name: string, will become the class name for the distribution.
         dist: Distribution class mirroring standard PyTorch distribution API.
     """
-    AD = type(name, (_Dist,), {'dist': dist})
+    AD = type(name, (_Dist,), {'dist': dist, 'nargs': nargs})
     globals()[name] = AD
     #setattr(alan, name, AD)
 
-for dist in distributions:
-    new_dist(dist, getattr(torch.distributions, dist))
+for dist, nargs in distributions_nargs:
+    if hasattr(torch.distributions, dist):
+        new_dist(dist, getattr(torch.distributions, dist), nargs)
