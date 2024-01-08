@@ -1,8 +1,5 @@
 import torch
 
-def filter_not_none(xs):
-    return [x for x in xs if (x is not None)]
-
 class TensorStore(torch.nn.Module):
     def __init__(self, bufferdict:dict):
         super().__init__()
@@ -16,14 +13,12 @@ class TensorStore(torch.nn.Module):
             self.keys.append(k)
 
             assert isinstance(v, torch.Tensor)
-            names = filter_not_none(v.names)
-            v = v.align_to(*names, ...).rename(None)
             self.register_tensor(k, v)
 
-            self.names[k] = names
+            self.names[k] = v.names
 
     def to_dict(self):
-        return {k: getattr(self, k).refine_names(*self.names[k], ...) for k in self.keys}
+        return {k: getattr(self, k).refine_names(*self.names[k]) for k in self.keys}
 
 class BufferStore(TensorStore):
     """
