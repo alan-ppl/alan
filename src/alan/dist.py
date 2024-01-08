@@ -89,6 +89,9 @@ class _Dist:
         self.sample_shape = sample_shape
         self.kwargs = kwargs
 
+        if len(args) + len(kwargs) != len(self.dist.arg_constraints):
+            raise Exception(f"Wrong number of arguments provided to {type(self)}")
+
     def finalize(self, varname):
         return Dist(
             varname=varname, 
