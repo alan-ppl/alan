@@ -277,7 +277,7 @@ class Dist(torch.nn.Module):
         original_ll, extended_ll = {}, {}
 
         if name in extended_data.keys():
-            extended_ll[name] = self.log_prob(extended_data[name], scope)
+            extended_ll[name], _ = self.log_prob(extended_data[name], scope, None, None)
 
             original_dims, extended_dims = corresponding_plates(original_platedims, extended_platedims, original_data[name], extended_data[name]) 
 

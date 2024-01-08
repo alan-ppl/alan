@@ -159,8 +159,7 @@ class Plate():
             active_extended_platedims = [*active_extended_platedims, extended_platedims[name]]
 
         scope = update_scope(scope, inputs_params)
-
-        for childname, childP in self.prog.items():
+        for childname, childP in self.flat_prog.items():
 
             childsample = childP.sample_extended(
                 sample=sample.get(childname),
@@ -176,7 +175,7 @@ class Plate():
             )
 
             sample[childname] = childsample
-            scope = update_scope(scope, childsample)
+            scope = update_scope(scope, {childname: childsample})
 
         return sample
     
@@ -195,7 +194,7 @@ class Plate():
 
         original_lls, extended_lls = {}, {}
 
-        for childname, childP in self.prog.items():
+        for childname, childP in self.flat_prog.items():
 
             child_original_lls, child_extended_lls = childP.predictive_ll(
                 sample=sample.get(childname),
@@ -208,7 +207,7 @@ class Plate():
                 extended_data=extended_data
             )
 
-            scope = update_scope(scope, sample.get(childname))
+            scope = update_scope(scope, {childname: sample.get(childname)})
 
             original_lls = {**original_lls, **child_original_lls}
             extended_lls = {**extended_lls, **child_extended_lls}
