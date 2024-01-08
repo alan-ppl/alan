@@ -6,6 +6,7 @@ import time
 import hydra
 import importlib.util
 import sys
+from pathlib import Path
 
 def safe_time(device):
     if device == 'cuda':
@@ -32,6 +33,10 @@ def run_experiment(cfg):
     model = importlib.util.module_from_spec(spec)
     sys.modules[cfg.model] = model
     spec.loader.exec_module(model)
+
+    # Make sure all the required folders exist for this model
+    for folder in ['results', 'job_status', 'plots']:
+        Path(f"{cfg.model}/{folder}").mkdir(parents=True, exist_ok=True)
 
     platesizes, all_platesizes, data, all_data, covariates, all_covariates = model.load_data_covariates(device, cfg.dataset_seed, f'{cfg.model}/data/')
 
