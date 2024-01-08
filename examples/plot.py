@@ -13,8 +13,10 @@ def smooth(x, window):
 
     return result
 
-def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 50], dataset_seeds=[0], results_subfolder=''):
+def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 50], dataset_seeds=[0], results_subfolder='', Ks_to_plot='all'):
 
+    print(f'Plotting {model_name} with Ks {Ks_to_plot}.')
+    
     elbos, p_lls, iter_times, lrs = {}, {}, {}, {}
     Ks = None
 
@@ -41,9 +43,15 @@ def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 50
                 assert np.all(lrs[method_name] == results['lrs'])
 
             if Ks is None:
-                Ks = results['Ks']
+                if Ks_to_plot == 'all':
+                    Ks = results['Ks']
+                else:
+                    Ks = [K for K in results['Ks'] if K in Ks_to_plot]
             else:
-                assert np.all(Ks == results['Ks'])
+                if Ks_to_plot == 'all':
+                    assert np.all(Ks == results['Ks'])
+                else:
+                    assert np.all([K for K in results['Ks'] if K in Ks_to_plot] == Ks)
 
         # Average out over the seeds
         elbos[method_name] = np.stack(elbos[method_name]).mean(0)
@@ -110,7 +118,7 @@ def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 50
 
 
                 # Add title
-                fig.suptitle(f'{method_name.upper()} on {model_name} (Smoothing window size: {window_size})')
+                fig.suptitle(f'{method_name.upper()} on {model_name} (Smoothing window size: {window_size}){" (K=" + str(Ks_to_plot) + ")" if Ks_to_plot != "all" else ""}')
 
 
         # Add legend outside the subplot to the right-hand side with two columns
@@ -124,7 +132,7 @@ def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 50
 
         # Show the plots
         # plt.show()
-        plt.savefig(f'{model_name}/plots/results_{window_size}.png')
+        plt.savefig(f'{model_name}/plots/results_{window_size}{"_K" + str(Ks_to_plot) if Ks_to_plot != "all" else ""}.png')
         plt.savefig(f'{model_name}/plots/results_{window_size}.pdf')
 
         # Clear the plots
@@ -132,5 +140,9 @@ def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 50
             ax.clear()
 
 if __name__ == '__main__':
-    plot('movielens', results_subfolder='simple/')
-    plot('bus_breakdown', results_subfolder='simple/')
+    plot('movielens', results_subfolder='')
+    plot('bus_breakdown', results_subfolder='')
+
+    for K in [3, 10, 30]:
+        plot('movielens', results_subfolder='', Ks_to_plot=[K])
+        plot('bus_breakdown', results_subfolder='', Ks_to_plot=[K])
