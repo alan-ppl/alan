@@ -40,6 +40,12 @@ def run_experiment(cfg):
 
     platesizes, all_platesizes, data, all_data, covariates, all_covariates = model.load_data_covariates(device, cfg.dataset_seed, f'{cfg.model}/data/')
 
+    # Put extended data and covariates on device
+    for key in all_data:
+        all_data[key] = all_data[key].to(device)
+    for key in all_covariates:
+        all_covariates[key] = all_covariates[key].to(device)
+
     elbos = t.zeros((len(Ks), len(lrs), num_iters+1, num_runs)).to(device)
     p_lls = t.zeros((len(Ks), len(lrs), num_iters+1, num_runs)).to(device)
 

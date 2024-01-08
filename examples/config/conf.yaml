@@ -7,8 +7,8 @@
   plate_sizes: []
   Ks: [3,10,30] #,100]
   predll:
-    do_predll: False
-    N_predll: 10
+    do_predll: True
+    N_predll: 100
   lrs: [1e-2, 1e-3, 1e-4]
   dataset_seed: 0
   write_job_status: True
