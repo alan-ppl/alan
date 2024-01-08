@@ -205,7 +205,7 @@ if __name__ == "__main__":
 
         K = 3
         # opt_P = t.optim.Adam(prob.Q.parameters(), lr=0.01)
-        opt = torchopt.Adam(prob.Q.parameters(), lr=0.005)
+        opt = torchopt.Adam(prob.Q.parameters(), lr=0.003, maximize=True)
 
         for i in range(NUM_ITERS):
             opt.zero_grad()
@@ -263,6 +263,7 @@ if __name__ == "__main__":
         plt.legend()
         plt.xlabel('Iteration')
         plt.ylabel('ELBO')
+        plt.title('Bus breakdown')
         plt.savefig('plots/quick_elbos.png')
 
         if DO_PREDLL:
@@ -273,4 +274,5 @@ if __name__ == "__main__":
             plt.legend()
             plt.xlabel('Iteration')
             plt.ylabel('PredLL')
+            plt.title('Bus breakdown')
             plt.savefig('plots/quick_predlls.png')

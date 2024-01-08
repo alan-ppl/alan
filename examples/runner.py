@@ -54,9 +54,13 @@ def run_experiment(cfg):
 
                 prob = model.generate_problem(device, platesizes, data, covariates, Q_param_type='qem' if cfg.method == 'qem' else 'opt')
 
-                if cfg.method == 'vi' or cfg.method == 'rws':
+                if cfg.method == 'vi': 
                     # opt = t.optim.Adam(prob.Q.parameters(), lr=lr)
                     opt = torchopt.Adam(prob.Q.parameters(), lr=lr)
+                elif cfg.method == 'rws':
+                    # opt = t.optim.Adam(prob.Q.parameters(), lr=lr)
+                    opt = torchopt.Adam(prob.Q.parameters(), lr=lr, maximize=True)
+                
 
                 for i in range(num_iters+1):
                     elbo_start_time = safe_time(device)
