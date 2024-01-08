@@ -119,25 +119,26 @@ def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 50
 
                     alpha_val = 1- j/len(lrs)
 
+                    # print(mean_values)
+                    # breakpoint()
+
                     axs[0,1].plot(smoothed_mean_values, label=f'{method_name.upper()}: K={K}, lr={lr}', color=colour, alpha=alpha_val)
                     axs[0,1].fill_between(range(len(smoothed_mean_values)), smoothed_mean_values - std_errs, smoothed_mean_values + std_errs, alpha=0.1*alpha_val, color=colour)
 
-                    axs[0,1].plot(times, smoothed_mean_values, label=f'{method_name.upper()}: K={K}, lr={lr}', color=colour, alpha=alpha_val)
-                    axs[0,1].fill_between(times, smoothed_mean_values - std_errs, smoothed_mean_values + std_errs, alpha=0.1*alpha_val, color=colour)
+                    axs[1,1].plot(times, smoothed_mean_values, label=f'{method_name.upper()}: K={K}, lr={lr}', color=colour, alpha=alpha_val)
+                    axs[1,1].fill_between(times, smoothed_mean_values - std_errs, smoothed_mean_values + std_errs, alpha=0.1*alpha_val, color=colour)
 
 
-                    # Add title
-                    fig.suptitle(f'{method_name.upper()} on {model_name} (Smoothing window size: {window_size}){" (K=" + str(Ks_to_plot) + ")" if Ks_to_plot != "all" else ""}')
+        # Add title
+        fig.suptitle(f'{model_name.upper()} with K={Ks}\n(Smoothing window size: {window_size})', x=0.3)
 
 
         # Add legend outside the subplot to the right-hand side with two columns
         # NOTE: When we get p_ll working we'll need to rethink legend positioning/design
-        axs[0,0].legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., ncol=3)
+        axs[0,0].legend(bbox_to_anchor=(1, 1.05), loc='lower left', borderaxespad=0., ncol=3)
 
         axs[0,1].set_zorder(-1)
         axs[1,1].set_zorder(-1)
-        axs[0,1].clear()
-        axs[1,1].clear()
 
         # Show the plots
         # plt.show()
