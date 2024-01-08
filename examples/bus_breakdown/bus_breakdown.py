@@ -152,8 +152,8 @@ if __name__ == "__main__":
     import torchopt
     DO_PLOT   = True
     DO_PREDLL = True
-    NUM_ITERS = 250
-    NUM_RUNS  = 1
+    NUM_ITERS = 500
+    NUM_RUNS  = 3
 
     K = 10
 
@@ -180,6 +180,11 @@ if __name__ == "__main__":
         print(f"VI")
         t.manual_seed(num_run)
         prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, 'opt')
+        
+        for key in all_data.keys():
+            all_data[key] = all_data[key].to(device)
+        for key in all_covariates.keys():
+            all_covariates[key] = all_covariates[key].to(device)
 
         # opt = t.optim.Adam(prob.Q.parameters(), lr=vi_lr)
         opt = torchopt.Adam(prob.Q.parameters(), lr=vi_lr)
@@ -208,6 +213,11 @@ if __name__ == "__main__":
 
         prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, 'opt')
 
+        for key in all_data.keys():
+            all_data[key] = all_data[key].to(device)
+        for key in all_covariates.keys():
+            all_covariates[key] = all_covariates[key].to(device)
+
         # opt_P = t.optim.Adam(prob.Q.parameters(), lr=rws_lr)
         opt = torchopt.Adam(prob.Q.parameters(), lr=rws_lr, maximize=True)
 
@@ -235,6 +245,11 @@ if __name__ == "__main__":
         t.manual_seed(num_run)
 
         prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, 'qem')
+
+        for key in all_data.keys():
+            all_data[key] = all_data[key].to(device)
+        for key in all_covariates.keys():
+            all_covariates[key] = all_covariates[key].to(device)
 
         for i in range(NUM_ITERS):
             sample = prob.sample(K, True)
