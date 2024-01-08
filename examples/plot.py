@@ -8,7 +8,9 @@ def smooth(x, window):
     
     result = np.zeros_like(x)
 
-    for i in range(len(x)):
+    result[0] = x[0]
+
+    for i in range(1,len(x)):
         result[i] = x[max(i-window, 0):i].mean()
 
     return result
@@ -16,7 +18,7 @@ def smooth(x, window):
 def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 50], dataset_seeds=[0], results_subfolder='', Ks_to_plot='all'):
 
     print(f'Plotting {model_name} with Ks {Ks_to_plot}.')
-    
+
     elbos, p_lls, iter_times, lrs = {}, {}, {}, {}
     Ks = None
 
@@ -45,8 +47,10 @@ def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 50
             if Ks is None:
                 if Ks_to_plot == 'all':
                     Ks = results['Ks']
+                    K_idxs = range(len(Ks))
                 else:
                     Ks = [K for K in results['Ks'] if K in Ks_to_plot]
+                    K_idxs = [i for i, K in enumerate(results['Ks']) if K in Ks_to_plot]
             else:
                 if Ks_to_plot == 'all':
                     assert np.all(Ks == results['Ks'])
@@ -58,9 +62,8 @@ def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 50
         p_lls[method_name] = np.stack(p_lls[method_name]).mean(0)
         iter_times[method_name] = np.stack(iter_times[method_name]).mean(0)
 
-
     # Create the subplots (top row x=iter, bottom row x=time)
-    fig, axs = plt.subplots(2, 2, figsize=(12, 6))
+    fig, axs = plt.subplots(2, 2, figsize=(13, 7))
 
     # Define the moving average window sizes
     window_sizes = [1, 5, 10, 50]
@@ -72,58 +75,64 @@ def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 50
         axs[1,0].set_xlabel('Time (s)')
         axs[1,0].set_ylabel('ELBO')
         for k, K in enumerate(Ks):
+            K_idx = K_idxs[k]
             for i, method_name in enumerate(method_names):
                 colour = f'C{k*len(method_names) + i}'
 
                 for j, lr in enumerate(lrs[method_name]):
-                    mean_values = elbos[method_name][i,j].mean(1)
+                    mean_values = elbos[method_name][K_idx,j].mean(1)
 
                     smoothed_mean_values = smooth(mean_values, window_size)
                     
-                    std_errs = elbos[method_name][i, j].std(1)/np.sqrt(elbos[method_name].shape[3])
+                    std_errs = elbos[method_name][K_idx,j].std(1)/np.sqrt(elbos[method_name].shape[3])
                     
-                    times = iter_times[method_name][i,j].mean(1).cumsum()
+                    times = iter_times[method_name][K_idx,j].mean(1).cumsum()
 
-                    axs[0,0].plot(smoothed_mean_values, label=f'{method_name.upper()}: K={K}, lr={lr}', color=colour, alpha=(j+1)/len(lrs))
-                    # axs[0,0].fill_between(range(len(smoothed_mean_values)), smoothed_mean_values - std_errs, smoothed_mean_values + std_errs, alpha=0.2*(j+1)/len(lrs), color=colour)
+                    alpha_val = 1- j/len(lrs)
 
-                    axs[1,0].plot(times, smoothed_mean_values, label=f'{method_name.upper()}: K={K}, lr={lr}', color=colour, alpha=(j+1)/len(lrs))
-                    # axs[1,0].fill_between(times, range(len(smoothed_mean_values)), smoothed_mean_values - std_errs, smoothed_mean_values + std_errs, alpha=0.2*(j+1)/len(lrs), color=colour)
+                    axs[0,0].plot(smoothed_mean_values, label=f'{method_name.upper()}: K={K}, lr={lr}', color=colour, alpha=alpha_val)
+                    axs[0,0].fill_between(range(len(smoothed_mean_values)), smoothed_mean_values - std_errs, smoothed_mean_values + std_errs, alpha=0.2*alpha_val, color=colour)
+
+                    axs[1,0].plot(times, smoothed_mean_values, label=f'{method_name.upper()}: K={K}, lr={lr}', color=colour, alpha=alpha_val)
+                    axs[1,0].fill_between(times, smoothed_mean_values - std_errs, smoothed_mean_values + std_errs, alpha=0.2*alpha_val, color=colour)
 
                     
 
-                # Plot for p_lls
-                axs[0,1].set_xlabel('Iteration')
-                axs[0,1].set_ylabel('Predictive Log-Likelihood')
-                axs[1,1].set_xlabel('Time (s)')
-                axs[1,1].set_ylabel('Predictive Log-Likelihood')
-                for k, K in enumerate(Ks):
-                    for i, method_name in enumerate(method_names):
-                        colour = f'C{k*len(method_names) + i}'
+        # Plot for p_lls
+        axs[0,1].set_xlabel('Iteration')
+        axs[0,1].set_ylabel('Predictive Log-Likelihood')
+        axs[1,1].set_xlabel('Time (s)')
+        axs[1,1].set_ylabel('Predictive Log-Likelihood')
+        for k, K in enumerate(Ks):
+            K_idx = K_idxs[k]
+            for i, method_name in enumerate(method_names):
+                colour = f'C{k*len(method_names) + i}'
 
-                        for j, lr in enumerate(lrs[method_name]):
-                            mean_values = p_lls[method_name][i,j].mean(1)
+                for j, lr in enumerate(lrs[method_name]):
+                    mean_values = p_lls[method_name][K_idx,j].mean(1)
 
-                            smoothed_mean_values = smooth(mean_values, window_size)
+                    smoothed_mean_values = smooth(mean_values, window_size)
 
-                            std_errs = p_lls[method_name][i, j].std(1)/np.sqrt(p_lls[method_name].shape[3])
-                            
-                            times = iter_times[method_name][i,j].mean(1).cumsum()
+                    std_errs = p_lls[method_name][K_idx,j].std(1)/np.sqrt(p_lls[method_name].shape[3])
+                    
+                    times = iter_times[method_name][K_idx,j].mean(1).cumsum()
 
-                            axs[0,1].plot(smoothed_mean_values, label=f'{method_name.upper()}: K={K}, lr={lr}', color=colour, alpha=(j+1)/len(lrs))
-                            # axs[0,1].fill_between(range(len(smoothed_mean_values)), smoothed_mean_values - std_errs, smoothed_mean_values + std_errs, alpha=0.1*(j+1)/len(lrs), color=colour)
+                    alpha_val = 1- j/len(lrs)
 
-                            axs[0,1].plot(times, smoothed_mean_values, label=f'{method_name.upper()}: K={K}, lr={lr}', color=colour, alpha=(j+1)/len(lrs))
-                            # axs[0,1].fill_between(times, range(len(smoothed_mean_values)), smoothed_mean_values - std_errs, smoothed_mean_values + std_errs, alpha=0.1*(j+1)/len(lrs), color=colour)
+                    axs[0,1].plot(smoothed_mean_values, label=f'{method_name.upper()}: K={K}, lr={lr}', color=colour, alpha=alpha_val)
+                    axs[0,1].fill_between(range(len(smoothed_mean_values)), smoothed_mean_values - std_errs, smoothed_mean_values + std_errs, alpha=0.1*alpha_val, color=colour)
+
+                    axs[0,1].plot(times, smoothed_mean_values, label=f'{method_name.upper()}: K={K}, lr={lr}', color=colour, alpha=alpha_val)
+                    axs[0,1].fill_between(times, smoothed_mean_values - std_errs, smoothed_mean_values + std_errs, alpha=0.1*alpha_val, color=colour)
 
 
-                # Add title
-                fig.suptitle(f'{method_name.upper()} on {model_name} (Smoothing window size: {window_size}){" (K=" + str(Ks_to_plot) + ")" if Ks_to_plot != "all" else ""}')
+                    # Add title
+                    fig.suptitle(f'{method_name.upper()} on {model_name} (Smoothing window size: {window_size}){" (K=" + str(Ks_to_plot) + ")" if Ks_to_plot != "all" else ""}')
 
 
         # Add legend outside the subplot to the right-hand side with two columns
         # NOTE: When we get p_ll working we'll need to rethink legend positioning/design
-        axs[0,0].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0., ncol=2)
+        axs[0,0].legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., ncol=3)
 
         axs[0,1].set_zorder(-1)
         axs[1,1].set_zorder(-1)
