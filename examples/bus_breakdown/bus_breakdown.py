@@ -153,7 +153,13 @@ if __name__ == "__main__":
     DO_PLOT   = True
     DO_PREDLL = True
     NUM_ITERS = 250
-    NUM_RUNS  = 3
+    NUM_RUNS  = 1
+
+    K = 10
+
+    vi_lr = 0.01
+    rws_lr = 0.003
+    qem_lr = 0.3
 
     device = t.device('cuda' if t.cuda.is_available() else 'cpu')
     # device='cpu'
@@ -175,9 +181,8 @@ if __name__ == "__main__":
         t.manual_seed(num_run)
         prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, 'opt')
 
-        K = 3
-        # opt = t.optim.Adam(prob.Q.parameters(), lr=0.01)
-        opt = torchopt.Adam(prob.Q.parameters(), lr=0.01)
+        # opt = t.optim.Adam(prob.Q.parameters(), lr=vi_lr)
+        opt = torchopt.Adam(prob.Q.parameters(), lr=vi_lr)
         for i in range(NUM_ITERS):
             opt.zero_grad()
 
@@ -203,9 +208,8 @@ if __name__ == "__main__":
 
         prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, 'opt')
 
-        K = 3
-        # opt_P = t.optim.Adam(prob.Q.parameters(), lr=0.01)
-        opt = torchopt.Adam(prob.Q.parameters(), lr=0.003, maximize=True)
+        # opt_P = t.optim.Adam(prob.Q.parameters(), lr=rws_lr)
+        opt = torchopt.Adam(prob.Q.parameters(), lr=rws_lr, maximize=True)
 
         for i in range(NUM_ITERS):
             opt.zero_grad()
@@ -232,7 +236,6 @@ if __name__ == "__main__":
 
         prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, 'qem')
 
-        K = 3
         for i in range(NUM_ITERS):
             sample = prob.sample(K, True)
             elbo = sample.elbo_nograd()
@@ -247,7 +250,7 @@ if __name__ == "__main__":
             else:
                 print(f"Iter {i}. Elbo: {elbo:.3f}")
 
-            sample.update_qem_params(0.1)
+            sample.update_qem_params(qem_lr)
 
     if DO_PLOT:
         for key in elbos.keys():
@@ -257,22 +260,22 @@ if __name__ == "__main__":
         import matplotlib.pyplot as plt
 
         plt.figure()
-        plt.plot(t.arange(NUM_ITERS), elbos['vi'].mean(0), label='VI')
-        plt.plot(t.arange(NUM_ITERS), elbos['rws'].mean(0), label='RWS')
-        plt.plot(t.arange(NUM_ITERS), elbos['qem'].mean(0), label='QEM')
+        plt.plot(t.arange(NUM_ITERS), elbos['vi'].mean(0), label=f'VI lr={vi_lr}')
+        plt.plot(t.arange(NUM_ITERS), elbos['rws'].mean(0), label=f'RWS lr={rws_lr}')
+        plt.plot(t.arange(NUM_ITERS), elbos['qem'].mean(0), label=f'QEM lr={qem_lr}')
         plt.legend()
         plt.xlabel('Iteration')
         plt.ylabel('ELBO')
-        plt.title('Bus breakdown')
+        plt.title(f'Bus Breakdown (K={K})')
         plt.savefig('plots/quick_elbos.png')
 
         if DO_PREDLL:
             plt.figure()
-            plt.plot(t.arange(NUM_ITERS), lls['vi'].mean(0), label='VI')
-            plt.plot(t.arange(NUM_ITERS), lls['rws'].mean(0), label='RWS')
-            plt.plot(t.arange(NUM_ITERS), lls['qem'].mean(0), label='QEM')
+            plt.plot(t.arange(NUM_ITERS), lls['vi'].mean(0), label=f'VI lr={vi_lr}')
+            plt.plot(t.arange(NUM_ITERS), lls['rws'].mean(0), label=f'RWS lr={rws_lr}')
+            plt.plot(t.arange(NUM_ITERS), lls['qem'].mean(0), label=f'QEM lr={qem_lr}')
             plt.legend()
             plt.xlabel('Iteration')
             plt.ylabel('PredLL')
-            plt.title('Bus breakdown')
+            plt.title(f'Bus Breakdown (K={K})')
             plt.savefig('plots/quick_predlls.png')
