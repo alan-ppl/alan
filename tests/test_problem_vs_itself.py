@@ -140,15 +140,22 @@ def test_moments_ground_truth(tp_name, reparam, sampler):
         upper_bound = marginal_moment + 7*stderr
         lower_bound = marginal_moment - 7*stderr
 
-        upper_bound = dim2named_tensor(upper_bound)
-        lower_bound = dim2named_tensor(lower_bound)
+        assert set(generic_dims(upper_bound)) == set(generic_dims(lower_bound))
+        dims = generic_dims(upper_bound)
+        upper_bound = generic_order(upper_bound, dims)
+        lower_bound = generic_order(lower_bound, dims)
 
-        set_names_true_moment = set(true_moment.names)
-        assert set_names_true_moment == set(upper_bound.names)
-        assert set_names_true_moment == set(lower_bound.names)
+        if isinstance(true_moment, float):
+            true_moment = t.tensor(true_moment, device=marginal_moment.device)
+
+        names = [str(dim) for dim in dims]
+        for name in names:
+            assert name in true_moment
+
+        true_moment = true_moment.align_to(*names, ...)
         
-        assert generic_all(                                    true_moment < upper_bound.align_as(true_moment))
-        assert generic_all(lower_bound.align_as(true_moment) < true_moment)
+        assert generic_all(              true_moment < upper_bound)
+        assert generic_all(lower_bound < true_moment)
 
 @pytest.mark.parametrize("tp_name,sampler", tp_samplers)
 def test_elbo_ground_truth(tp_name, sampler):
