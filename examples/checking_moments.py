@@ -1,5 +1,5 @@
 import torch as t
-from alan_simplified import Normal, Plate, BoundPlate, Group, Problem, IndependentSample, Data
+from alan import Normal, Plate, BoundPlate, Group, Problem, Data, mean, var, mean2
 from functorch.dim import Dim
 import math
 t.manual_seed(127)
@@ -18,44 +18,43 @@ pred_dist = t.distributions.Normal(posterior_mean, (1 + posterior_var)**(1/2))
 true_pred_lik = pred_dist.log_prob(t.tensor([3.0])).sum()
 
 
-sampling_type = IndependentSample
-
 P_simple = Plate(mu = Normal(0, 1), 
                         p1 = Plate(obs = Normal("mu", 1)))
         
 Q_simple = Plate(mu = Normal("mu_mean", 1),
                  p1 = Plate(obs = Data()))
 
-P = BoundPlate(P_simple)
-Q = BoundPlate(Q_simple, params={'mu_mean': t.zeros(())})
 platesizes_simple = {'p1': 3}
 data = {'obs': data.refine_names('p1')}
-prob = Problem(P, Q, platesizes_simple, data)
+
+P = BoundPlate(P_simple, platesizes_simple)
+Q = BoundPlate(Q_simple, platesizes_simple, extra_opt_params={'mu_mean': t.zeros(())})
+
+prob = Problem(P, Q, data)
 
 # Get some initial samples (with K dims)
-sampling_type = IndependentSample
-sample = prob.sample(2000, True, sampling_type)
+sample = prob.sample(2000, True)
 
 # for K in [1,3,10,30,100]:
 #     print(prob.sample(K, True, sampling_type).elbo())
 # # Obtain K indices from posterior
 # post_idxs = sample.sample_posterior(num_samples=10)
 
-def mean(x):
-    sample = x
-    dim = x.dims[0]
+# def mean(x):
+#     sample = x
+#     dim = x.dims[0]
     
-    w = 1/dim.size
-    return (w * sample).sum(dim)
+#     w = 1/dim.size
+#     return (w * sample).sum(dim)
 
-def second_moment(x):
-    return mean(t.square(x))
+# def second_moment(x):
+#     return mean(t.square(x))
 
-def square(x):
-    return x**2
+# def square(x):
+#     return x**2
 
-def var(x):
-    return mean(square(x)) - square(mean(x))
+# def var(x):
+#     return mean(square(x)) - square(mean(x))
 
 
 # # print(sample.sample)
@@ -71,16 +70,13 @@ def var(x):
 # print(sample.elbo())
 
 
-
-
-
-
-moments = sample.moments({'mu': [mean, var, second_moment]})
+marginals = sample.marginals()
+moments = marginals.moments([('mu', mean), ('mu', var), ('mu', mean2)])
 print(moments)
 
 #Getting moments from posterior samples:
 
-importance_samples = sample.importance_samples(num_samples=4000)
+importance_samples = sample.importance_sample(N=4000).dump()
 
 print(f'mean: {importance_samples["mu"].mean("N")}')
 print(f'variance: {(importance_samples["mu"]**2).mean("N") - importance_samples["mu"].mean("N")**2}')
