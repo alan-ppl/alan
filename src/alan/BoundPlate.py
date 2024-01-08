@@ -280,8 +280,7 @@ class BoundPlate(nn.Module):
                 meanname = self.qem_rmkey2meanname[rmkey]
 
                 tensor = getattr(self._qem_means, meanname)
-                assert set(non_none_names(tensor)) == set(non_none_names(new_moment))
-                new_moment = new_moment.align_as(tensor)
+                assert (tensor.names == new_moment.names)
                 tensor.mul_(1-lr).add_(new_moment, alpha=lr)
 
     def _update_qem_params(self, lr, sample, computation_strategy):
