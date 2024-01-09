@@ -116,8 +116,8 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
         Q = Plate(
             log_sigma_phi_psi = Normal(QEMParam(0.), QEMParam(1.)),
 
-            psi = Normal(t.zeros((run_type_dim,)), t.ones((run_type_dim,))),
-            phi = Normal(t.zeros((bus_company_name_dim,)), t.ones((bus_company_name_dim,))),
+            psi = Normal(QEMParam(t.zeros((run_type_dim,))), QEMParam(t.ones((run_type_dim,)))),
+            phi = Normal(QEMParam(t.zeros((bus_company_name_dim,))), QEMParam(t.ones((bus_company_name_dim,)))),
 
             sigma_beta = Normal(QEMParam(0.), QEMParam(1.)),
             mu_beta = Normal(QEMParam(0.), QEMParam(1.)),
@@ -152,14 +152,14 @@ if __name__ == "__main__":
     import torchopt
     DO_PLOT   = True
     DO_PREDLL = True
-    NUM_ITERS = 500
-    NUM_RUNS  = 3
+    NUM_ITERS = 250
+    NUM_RUNS  = 1
 
     K = 10
 
     vi_lr = 0.01
     rws_lr = 0.003
-    qem_lr = 0.3
+    qem_lr = 0.1
 
     device = t.device('cuda' if t.cuda.is_available() else 'cpu')
     # device='cpu'
