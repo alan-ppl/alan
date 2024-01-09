@@ -83,16 +83,16 @@ class BoundPlate(nn.Module):
         inputs_extra_opt_params = {**inputs, **extra_opt_params}
         for k, v in inputs_extra_opt_params.items():
             if not isinstance(v, t.Tensor):
-                raise Exception("`inputs` and `extra_opt_params` must be provided as a plain named tensor, but {k} is of type {type(v)}")
+                raise Exception(f"`inputs` and `extra_opt_params` must be provided as a plain named tensor, but {k} is of type {type(v)}")
 
         #Check all dimensions used in inputs/extra_opt_params are present in all_platesizes, and match
         for k, v in inputs_extra_opt_params.items():
             for name in v.names:
                 if name is not None:
                     if name not in all_platesizes:
-                        raise Exception("Dimension name {name} used on input/extra_opt_param {k}, but not provided in all_platesizes")
+                        raise Exception(f"Dimension name {name} used on input/extra_opt_param {k}, but not provided in all_platesizes")
                     if v.size(name) != all_platesizes[name]:
-                        raise Exception("Dimension mismatch for input {k} along dimension {name}; all_platesizes gives {all_platesizes[name]}, while {k} is {v.size(name)}")
+                        raise Exception(f"Dimension mismatch for input {k} along dimension {name}; all_platesizes gives {all_platesizes[name]}, while {k} is {v.size(name)}")
 
         #Check that timeseries inits are in the right place
         check_timeseries(plate)
@@ -145,7 +145,7 @@ class BoundPlate(nn.Module):
                 #Not a QEM distribution, so may contain opt_paramname2tensor.
                 for paramname, (distargname, param) in dist.opt_qem_params.items():
                     if paramname in opt_paramname2tensor:
-                        raise Exception("OptParam is trying to add parameter named {paramname}, but there's already a parameter with this name")
+                        raise Exception(f"OptParam is trying to add parameter named {paramname}, but there's already a parameter with this name")
                     opt_paramname2tensor[paramname] = expand_named(param.init, platenames, all_platesizes)
                     self.opt_paramname2trans[paramname] = param.trans
             else:

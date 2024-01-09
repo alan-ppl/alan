@@ -1,4 +1,17 @@
-git clone https://github.com/stan-dev/posteriordb-python
-cd posteriordb-python
-python setup.py bdist_wheel
-pip install .
+For eight schools and radon:
+
+```bash
+git clone https://github.com/stan-dev/posteriordb
+pip install posteriordb-python
+```
+
+For the UCI datasets:
+    
+```bash
+mkdir data
+wget https://archive.ics.uci.edu/static/public/143/statlog+australian+credit+approval.zip
+unzip statlog+australian+credit+approval.zip -d data
+
+wget https://archive.ics.uci.edu/static/public/151/connectionist+bench+sonar+mines+vs+rocks.zip
+unzip connectionist+bench+sonar+mines+vs+rocks.zip -d data
+```
