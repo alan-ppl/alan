@@ -20,7 +20,7 @@ P_plate = Plate(
 )
 
 Q_plate = Plate( 
-    a = Normal(QEMParam(0.), QEMParam(1.)),
+    a = Normal(OptParam(0.), OptParam(1.)),
     bc = Group(
         b = Normal(QEMParam(0.), QEMParam(1.)),
         c = Normal('c_loc', lambda c_log_scale: c_log_scale.exp())

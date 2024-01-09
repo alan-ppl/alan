@@ -269,6 +269,7 @@ class BoundPlate(nn.Module):
             for distargname, tensor in conv_dict.items():
                 paramname = self.qem_varname_distargname2paramname[varname, distargname]
 
+                assert tensor.grad is None
                 getattr(self._qem_params, paramname).copy_(tensor)
 
 
@@ -279,7 +280,11 @@ class BoundPlate(nn.Module):
             for rmkey, new_moment in zip(rmkey_list, new_moment_list):
                 meanname = self.qem_rmkey2meanname[rmkey]
 
+
                 tensor = getattr(self._qem_means, meanname)
+                assert new_moment.grad is None
+                assert tensor.grad is None
+
                 assert (tensor.names == new_moment.names)
                 tensor.mul_(1-lr).add_(new_moment, alpha=lr)
 
