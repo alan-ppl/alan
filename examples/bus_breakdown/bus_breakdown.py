@@ -149,7 +149,7 @@ def load_and_generate_problem(device, Q_param_type, run=0, data_dir='data/'):
     return problem, all_data, all_covariates, all_platesizes
 
 if __name__ == "__main__":
-    import torchopt
+    #limport torchopt
     DO_PLOT   = True
     DO_PREDLL = True
     NUM_ITERS = 500
@@ -186,8 +186,8 @@ if __name__ == "__main__":
         for key in all_covariates.keys():
             all_covariates[key] = all_covariates[key].to(device)
 
-        # opt = t.optim.Adam(prob.Q.parameters(), lr=vi_lr)
-        opt = torchopt.Adam(prob.Q.parameters(), lr=vi_lr)
+        opt = t.optim.Adam(prob.Q.parameters(), lr=vi_lr)
+        #opt = torchopt.Adam(prob.Q.parameters(), lr=vi_lr)
         for i in range(NUM_ITERS):
             opt.zero_grad()
 
@@ -218,8 +218,8 @@ if __name__ == "__main__":
         for key in all_covariates.keys():
             all_covariates[key] = all_covariates[key].to(device)
 
-        # opt_P = t.optim.Adam(prob.Q.parameters(), lr=rws_lr)
-        opt = torchopt.Adam(prob.Q.parameters(), lr=rws_lr, maximize=True)
+        opt_P = t.optim.Adam(prob.Q.parameters(), lr=rws_lr)
+        #opt = torchopt.Adam(prob.Q.parameters(), lr=rws_lr, maximize=True)
 
         for i in range(NUM_ITERS):
             opt.zero_grad()

@@ -11,11 +11,11 @@ class TensorStore(torch.nn.Module):
         for k, v in bufferdict.items():
             assert k not in restricted_keys
             self.keys.append(k)
+            self.names[k] = v.names
 
             assert isinstance(v, torch.Tensor)
-            self.register_tensor(k, v)
+            self.register_tensor(k, v.rename(None))
 
-            self.names[k] = v.names
 
     def to_dict(self):
         return {k: getattr(self, k).refine_names(*self.names[k]) for k in self.keys}
