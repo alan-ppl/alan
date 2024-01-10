@@ -1,5 +1,5 @@
 import torch as t
-from alan import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, Data, QEMParam
+from alan import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
 
 def load_data_covariates(device, run=0, data_dir='data/'):
     M, N = 300, 5
@@ -32,8 +32,19 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
     M, N = 300, 5
 
     P = Plate(
-        mu_z = Normal(t.zeros((d_z,)), t.ones((d_z,))),
-        psi_z = Normal(t.zeros((d_z,)), t.ones((d_z,))),
+        mu_z_global_mean = Normal(0., 1.),
+        mu_z_global_log_scale = Normal(0., 1.),
+        mu_z = Normal("mu_z_global_mean", 
+                      lambda mu_z_global_log_scale: mu_z_global_log_scale.exp(), 
+                      sample_shape = t.Size([d_z]),
+        ),
+
+        psi_z_global_mean = Normal(0., 1.),
+        psi_z_global_log_scale = Normal(0., 1.),
+        psi_z = Normal("psi_z_global_mean", 
+                       lambda psi_z_global_log_scale: psi_z_global_log_scale.exp(), 
+                       sample_shape = t.Size([d_z]),
+        ),
 
         plate_1 = Plate(
             z = Normal("mu_z", lambda psi_z: psi_z.exp()),
@@ -48,11 +59,23 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
 
     if Q_param_type == "opt":
         Q = Plate(
-            mu_z = Normal("mu_z_loc", "mu_z_scale"),
-            psi_z = Normal("psi_z_loc", "psi_z_scale"),
+            mu_z_global_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+            mu_z_global_log_scale = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+            mu_z = Normal("mu_z_global_mean", 
+                          lambda mu_z_global_log_scale: mu_z_global_log_scale.exp(), 
+                          sample_shape = t.Size([d_z]),
+            ),
+
+            psi_z_global_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+            psi_z_global_log_scale = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+            psi_z = Normal("psi_z_global_mean", 
+                          lambda psi_z_global_log_scale: psi_z_global_log_scale.exp(), 
+                          sample_shape = t.Size([d_z]),
+            ),
 
             plate_1 = Plate(
-                z = Normal("z_loc", "z_scale"),
+                # z = Normal("z_mean", lambda z_log_scale: z_log_scale.exp()),
+                z = Normal(OptParam(t.zeros((d_z,))), OptParam(t.ones((d_z,)), transformation=t.exp)),
 
                 plate_2 = Plate(
                     obs = Data()
@@ -60,20 +83,27 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             ),
         )
 
-        Q = BoundPlate(Q, platesizes, inputs = covariates,
-                        extra_opt_params = {"mu_z_loc":   t.zeros((d_z,)), 
-                                            "mu_z_scale": t.ones((d_z,)),
-                                            "psi_z_loc":   t.zeros((d_z,)), 
-                                            "psi_z_scale": t.ones((d_z,)),
-                                            "z_loc":   t.zeros((M, d_z), names=('plate_1', None)),
-                                            "z_scale": t.ones((M, d_z), names=('plate_1', None))})
+        Q = BoundPlate(Q, platesizes, inputs = covariates)#,
+                        # extra_opt_params = {"z_mean":   t.zeros((M, d_z), names=('plate_1', None)),
+                        #                     "z_log_scale": t.zeros((M, d_z), names=('plate_1', None))})
 
     else:
         assert Q_param_type == 'qem'
 
         Q = Plate(
-            mu_z = Normal(QEMParam(t.zeros((d_z,))), QEMParam(t.ones((d_z,)))),
-            psi_z = Normal(QEMParam(t.zeros((d_z,))), QEMParam(t.ones((d_z,)))),
+            mu_z_global_mean = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+            mu_z_global_log_scale = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+            mu_z = Normal("mu_z_global_mean", 
+                          lambda mu_z_global_log_scale: mu_z_global_log_scale.exp(), 
+                          sample_shape = t.Size([d_z]),
+            ),
+
+            psi_z_global_mean = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+            psi_z_global_log_scale = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+            psi_z = Normal("psi_z_global_mean", 
+                          lambda psi_z_global_log_scale: psi_z_global_log_scale.exp(), 
+                          sample_shape = t.Size([d_z]),
+            ),
 
             plate_1 = Plate(
                 z = Normal(QEMParam(t.zeros((d_z,))), QEMParam(t.ones((d_z,)))),
@@ -101,13 +131,13 @@ if __name__ == "__main__":
     import torchopt
     DO_PLOT   = True
     DO_PREDLL = True
-    NUM_ITERS = 250
-    NUM_RUNS  = 3
+    NUM_ITERS = 100
+    NUM_RUNS  = 1
 
     K = 10
 
-    vi_lr = 0.01
-    rws_lr = 0.003
+    vi_lr = 0.1
+    rws_lr = 0.1
     qem_lr = 0.1
 
     device = t.device('cuda' if t.cuda.is_available() else 'cpu')

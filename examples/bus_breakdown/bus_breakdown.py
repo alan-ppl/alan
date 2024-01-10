@@ -1,5 +1,5 @@
 import torch as t
-from alan import Normal, Binomial, Plate, BoundPlate, Group, Problem, Data, QEMParam
+from alan import Normal, Binomial, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
 
 def load_data_covariates(device, run=0, data_dir='data/'):
     M, J, I = 3, 3, 30
@@ -64,21 +64,21 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
     if Q_param_type == "opt":
 
         Q = Plate(
-            log_sigma_phi_psi = Normal("log_sigma_phi_psi_loc", "log_sigma_phi_psi_scale"),
+            log_sigma_phi_psi = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
 
-            psi = Normal("psi_loc", "psi_scale"),
-            phi = Normal("phi_loc", "phi_scale"),
+            psi = Normal(OptParam(t.zeros(run_type_dim)), OptParam(t.zeros(run_type_dim), transformation=t.exp)),
+            phi = Normal(OptParam(t.zeros(bus_company_name_dim)), OptParam(t.zeros(bus_company_name_dim), transformation=t.exp)),
 
-            sigma_beta = Normal("sigma_beta_loc", "sigma_beta_scale"),
-            mu_beta = Normal("mu_beta_loc", "mu_beta_scale"),
+            sigma_beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+            mu_beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
 
             plate_Year = Plate(
-                beta = Normal("beta_loc", "beta_scale"),
+                beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
 
-                sigma_alpha = Normal("sigma_alpha_loc", "sigma_alpha_scale"),
+                sigma_alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
 
                 plate_Borough = Plate(
-                    alpha = Normal("alpha_loc", "alpha_scale"),
+                    alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
 
                     plate_ID = Plate(
                         obs = Data()
@@ -87,28 +87,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             )
         )
 
-        Q = BoundPlate(Q, platesizes, inputs = covariates,
-                        extra_opt_params = {"log_sigma_phi_psi_loc":   t.zeros(()),
-                                            "log_sigma_phi_psi_scale": t.ones(()),
-
-                                            "psi_loc":   t.zeros((run_type_dim,)),
-                                            "psi_scale": t.ones((run_type_dim,)),
-                                            "phi_loc":   t.zeros((bus_company_name_dim,)),
-                                            "phi_scale": t.ones((bus_company_name_dim,)),
-                                            
-                                            "sigma_beta_loc":   t.zeros(()), 
-                                            "sigma_beta_scale": t.ones(()),
-                                            "mu_beta_loc":      t.zeros(()), 
-                                            "mu_beta_scale":    t.ones(()),
-
-                                            "beta_loc":         t.zeros((M,), names=('plate_Year',)),
-                                            "beta_scale":       t.ones((M,),  names=('plate_Year',)),
-
-                                            "sigma_alpha_loc":   t.zeros((M,), names=('plate_Year',)),
-                                            "sigma_alpha_scale": t.ones((M,), names=('plate_Year',)),
-                                            
-                                            "alpha_loc":         t.zeros((M,J,), names=('plate_Year','plate_Borough')),
-                                            "alpha_scale":       t.ones((M,J,),  names=('plate_Year','plate_Borough'))})
+        Q = BoundPlate(Q, platesizes, inputs = covariates)
 
     else:
         assert Q_param_type == "qem"
@@ -152,13 +131,13 @@ if __name__ == "__main__":
     #limport torchopt
     DO_PLOT   = True
     DO_PREDLL = True
-    NUM_ITERS = 250
+    NUM_ITERS = 25
     NUM_RUNS  = 1
 
     K = 10
 
-    vi_lr = 0.01
-    rws_lr = 0.003
+    vi_lr = 0.1
+    rws_lr = 0.1
     qem_lr = 0.1
 
     device = t.device('cuda' if t.cuda.is_available() else 'cpu')
