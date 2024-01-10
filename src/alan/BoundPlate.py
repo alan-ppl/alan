@@ -263,30 +263,36 @@ class BoundPlate(nn.Module):
         """
         meanname2mom = self.qem_means()
 
+        qem_param_dict = self._qem_params.to_dict()
+
         for varname, conversion, rmkeys in zip(self.qem_list_varname, self.qem_list_conversion, self.qem_list_rmkeys):
             means = [meanname2mom[self.qem_rmkey2meanname[rmkey]] for rmkey in rmkeys]
             conv_dict = conversion.mean2conv(*means)
-            for distargname, tensor in conv_dict.items():
+            for distargname, new_param in conv_dict.items():
                 paramname = self.qem_varname_distargname2paramname[varname, distargname]
+                old_param = qem_param_dict[paramname]
 
-                assert tensor.grad is None
-                getattr(self._qem_params, paramname).copy_(tensor)
+                assert new_param.grad is None
+                assert old_param.grad is None
+                assert (new_param.names == old_param.names)
+
+                old_param.copy_(new_param)
 
 
     def _update_qem_moving_avg(self, lr, sample, computation_strategy):
         rmkey_list = self.qem_flat_list_rmkeys
+        qem_means_dict = self._qem_means.to_dict()
         if 0 < len(rmkey_list):
             new_moment_list = sample.moments(rmkey_list, computation_strategy=computation_strategy)
             for rmkey, new_moment in zip(rmkey_list, new_moment_list):
                 meanname = self.qem_rmkey2meanname[rmkey]
+                prev_moment = qem_means_dict[meanname]
 
+                assert new_moment.grad  is None
+                assert prev_moment.grad is None
+                assert (prev_moment.names == new_moment.names)
 
-                tensor = getattr(self._qem_means, meanname)
-                assert new_moment.grad is None
-                assert tensor.grad is None
-
-                assert (tensor.names == new_moment.names)
-                tensor.mul_(1-lr).add_(new_moment, alpha=lr)
+                prev_moment.mul_(1-lr).add_(new_moment, alpha=lr)
 
     def _update_qem_params(self, lr, sample, computation_strategy):
         self._update_qem_moving_avg(lr, sample, computation_strategy)
