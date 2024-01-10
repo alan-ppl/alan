@@ -220,7 +220,7 @@ class BoundPlate(nn.Module):
         prog_names = self.plate.all_prog_names()
         prog_input_param_names_overlap = set_input_param_names.intersection(prog_names)
         if 0 != len(prog_input_param_names_overlap):
-            raise Exception(f"The program in BoundPlate has plate/random variable names that overlap with the inputs/params.  Specifically {prog_inputs_param_names_overlap}.")
+            raise Exception(f"The program in BoundPlate has plate/random variable names that overlap with the inputs/params.  Specifically {prog_input_param_names_overlap}.")
 
         #Check that all the dependencies make sense by sampling.
         self.sample()
