@@ -53,7 +53,6 @@ def Kdim2varname2tensors(scope: dict[str, Tensor], active_platedims: list[Dim]):
         Kdim2varname2tensor[Kdim][varname] = tensor
     return Kdim2varname2tensor
 
-    
 class Sampler:
     """
     In non-factorised approximate posteriors, there are several different approaches to which 
@@ -112,7 +111,9 @@ class Sampler:
 
         check_resample_dims(new_scope, active_platedims, Kdim)
         return new_scope
-
+    pass
+    
+class SamplerMP(Sampler):
     @staticmethod
     def reduce_logQ(lp: Tensor, active_platedims: list[Dim], Kdim: Dim):
         """
@@ -133,7 +134,7 @@ class Sampler:
 
 
 
-class PermutationSampler(Sampler):
+class PermutationSampler(SamplerMP):
     """
     A mixture proposal, where we permute the particles on all the parents.
     """
@@ -144,7 +145,7 @@ class PermutationSampler(Sampler):
         tdd = TorchDimDist(td.uniform.Uniform, low=0, high=1)
         return tdd.sample(False, sample_dims=[*dims], sample_shape=[]).argsort(Kdim).order(Kdim)
     
-class CategoricalSampler(Sampler):
+class CategoricalSampler(SamplerMP):
     """
     A mixture proposal, where we resample the particles on the parents using a uniform Categorical.
     """
@@ -157,42 +158,10 @@ class CategoricalSampler(Sampler):
         platedims.remove(Kdim)
         return tdd.sample(False, sample_dims=platedims, sample_shape=[Kdim.size])
 
-class IndependentSampler():
+class IndependentSampler(Sampler):
     """
     Draw K independent samples from the full joint.
     """
     @staticmethod
-    def resample_scope(scope: dict[str, Tensor], active_platedims: list[Dim], Kdim: None):
-        """
-        Doesn't permute/resample previous variables.
-
-        All the variables come in with different K-dimensions.  We need to make them the 
-        same K-dimension for sampling to work.
-        """
-        new_scope = {}
-
-        for name, tensor in scope.items():
-            var_Kdims = list(set(generic_dims(tensor)).difference(active_platedims))
-            assert len(var_Kdims) in [0, 1]
-            if len(var_Kdims) == 1:
-                var_Kdim = var_Kdims[0]
-                tensor = tensor.order(var_Kdim)[Kdim]
-            new_scope[name] = tensor
-
-        check_resample_dims(new_scope, active_platedims, Kdim)
-        return new_scope
-
-    @staticmethod
-    def reduce_logQ(lp: Tensor, active_platedims: list[Dim], Kdim: Dim):
-        """
-        lp: log_prob tensor [*active_platedims, *parent_Kdims, var_Kdim]
-        Here, we take the "diagonal" of the parent_Kdims
-        returns log_prob tensor with [*active_platedims, var_Kdim]
-        """
-        parent_Kdims = set(generic_dims(lp)).difference([Kdim, *active_platedims])
-        
-        if len(parent_Kdims) > 0:
-            idxs = [t.arange(Kdim.size)[Kdim] for K in parent_Kdims]
-            lp = lp.order(*parent_Kdims)[idxs]
-        
-        return lp
+    def perm(dims:set[Dim], Kdim:Dim):
+        return t.arange(Kdim.size)
