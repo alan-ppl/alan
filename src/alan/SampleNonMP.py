@@ -5,6 +5,7 @@ from .moments import RawMoment, torchdim_moments_mixin, named_moments_mixin
 from .Data import Data
 from .dist import Dist
 from .Plate import Plate
+from .Timeseries import Timeseries
 
 class SampleNonMP:
     def __init__(
@@ -14,7 +15,6 @@ class SampleNonMP:
             groupvarname2Kdim,
             reparam,
         ):
-        
         self.problem = problem
         self.reparam = reparam
 
@@ -88,6 +88,7 @@ def non_mp_log_prob(
     lpqs = []
     for k, distQ in Q.flat_prog.items():
         distP = P.flat_prog[k]
+        assert not isinstance(distP, Timeseries)
         if isinstance(distQ, Plate):
             assert isinstance(distQ, Plate)
             lpq = non_mp_log_prob(
