@@ -10,81 +10,196 @@
 # education. Nevertheless, each of the eight schools in this study considered its short-term coaching program to be very 
 # successful at increasing SAT scores. Also, there was no prior reason to believe that any of the eight programs was more 
 # effective than any other or that some were more similar in effect to each other than to any other.
-###
-
+###       
 import torch as t
-from alan import Normal, HalfCauchy, Plate, BoundPlate, Group, Problem, Data, mean, Split, OptParam, QEMParam, checkpoint, no_checkpoint, Split
+from alan import Normal, HalfCauchy, Plate, BoundPlate, Problem, Data, mean, OptParam, QEMParam, checkpoint, no_checkpoint, Split
+
+import numpy as np
+from pathlib import Path
 
 from posteriordb import PosteriorDatabase
 import os
 
-t.manual_seed(123)
 
-device = t.device('cuda' if t.cuda.is_available() else 'cpu')
-computation_strategy = checkpoint
+def load_data_covariates(device, run, data_dir="data"):
+    pdb_path = os.path.join(os.getcwd(), "posteriordb/posterior_database")
+    my_pdb = PosteriorDatabase(pdb_path)
+
+    posterior = my_pdb.posterior("eight_schools-eight_schools_centered")
+
+    data = posterior.data.values()
+
+    #Treatment effects
+    train_y = t.tensor(data["y"][:6]).rename('J')
+    all_y = t.tensor(data["y"]).rename('J')
+    #Standard errors
+    train_sigma = t.tensor(data["sigma"][:6]).rename('J')
+    all_sigma = t.tensor(data["sigma"]).rename('J')
     
-pdb_path = os.path.join(os.getcwd(), "posteriordb/posterior_database")
-my_pdb = PosteriorDatabase(pdb_path)
+    platesizes = {'J': 6}
+    all_platesizes = {'J': 8}
 
-posterior = my_pdb.posterior("eight_schools-eight_schools_centered")
+    train_y = {'y': train_y}
+    all_y = {'y': all_y}
+    
+    train_sigma = {'sigma': train_sigma}
+    all_sigma = {'sigma': all_sigma}
 
-data = posterior.data.values()
+    return platesizes, all_platesizes,  train_y, all_y, train_sigma, all_sigma
 
-#Number of schools
-J = data["J"]
-#Treatment effects
-y = t.tensor(data["y"])
-#Standard errors
-sigma = t.tensor(data["sigma"])
+def generate_problem(device, platesizes, data, covariates, Q_param_type):
+    
+    P_plate = Plate( 
+        tau = HalfCauchy(5),
+        mu = Normal(0, 5),
+        J = Plate(
+            theta = Normal('mu', 'tau'),
+            y = Normal('theta', 'sigma'),
+        ),   
+    )
 
-## Model ##
-#As in stan...
+    
 
-P_plate = Plate( 
-    tau = HalfCauchy(5),
-    mu = Normal(0, 5),
-    J = Plate(
-        theta = Normal('mu', 'tau'),
-        y = Normal('theta', 'sigma'),
-    ),   
-)
+    if Q_param_type == "opt": 
+        Q_plate = Plate( 
+            tau = HalfCauchy(OptParam(5.)),
+            mu = Normal(OptParam(0.), OptParam(5., transformation=t.exp)),
+            J = Plate(
+                theta = Normal(OptParam(0.), OptParam(5., transformation=t.exp)),
+                y = Data(),
+            ),   
+        )
 
-Q_plate = Plate( 
-    tau = HalfCauchy(OptParam(5.)),
-    mu = Normal(OptParam(0.), OptParam(5.)),
-    J = Plate(
-        theta = Normal(OptParam(0.), OptParam(5.)),
-        y = Data(),
-    ),   
-)
+    P_bound_plate = BoundPlate(P_plate, platesizes, inputs=covariates)
+    Q_bound_plate = BoundPlate(Q_plate, platesizes)
 
-all_platesizes = {'J': J}
+    prob = Problem(P_bound_plate, Q_bound_plate, data)
+    prob.to(device)
 
-data = {'y': y.rename('J')}
-inputs = {'sigma': sigma.rename('J')}
+    return prob
 
-P_bound_plate = BoundPlate(P_plate, all_platesizes, inputs=inputs)
-Q_bound_plate = BoundPlate(Q_plate, all_platesizes)
 
-prob = Problem(P_bound_plate, Q_bound_plate, data)
-prob.to(device)
 
-opt = t.optim.Adam(prob.parameters(), lr=1e-3)
-        
-K = 10
-print("K={}".format(K))
-for i in range(1000):
-    opt.zero_grad()
-    sample = prob.sample(K=K)
-    elbo = sample.elbo_vi(computation_strategy=computation_strategy)
-    elbo.backward()
-    opt.step()
+def load_and_generate_problem(device, Q_param_type, run=0, data_dir='data/'):
+    platesizes, all_platesizes, data, all_data, covariates, all_covariates = load_data_covariates(device, run, data_dir)
+    problem = generate_problem(device, platesizes, data, covariates, Q_param_type)
+    
+    return problem, all_data, all_covariates, all_platesizes
 
-    if 0 == i%200:
-        print(elbo.item())
-        
-gs = posterior.reference_draws()
+if __name__ == "__main__":
+    Path("plots/eight_schools").mkdir(parents=True, exist_ok=True)
+    DO_PLOT   = True
+    DO_PREDLL = True
+    NUM_ITERS = 100
+    NUM_RUNS  = 1
 
-import pandas as pd
-gs = pd.DataFrame(gs)
-print(gs)
+    K = 10
+
+    vi_lr = 0.1
+    rws_lr = 0.1
+    qem_lr = 0.1
+
+    device = t.device('cuda' if t.cuda.is_available() else 'cpu')
+    # device='cpu'
+
+    elbos = {'vi' : t.zeros((NUM_RUNS, NUM_ITERS)).to(device),
+             'rws': t.zeros((NUM_RUNS, NUM_ITERS)).to(device),
+             'qem': t.zeros((NUM_RUNS, NUM_ITERS)).to(device)}
+    
+    lls   = {'vi' : t.zeros((NUM_RUNS, NUM_ITERS)).to(device),
+             'rws': t.zeros((NUM_RUNS, NUM_ITERS)).to(device),
+             'qem': t.zeros((NUM_RUNS, NUM_ITERS)).to(device)}
+
+    print(f"Device: {device}")
+
+    for num_run in range(NUM_RUNS):
+        print(f"Run {num_run}")
+        print()
+        print(f"VI")
+        t.manual_seed(num_run)
+        prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, 'opt')
+
+        for key in all_data.keys():
+            all_data[key] = all_data[key].to(device)
+        for key in all_covariates.keys():
+            all_covariates[key] = all_covariates[key].to(device)
+
+        opt = t.optim.Adam(prob.Q.parameters(), lr=vi_lr)
+
+        for i in range(NUM_ITERS):
+            opt.zero_grad()
+
+            sample = prob.sample(K, True)
+            elbo = sample.elbo_vi()
+            elbos['vi'][num_run, i] = elbo.detach()
+
+            if DO_PREDLL:
+                importance_sample = sample.importance_sample(N=10)
+                extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
+                ll = extended_importance_sample.predictive_ll(all_data)
+                lls['vi'][num_run, i] = ll['y']
+                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['y']:.3f}")
+            else:
+                print(f"Iter {i}. Elbo: {elbo:.3f}")
+
+            (-elbo).backward()
+            opt.step()
+
+        print()
+        print(f"RWS")
+        t.manual_seed(num_run)
+
+        prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, 'opt')
+
+        for key in all_data.keys():
+            all_data[key] = all_data[key].to(device)
+        for key in all_covariates.keys():
+            all_covariates[key] = all_covariates[key].to(device)
+
+
+        for i in range(NUM_ITERS):
+            opt.zero_grad()
+
+            sample = prob.sample(K, True)
+            elbo = sample.elbo_rws()
+            elbos['rws'][num_run, i] = elbo.detach()
+
+            if DO_PREDLL:
+                importance_sample = sample.importance_sample(N=10)
+                extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
+                ll = extended_importance_sample.predictive_ll(all_data)
+                lls['rws'][num_run, i] = ll['y']
+                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['y']:.3f}")
+            else:
+                print(f"Iter {i}. Elbo: {elbo:.3f}")
+
+            (-elbo).backward()
+            opt.step()
+
+    if DO_PLOT:
+        for key in elbos.keys():
+            elbos[key] = elbos[key].cpu()
+            lls[key] = lls[key].cpu()
+
+        import matplotlib.pyplot as plt
+
+        plt.figure()
+        plt.plot(t.arange(NUM_ITERS), elbos['vi'].mean(0), label=f'VI lr={vi_lr}')
+        plt.plot(t.arange(NUM_ITERS), elbos['rws'].mean(0), label=f'RWS lr={rws_lr}')
+        plt.legend()
+        plt.xlabel('Iteration')
+        plt.ylabel('ELBO')
+        plt.title(f'Eight Schools (K={K})')
+        plt.tight_layout()
+        plt.savefig('plots/eight_schools/quick_elbos.png')
+
+        if DO_PREDLL:
+            plt.figure()
+            plt.plot(t.arange(NUM_ITERS), lls['vi'].mean(0), label=f'VI lr={vi_lr}')
+            plt.plot(t.arange(NUM_ITERS), lls['rws'].mean(0), label=f'RWS lr={rws_lr}')
+            plt.legend()
+            plt.xlabel('Iteration')
+            plt.ylabel('PredLL')
+            plt.title(f'Eight Schools (K={K})')
+            plt.tight_layout()
+            plt.savefig('plots/eight_schools/quick_predlls.png')

@@ -1,14 +1,33 @@
-from posteriordb import PosteriorDatabase
-import os
-pdb_path = os.path.join(os.getcwd(), "posteriordb/posterior_database")
-my_pdb = PosteriorDatabase(pdb_path)
+import torch as t
+from alan import Normal, Plate, BoundPlate, Problem, Data, checkpoint, OptParam, QEMParam
 
-print(my_pdb.posterior_names())
+computation_strategy = checkpoint
 
-posterior = my_pdb.posterior("radon_all-radon_pooled")
+P = Plate(
+    mu = Normal(t.zeros((2,)), t.ones((2,)), sample_shape = t.Size([2])), 
+    p1 = Plate(
+        obs = Normal("mu", t.ones((2,)))
+    )
+)
+    
+Q = Plate(
+    mu = Normal(QEMParam(t.zeros((2,))), QEMParam(t.ones((2,))),
+    p1 = Plate(
+        obs = Data()
+    )
+)
 
-print(posterior.information)
 
-print(posterior.model.code("stan"))
+platesizes = {'p1': 3}
 
-print(len(posterior.data.values()['county_idx']))
+
+P = BoundPlate(P, platesizes)
+Q = BoundPlate(Q, platesizes)
+
+P_sample = P.sample()
+data = {'obs': P_sample['obs']}
+
+prob = Problem(P, Q, data)
+
+sample = prob.sample(K=10)
+sample.update_qem_params(0.01)

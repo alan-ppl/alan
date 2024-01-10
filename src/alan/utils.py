@@ -314,7 +314,10 @@ def ultimate_order(x, dims):
     slice(None) (in which case, we will place a positional dimension)
     """
     #Check that the number of colons is equal to the number of positional dimensions.
-    assert generic_ndim(x) == sum(dim == slice(None) for dim in dims)
+    if not generic_ndim(x) == sum(dim == slice(None) for dim in dims):
+        raise(Exception("""Number of colons in dims must be equal to the number of positional dimensions in x, 
+                        this can happend if you have forgotten to correctly name your covariates in the inputs dictionary or
+                        if P and Q have latents with different dimensions."""))
 
     dims_in_x = set(generic_dims(x))
 
