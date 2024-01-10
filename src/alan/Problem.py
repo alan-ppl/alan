@@ -4,14 +4,14 @@ from typing import Union
 
 from .Plate import Plate, tensordict2tree, flatten_tree
 from .BoundPlate import BoundPlate, named2torchdim_flat2tree
-from .Sampler import Sampler
+from .Sampler import Sampler, IndependentSampler, PermutationSampler
 from .utils import *
 from .checking import check_PQ_plate, check_inputs_params, mismatch_names
 from .logpq import logPQ_plate
-from .Sampler import PermutationSampler
 from .Stores import BufferStore
 
 from .Sample import Sample
+from .SampleNonMP import SampleNonMP
 
 PBP = Union[Plate, BoundPlate]
 
@@ -95,6 +95,20 @@ class Problem(nn.Module):
             sampler=sampler,
             reparam=reparam,
         )
+
+    def sample_nonmp(self, K:int, reparam:bool=True):
+        self.check_device()
+        sampler = IndependentSampler
+
+        sample, groupvarname2Kdim = self.Q._sample(K, reparam, sampler, self.all_platedims)
+
+        return SampleNonMP(
+            problem=self,
+            sample=sample,
+            groupvarname2Kdim=groupvarname2Kdim,
+            reparam=reparam,
+        )
+
 
     def inputs_params(self):
         flat_named = {

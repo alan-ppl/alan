@@ -156,3 +156,43 @@ class CategoricalSampler(Sampler):
         platedims = list(dims)
         platedims.remove(Kdim)
         return tdd.sample(False, sample_dims=platedims, sample_shape=[Kdim.size])
+
+class IndependentSampler():
+    """
+    Draw K independent samples from the full joint.
+    """
+    @staticmethod
+    def resample_scope(scope: dict[str, Tensor], active_platedims: list[Dim], Kdim: None):
+        """
+        Doesn't permute/resample previous variables.
+
+        All the variables come in with different K-dimensions.  We need to make them the 
+        same K-dimension for sampling to work.
+        """
+        new_scope = {}
+
+        for name, tensor in scope.items():
+            var_Kdims = list(set(generic_dims(tensor)).difference(active_platedims))
+            assert len(var_Kdims) in [0, 1]
+            if len(var_Kdims) == 1:
+                var_Kdim = var_Kdims[0]
+                tensor = tensor.order(var_Kdim)[Kdim]
+            new_scope[name] = tensor
+
+        check_resample_dims(new_scope, active_platedims, Kdim)
+        return new_scope
+
+    @staticmethod
+    def reduce_logQ(lp: Tensor, active_platedims: list[Dim], Kdim: Dim):
+        """
+        lp: log_prob tensor [*active_platedims, *parent_Kdims, var_Kdim]
+        Here, we take the "diagonal" of the parent_Kdims
+        returns log_prob tensor with [*active_platedims, var_Kdim]
+        """
+        parent_Kdims = set(generic_dims(lp)).difference([Kdim, *active_platedims])
+        
+        if len(parent_Kdims) > 0:
+            idxs = [t.arange(Kdim.size)[Kdim] for K in parent_Kdims]
+            lp = lp.order(*parent_Kdims)[idxs]
+        
+        return lp
