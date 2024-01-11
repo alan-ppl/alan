@@ -1,18 +1,20 @@
 import torch as t
-from alan import Normal, Plate, BoundPlate, Problem, Data, checkpoint, OptParam, QEMParam
+from alan import Normal, Bernoulli, Plate, BoundPlate, Problem, Data, checkpoint, OptParam, QEMParam
 
 computation_strategy = checkpoint
 
 P = Plate(
-    mu = Normal(t.zeros((2,)), t.ones((2,)), sample_shape = t.Size([2])), 
+    mu = Normal(0, 1, sample_shape = t.Size([2])), 
     p1 = Plate(
-        obs = Normal("mu", t.ones((2,)))
+        theta = Normal('mu', 1, sample_shape = t.Size([2])),
+        obs = Bernoulli(logits = lambda theta, x: theta @ x)
     )
 )
     
 Q = Plate(
-    mu = Normal(QEMParam(t.zeros((2,))), QEMParam(t.ones((2,))),
+    mu = Normal(QEMParam(t.zeros((2,))), QEMParam(t.ones((2,)))),
     p1 = Plate(
+        theta = Normal('mu', 1),
         obs = Data()
     )
 )
@@ -20,12 +22,12 @@ Q = Plate(
 
 platesizes = {'p1': 3}
 
-
-P = BoundPlate(P, platesizes)
+inputs = {'x': t.randn((3, 2)).rename('p1', ...)}
+P = BoundPlate(P, platesizes, inputs=inputs)
 Q = BoundPlate(Q, platesizes)
 
 P_sample = P.sample()
-data = {'obs': P_sample['obs']}
+data = {'obs': t.tensor([1., 1., 0.], names=('p1',))}
 
 prob = Problem(P, Q, data)
 

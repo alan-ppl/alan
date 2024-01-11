@@ -34,8 +34,7 @@ def load_data_covariates(device, run, data_dir="data"):
     
     platesizes = {'Houses': 500}
     all_platesizes = {'Houses': Houses}
-    
-    print(Houses)
+
     
 
     return platesizes, all_platesizes,  train_log_radon, all_log_radon, train_floor_measure, all_floor_measure
@@ -93,7 +92,7 @@ def load_and_generate_problem(device, Q_param_type, run=0, data_dir='data/'):
 if __name__ == "__main__":
     Path("plots/radon").mkdir(parents=True, exist_ok=True)
     DO_PLOT   = True
-    DO_PREDLL = False
+    DO_PREDLL = True
     NUM_ITERS = 100
     NUM_RUNS  = 1
 
@@ -161,7 +160,7 @@ if __name__ == "__main__":
         for key in all_covariates.keys():
             all_covariates[key] = all_covariates[key].to(device)
 
-
+        opt = t.optim.Adam(prob.Q.parameters(), lr=rws_lr)
         for i in range(NUM_ITERS):
             opt.zero_grad()
 

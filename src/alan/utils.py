@@ -316,7 +316,6 @@ def ultimate_order(x, dims):
     #Check that the number of colons is equal to the number of positional dimensions.
     assert generic_ndim(x) == sum(dim == slice(None) for dim in dims)
 
-
     dims_in_x = set(generic_dims(x))
 
     #Convert any dims that aren't in x to nones. So this contains:

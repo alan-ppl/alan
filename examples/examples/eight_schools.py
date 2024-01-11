@@ -50,10 +50,11 @@ def load_data_covariates(device, run, data_dir="data"):
 def generate_problem(device, platesizes, data, covariates, Q_param_type):
     
     P_plate = Plate( 
-        tau = HalfCauchy(5),
-        mu = Normal(0, 5),
+        tau = Normal(0, 1),
+        log_mu_scale = Normal(0, 1),
         J = Plate(
-            theta = Normal('mu', 'tau'),
+            mu = Normal(0, lambda log_mu_scale: log_mu_scale.exp()),
+            theta = Normal('mu', lambda tau: tau.exp()),
             y = Normal('theta', 'sigma'),
         ),   
     )
@@ -62,10 +63,21 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
 
     if Q_param_type == "opt": 
         Q_plate = Plate( 
-            tau = HalfCauchy(OptParam(5.)),
-            mu = Normal(OptParam(0.), OptParam(5., transformation=t.exp)),
+            tau = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+            log_mu_scale = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
             J = Plate(
-                theta = Normal(OptParam(0.), OptParam(5., transformation=t.exp)),
+                mu = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+                theta = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+                y = Data(),
+            ),   
+        )
+    elif Q_param_type == "qem":
+        Q_plate = Plate( 
+            tau = Normal(QEMParam(0.), QEMParam(1.)),
+            log_mu_scale = Normal(QEMParam(0.), QEMParam(1.)),
+            J = Plate(
+                mu = Normal(QEMParam(0.), QEMParam(1.)),
+                theta = Normal(QEMParam(0.), QEMParam(1.)),
                 y = Data(),
             ),   
         )
@@ -95,9 +107,9 @@ if __name__ == "__main__":
 
     K = 10
 
-    vi_lr = 0.1
-    rws_lr = 0.1
-    qem_lr = 0.1
+    vi_lr = 0.01
+    rws_lr = 0.01
+    qem_lr = 0.01
 
     device = t.device('cuda' if t.cuda.is_available() else 'cpu')
     # device='cpu'
@@ -156,7 +168,7 @@ if __name__ == "__main__":
         for key in all_covariates.keys():
             all_covariates[key] = all_covariates[key].to(device)
 
-
+        opt = t.optim.Adam(prob.Q.parameters(), lr=rws_lr)
         for i in range(NUM_ITERS):
             opt.zero_grad()
 
@@ -176,6 +188,33 @@ if __name__ == "__main__":
             (-elbo).backward()
             opt.step()
 
+        print()
+        print(f"QEM")
+        t.manual_seed(num_run)
+
+        prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, 'qem')
+
+        for key in all_data.keys():
+            all_data[key] = all_data[key].to(device)
+        for key in all_covariates.keys():
+            all_covariates[key] = all_covariates[key].to(device)
+
+        for i in range(NUM_ITERS):
+            sample = prob.sample(K, True)
+            elbo = sample.elbo_nograd()
+            elbos['qem'][num_run, i] = elbo
+
+            if DO_PREDLL:
+                importance_sample = sample.importance_sample(N=10)
+                extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
+                ll = extended_importance_sample.predictive_ll(all_data)
+                lls['qem'][num_run, i] = ll['y']
+                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['y']:.3f}")
+            else:
+                print(f"Iter {i}. Elbo: {elbo:.3f}")
+
+            sample.update_qem_params(qem_lr)
+
     if DO_PLOT:
         for key in elbos.keys():
             elbos[key] = elbos[key].cpu()
@@ -186,6 +225,7 @@ if __name__ == "__main__":
         plt.figure()
         plt.plot(t.arange(NUM_ITERS), elbos['vi'].mean(0), label=f'VI lr={vi_lr}')
         plt.plot(t.arange(NUM_ITERS), elbos['rws'].mean(0), label=f'RWS lr={rws_lr}')
+        plt.plot(t.arange(NUM_ITERS), elbos['qem'].mean(0), label=f'QEM lr={qem_lr}')
         plt.legend()
         plt.xlabel('Iteration')
         plt.ylabel('ELBO')
@@ -197,6 +237,7 @@ if __name__ == "__main__":
             plt.figure()
             plt.plot(t.arange(NUM_ITERS), lls['vi'].mean(0), label=f'VI lr={vi_lr}')
             plt.plot(t.arange(NUM_ITERS), lls['rws'].mean(0), label=f'RWS lr={rws_lr}')
+            plt.plot(t.arange(NUM_ITERS), lls['qem'].mean(0), label=f'QEM lr={qem_lr}')
             plt.legend()
             plt.xlabel('Iteration')
             plt.ylabel('PredLL')

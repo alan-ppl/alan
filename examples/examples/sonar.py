@@ -34,25 +34,28 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
     
     N_feat = covariates['x'].shape[1]
     P_plate = Plate( 
-        mu = Normal(t.zeros((N_feat,)), t.ones((N_feat,))),
+        log_mu_scale = Normal(0.,1.),
         plate1 = Plate(
-            y = Bernoulli(logits=lambda mu, x: mu @ x)
+            mu = Normal(0., lambda log_mu_scale: log_mu_scale.exp(), sample_shape = t.Size([N_feat])),
+            y = Bernoulli(logits=lambda mu, x: mu @ x),
         ),   
     )
 
 
     if Q_param_type == "opt": 
         Q_plate = Plate(
-            mu = Normal(OptParam(0.), OptParam(1.,  transformation=t.exp), sample_shape = t.Size([N_feat])),
+            log_mu_scale = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
             plate1 = Plate(
-                y = Data()
+                mu = Normal(OptParam(0.), OptParam(1.,  transformation=t.exp), sample_shape = t.Size([N_feat])),
+                y = Data(),
             ),   
         ) 
     elif Q_param_type == "qem":
         Q_plate = Plate(
-            mu = Normal(QEMParam(t.zeros(N_feat,)), QEMParam(t.ones(N_feat,))),
+            log_mu_scale = Normal(QEMParam(0.), QEMParam(1.)),
             plate1 = Plate(
-                y = Data()
+                mu = Normal(QEMParam(t.zeros(N_feat,)), QEMParam(t.ones(N_feat,))),
+                y = Data(),
             ),   
         )
     P_bound_plate = BoundPlate(P_plate, platesizes, inputs=covariates)
@@ -141,7 +144,7 @@ if __name__ == "__main__":
         for key in all_covariates.keys():
             all_covariates[key] = all_covariates[key].to(device)
 
-
+        opt = t.optim.Adam(prob.Q.parameters(), lr=rws_lr)
         for i in range(NUM_ITERS):
             opt.zero_grad()
 
@@ -202,6 +205,7 @@ if __name__ == "__main__":
         plt.legend()
         plt.xlabel('Iteration')
         plt.ylabel('ELBO')
+        plt.ylim(-1000,0)
         plt.title(f'Sonar (K={K})')
         plt.tight_layout()
         plt.savefig('plots/sonar/quick_elbos.png')
@@ -214,6 +218,7 @@ if __name__ == "__main__":
             plt.legend()
             plt.xlabel('Iteration')
             plt.ylabel('PredLL')
+            plt.ylim(-200,0)
             plt.title(f'Sonar (K={K})')
             plt.tight_layout()
             plt.savefig('plots/sonar/quick_predlls.png')

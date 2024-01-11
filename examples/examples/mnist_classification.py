@@ -140,7 +140,7 @@ if __name__ == "__main__":
         for key in all_covariates.keys():
             all_covariates[key] = all_covariates[key].to(device)
 
-
+        opt = t.optim.Adam(prob.Q.parameters(), lr=rws_lr)
         for i in range(NUM_ITERS):
             opt.zero_grad()
 
