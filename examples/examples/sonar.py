@@ -20,8 +20,8 @@ def load_data_covariates(device, run, data_dir="data"):
     train_x = t.cat([train_x, t.ones(train_x.shape[0], 1)], dim=1).float()
     all_x = t.cat([all_x, t.ones(all_x.shape[0], 1)], dim=1).float()
     
-    train_y = {'y': train_y.rename('plate1')}
-    all_y = {'y': all_y.rename('plate1')}
+    train_y = {'obs': train_y.rename('plate1')}
+    all_y = {'obs': all_y.rename('plate1')}
     train_x = {'x': train_x.rename('plate1', ...)}
     all_x = {'x': all_x.rename('plate1', ...)}
     
@@ -37,7 +37,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
         log_mu_scale = Normal(0.,1.),
         plate1 = Plate(
             mu = Normal(0., lambda log_mu_scale: log_mu_scale.exp(), sample_shape = t.Size([N_feat])),
-            y = Bernoulli(logits=lambda mu, x: mu @ x),
+            obs = Bernoulli(logits=lambda mu, x: mu @ x),
         ),   
     )
 
@@ -47,7 +47,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             log_mu_scale = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
             plate1 = Plate(
                 mu = Normal(OptParam(0.), OptParam(1.,  transformation=t.exp), sample_shape = t.Size([N_feat])),
-                y = Data(),
+                obs = Data(),
             ),   
         ) 
     elif Q_param_type == "qem":
@@ -55,7 +55,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             log_mu_scale = Normal(QEMParam(0.), QEMParam(1.)),
             plate1 = Plate(
                 mu = Normal(QEMParam(t.zeros(N_feat,)), QEMParam(t.ones(N_feat,))),
-                y = Data(),
+                obs = Data(),
             ),   
         )
     P_bound_plate = BoundPlate(P_plate, platesizes, inputs=covariates)
@@ -125,8 +125,8 @@ if __name__ == "__main__":
                 importance_sample = sample.importance_sample(N=10)
                 extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
                 ll = extended_importance_sample.predictive_ll(all_data)
-                lls['vi'][num_run, i] = ll['y']
-                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['y']:.3f}")
+                lls['vi'][num_run, i] = ll['obs']
+                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
             else:
                 print(f"Iter {i}. Elbo: {elbo:.3f}")
 
@@ -156,8 +156,8 @@ if __name__ == "__main__":
                 importance_sample = sample.importance_sample(N=10)
                 extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
                 ll = extended_importance_sample.predictive_ll(all_data)
-                lls['rws'][num_run, i] = ll['y']
-                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['y']:.3f}")
+                lls['rws'][num_run, i] = ll['obs']
+                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
             else:
                 print(f"Iter {i}. Elbo: {elbo:.3f}")
 
@@ -184,8 +184,8 @@ if __name__ == "__main__":
                 importance_sample = sample.importance_sample(N=10)
                 extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
                 ll = extended_importance_sample.predictive_ll(all_data)
-                lls['qem'][num_run, i] = ll['y']
-                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['y']:.3f}")
+                lls['qem'][num_run, i] = ll['obs']
+                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
             else:
                 print(f"Iter {i}. Elbo: {elbo:.3f}")
 

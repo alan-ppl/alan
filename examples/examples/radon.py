@@ -27,10 +27,10 @@ def load_data_covariates(device, run, data_dir="data"):
     log_radon = t.tensor(data["log_radon"])
     
     train_floor_measure = {'floor_measure': floor_measure[:500].rename('Houses')}
-    train_log_radon = {'log_radon': log_radon[:500].rename('Houses')}
+    train_log_radon = {'obs': log_radon[:500].rename('Houses')}
     
     all_floor_measure = {'floor_measure': floor_measure.rename('Houses')}
-    all_log_radon = {'log_radon': log_radon.rename('Houses')}
+    all_log_radon = {'obs': log_radon.rename('Houses')}
     
     platesizes = {'Houses': 500}
     all_platesizes = {'Houses': Houses}
@@ -46,7 +46,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
         sigma_y = HalfNormal(1),
         beta = Normal(0, 10),
         Houses = Plate(
-            log_radon = Normal(lambda alpha, floor_measure, beta: alpha + floor_measure * beta , 'sigma_y'),         
+            obs = Normal(lambda alpha, floor_measure, beta: alpha + floor_measure * beta , 'sigma_y'),         
         ),
     )
 
@@ -58,7 +58,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             sigma_y = HalfNormal(OptParam(1., transformation=t.exp)),
             beta = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
             Houses = Plate(
-                log_radon = Data(),         
+                obs = Data(),         
             ),
         )
     elif Q_param_type == "qem":
@@ -141,8 +141,8 @@ if __name__ == "__main__":
                 importance_sample = sample.importance_sample(N=10)
                 extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
                 ll = extended_importance_sample.predictive_ll(all_data)
-                lls['vi'][num_run, i] = ll['y']
-                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['y']:.3f}")
+                lls['vi'][num_run, i] = ll['obs']
+                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
             else:
                 print(f"Iter {i}. Elbo: {elbo:.3f}")
 
@@ -172,8 +172,8 @@ if __name__ == "__main__":
                 importance_sample = sample.importance_sample(N=10)
                 extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
                 ll = extended_importance_sample.predictive_ll(all_data)
-                lls['rws'][num_run, i] = ll['y']
-                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['y']:.3f}")
+                lls['rws'][num_run, i] = ll['obs']
+                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
             else:
                 print(f"Iter {i}. Elbo: {elbo:.3f}")
 
