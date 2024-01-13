@@ -1,69 +1,77 @@
-#Probabilistic PCA on MNIST data
+# Multi-species occupancy model adapted from https://mc-stan.org/users/documentation/case-studies/dorazio-royle-occupancy.html
 import torch as t
-from alan import Normal, MultivariateNormal, Plate, BoundPlate, Problem, Data, mean, OptParam, QEMParam, checkpoint, no_checkpoint, Split
-import torchvision
+from alan import Normal, Bernoulli, Beta, Binomial, Plate, BoundPlate, Problem, Data, mean, OptParam, QEMParam, checkpoint, no_checkpoint, Split
+
+import numpy as np
 from pathlib import Path
-
+  
 def load_data_covariates(device, run, data_dir="data"):
-    #Get MNIST from torch
+    ## Load and preprocess data
+    data = np.genfromtxt("data/butterflyData.txt", delimiter=",", skip_header=1)[:,1:]
+    print(data.shape)
+    platesizes = {'species':22, 'sites':16}
+    all_platesizes = {'species':28, 'sites':20}
+    train_y = t.tensor(data[:22,:16]).float()
+    all_y = t.tensor(data).float()
+  
+    train_y = {'y': train_y.rename('species', 'sites')}
+    all_y = {'y': all_y.rename('species', 'sites')}
 
-
-    trainset = torchvision.datasets.MNIST(root='./data', train=True,
-                                            download=True)
-
-    testset = torchvision.datasets.MNIST(root='./data', train=False)
-
-    #Cast to float
-    trainset.data = trainset.data.float()
-    testset.data = testset.data.float()
-
-    #Centering the data
-    trainset.data = trainset.data - trainset.data.mean()
-    testset.data = testset.data - testset.data.mean()
-      
-    #Flatten
-    trainset.data = trainset.data.flatten(1)
-    testset.data = testset.data.flatten(1)
-    
-
-    platesizes = {'plate1': trainset.data.shape[0]}
-    all_platesizes = {'plate1': trainset.data.shape[0] + testset.data.shape[0]}
-
-    train_data = {'x': trainset.data.rename('plate1', ...).to(device)}
-    train_inputs = {}
-
-    all_data = {'x': t.cat([trainset.data, testset.data], dim=0).rename('plate1', ...).to(device)}
-    all_inputs = {}
-
-    return platesizes, all_platesizes,  train_data, all_data, train_inputs, all_inputs
+    return platesizes, all_platesizes,  train_y, all_y, {}, {}
 
 def generate_problem(device, platesizes, data, covariates, Q_param_type):
     
-    K = 16
-    lamb = 1
-    P_plate = Plate(
-        w = Normal(t.zeros((28**2,K)), 1),
-        plate1 = Plate(
-            x = MultivariateNormal(t.zeros((28**2,)), lambda w: w @ w.t() + lamb**2 * t.eye(28**2)),
-        ),
+    P_plate = Plate( 
+        alpha = Normal(0.,2.5),
+        beta = Normal(0.,2.5),
+        log_sigma = Normal(0.,1),
+        Sigma = Beta(2.,2.),
+        species = Plate(
+            u = Normal(0, lambda log_sigma: log_sigma.exp()),
+            v = Normal(0, lambda log_sigma: log_sigma.exp()),
+            w = Bernoulli(logits='Sigma'),
+            sites = Plate(
+                z = Bernoulli(logits=lambda u, alpha: u + alpha),
+                y = Binomial(total_count=18, logits=lambda z,v,beta: z * (v+beta)),
+            ),
+        ),   
     )
+
 
     if Q_param_type == "opt": 
         Q_plate = Plate(
-            w = Normal(OptParam(0.), OptParam(1., transformation=t.exp), sample_shape=t.Size([28**2, K])),
-            plate1 = Plate(
-                x = Data()
+            alpha = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+            beta = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+            log_sigma = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+            Sigma = Beta(OptParam(2.), OptParam(2.)),
+            species = Plate(
+                u = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+                v = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+                w = Bernoulli(logits=OptParam(0.)),
+                sites = Plate(
+                    z = Bernoulli(logits=OptParam(0.)),
+                    y = Data()
+                ),
             ),
         )
     elif Q_param_type == "qem":
         Q_plate = Plate(
-            w = Normal(QEMParam(t.zeros((28**2, K))), QEMParam(t.ones((28**2, K)))),
-            plate1 = Plate(
-                x = Data()
+            alpha = Normal(QEMParam(0.), QEMParam(1.)),
+            beta = Normal(QEMParam(0.), QEMParam(1.)),
+            log_sigma = Normal(QEMParam(0.), QEMParam(1.)),
+            Sigma = Beta(QEMParam(2.), QEMParam(2.)),
+            species = Plate(
+                u = Normal(QEMParam(0.), QEMParam(1.)),
+                v = Normal(QEMParam(0.), QEMParam(1.)),
+                w = Bernoulli(logits=QEMParam(0.)),
+                sites = Plate(
+                    z = Bernoulli(logits=QEMParam(0.)),
+                    y = Data()
+                ),
             ),
         )
-
-    P_bound_plate = BoundPlate(P_plate, platesizes, inputs=covariates)
+            
+    P_bound_plate = BoundPlate(P_plate, platesizes)
     Q_bound_plate = BoundPlate(Q_plate, platesizes)
 
     prob = Problem(P_bound_plate, Q_bound_plate, data)
@@ -80,8 +88,7 @@ def load_and_generate_problem(device, Q_param_type, run=0, data_dir='data/'):
     return problem, all_data, all_covariates, all_platesizes
 
 if __name__ == "__main__":
-    computation_strategy = Split('plate1', 32)
-    Path("plots/MNIST_PPCA").mkdir(parents=True, exist_ok=True)
+    Path("plots/occupancy").mkdir(parents=True, exist_ok=True)
     DO_PLOT   = True
     DO_PREDLL = True
     NUM_ITERS = 100
@@ -109,35 +116,35 @@ if __name__ == "__main__":
     for num_run in range(NUM_RUNS):
         print(f"Run {num_run}")
         print()
-        print(f"VI")
-        t.manual_seed(num_run)
-        prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, 'opt')
+        # print(f"VI")
+        # t.manual_seed(num_run)
+        # prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, 'opt')
 
-        for key in all_data.keys():
-            all_data[key] = all_data[key].to(device)
-        for key in all_covariates.keys():
-            all_covariates[key] = all_covariates[key].to(device)
+        # for key in all_data.keys():
+        #     all_data[key] = all_data[key].to(device)
+        # for key in all_covariates.keys():
+        #     all_covariates[key] = all_covariates[key].to(device)
 
-        opt = t.optim.Adam(prob.Q.parameters(), lr=vi_lr)
+        # opt = t.optim.Adam(prob.Q.parameters(), lr=vi_lr)
 
-        for i in range(NUM_ITERS):
-            opt.zero_grad()
+        # for i in range(NUM_ITERS):
+        #     opt.zero_grad()
 
-            sample = prob.sample(K, True)
-            elbo = sample.elbo_vi(computation_strategy=computation_strategy)
-            elbos['vi'][num_run, i] = elbo.detach()
+        #     sample = prob.sample(K, True)
+        #     elbo = sample.elbo_vi()
+        #     elbos['vi'][num_run, i] = elbo.detach()
 
-            if DO_PREDLL:
-                importance_sample = sample.importance_sample(N=10, computation_strategy=computation_strategy)
-                extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
-                ll = extended_importance_sample.predictive_ll(all_data)
-                lls['vi'][num_run, i] = ll['y']
-                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['y']:.3f}")
-            else:
-                print(f"Iter {i}. Elbo: {elbo:.3f}")
+        #     if DO_PREDLL:
+        #         importance_sample = sample.importance_sample(N=10)
+        #         extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
+        #         ll = extended_importance_sample.predictive_ll(all_data)
+        #         lls['vi'][num_run, i] = ll['y']
+        #         print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['y']:.3f}")
+        #     else:
+        #         print(f"Iter {i}. Elbo: {elbo:.3f}")
 
-            (-elbo).backward()
-            opt.step()
+        #     (-elbo).backward()
+        #     opt.step()
 
         print()
         print(f"RWS")
@@ -154,12 +161,12 @@ if __name__ == "__main__":
         for i in range(NUM_ITERS):
             opt.zero_grad()
 
-            sample = prob.sample(K, True)
-            elbo = sample.elbo_rws(computation_strategy=computation_strategy)
+            sample = prob.sample(K, False)
+            elbo = sample.elbo_rws()
             elbos['rws'][num_run, i] = elbo.detach()
 
             if DO_PREDLL:
-                importance_sample = sample.importance_sample(N=10, computation_strategy=computation_strategy)
+                importance_sample = sample.importance_sample(N=10)
                 extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
                 ll = extended_importance_sample.predictive_ll(all_data)
                 lls['rws'][num_run, i] = ll['y']
@@ -183,11 +190,11 @@ if __name__ == "__main__":
 
         for i in range(NUM_ITERS):
             sample = prob.sample(K, True)
-            elbo = sample.elbo_nograd(computation_strategy=computation_strategy)
+            elbo = sample.elbo_nograd()
             elbos['qem'][num_run, i] = elbo
 
             if DO_PREDLL:
-                importance_sample = sample.importance_sample(N=10, computation_strategy=computation_strategy)
+                importance_sample = sample.importance_sample(N=10)
                 extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
                 ll = extended_importance_sample.predictive_ll(all_data)
                 lls['qem'][num_run, i] = ll['y']
@@ -195,7 +202,7 @@ if __name__ == "__main__":
             else:
                 print(f"Iter {i}. Elbo: {elbo:.3f}")
 
-            sample.update_qem_params(qem_lr, computation_strategy=computation_strategy)
+            sample.update_qem_params(qem_lr)
 
     if DO_PLOT:
         for key in elbos.keys():
@@ -211,9 +218,10 @@ if __name__ == "__main__":
         plt.legend()
         plt.xlabel('Iteration')
         plt.ylabel('ELBO')
-        plt.title(f'MNIST_PPCA (K={K})')
+        plt.ylim(-1000,0)
+        plt.title(f'Occupancy (K={K})')
         plt.tight_layout()
-        plt.savefig('plots/MNIST_PPCA /quick_elbos.png')
+        plt.savefig('plots/occupancy/quick_elbos.png')
 
         if DO_PREDLL:
             plt.figure()
@@ -223,6 +231,6 @@ if __name__ == "__main__":
             plt.legend()
             plt.xlabel('Iteration')
             plt.ylabel('PredLL')
-            plt.title(f'MNIST_PPCA  (K={K})')
+            plt.title(f'Occupancy (K={K})')
             plt.tight_layout()
-            plt.savefig('plots/MNIST_PPCA /quick_predlls.png')
+            plt.savefig('plots/occupancy/quick_predlls.png')

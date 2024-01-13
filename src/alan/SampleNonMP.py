@@ -5,6 +5,8 @@ from .moments import RawMoment, torchdim_moments_mixin, named_moments_mixin
 from .Data import Data
 from .dist import Dist
 from .Plate import Plate
+from .Timeseries import Timeseries
+from .Split import no_checkpoint
 
 class SampleNonMP:
     def __init__(
@@ -14,7 +16,6 @@ class SampleNonMP:
             groupvarname2Kdim,
             reparam,
         ):
-        
         self.problem = problem
         self.reparam = reparam
 
@@ -29,13 +30,12 @@ class SampleNonMP:
         else:
             self.detached_sample = sample
 
-    def logpq(self, reparam):
+    def logpq(self, sample):
         """
         Returns a K-long vector of probabilities
         """
-        sample = self.reparam_sample if reparam else self.detached_sample
 
-        return non_mp_log_prob(
+        result = non_mp_log_prob(
             name = None, 
             P = self.problem.P.plate,
             Q = self.problem.Q.plate,
@@ -48,10 +48,57 @@ class SampleNonMP:
             Kdim = self.Kdim,
         )
 
+        assert result.ndim==0
+        assert result.dims==(self.Kdim,)
+        return result
 
-def unify_dims(d, Kdim, set_all_platedims):
+    def _elbo(self, sample):
+        return self.logpq(sample).order(self.Kdim).logsumexp(0) - math.log(self.Kdim.size)
+
+    def elbo_vi(self, computation_strategy=checkpoint):
+        if not self.reparam==True:
+            raise Exception("To compute the ELBO with the right gradients for VI you must construct a reparameterised sample using `problem.sample(K, reparam=True)`")
+        return self._elbo(self.reparam_sample)
+
+    def elbo_rws(self):
+        return self._elbo(self.detached_sample)
+
+    def elbo_nograd(self):
+        with t.no_grad():
+            result = self._elbo(self.detached_sample)
+        return result
+
+    def _moments_uniform_input(self, moms):
+        """
+        Must use computation_strategy=NoCheckpoint, as there seems to be a subtle issue in the interaction between
+        checkpointing and TorchDims (not sure why it doesn't emerge elsewhere...)
+        """
+        assert isinstance(moms, list)
+        lpq = self.logpq(self.detached_sample)
+        weights = (lpq - lpq.logsumexp(self.Kdim)).exp()
+
+        flat_sample = flatten_dict(self.detached_sample)
+
+        result = []
+        for (varnames, m) in moms:
+            args = tuple(flat_sample[varname] for varname in varnames)
+            result.append(m.from_marginals(args, weights, self.problem.all_platedims))
+
+        return result
+
+    _moments = torchdim_moments_mixin
+    moments = named_moments_mixin
+
+    def update_qem_params(self, lr:float):
+        """
+        """
+        self.problem.P._update_qem_params(lr, self, computation_strategy=no_checkpoitn)
+        self.problem.Q._update_qem_params(lr, self, computation_strategy=no_checkpoitn)
+
+
+def unify_dims(sample, Kdim, set_all_platedims):
     result = {}
-    for k, v in d.items():
+    for k, v in sample.items():
         if isinstance(v, dict):
             result[k] = unify_dims(v, Kdim, set_all_platedims)
         else:
@@ -88,6 +135,7 @@ def non_mp_log_prob(
     lpqs = []
     for k, distQ in Q.flat_prog.items():
         distP = P.flat_prog[k]
+        assert not isinstance(distP, Timeseries)
         if isinstance(distQ, Plate):
             assert isinstance(distQ, Plate)
             lpq = non_mp_log_prob(

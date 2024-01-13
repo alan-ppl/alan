@@ -175,7 +175,11 @@ if __name__ == "__main__":
             all_covariates[key] = all_covariates[key].to(device)
 
         opt = t.optim.Adam(prob.Q.parameters(), lr=vi_lr)
+<<<<<<< HEAD
         # opt = torchopt.Adam(prob.Q.parameters(), lr=vi_lr)
+=======
+        #opt = torchopt.Adam(prob.Q.parameters(), lr=vi_lr)
+>>>>>>> ec7e5c0722bfeb375dd0ae14f703f443447843f3
         for i in range(NUM_ITERS):
             opt.zero_grad()
 
@@ -207,7 +211,11 @@ if __name__ == "__main__":
             all_covariates[key] = all_covariates[key].to(device)
 
         opt = t.optim.Adam(prob.Q.parameters(), lr=rws_lr)
+<<<<<<< HEAD
         # opt = torchopt.Adam(prob.Q.parameters(), lr=rws_lr, maximize=True)
+=======
+        #opt = torchopt.Adam(prob.Q.parameters(), lr=rws_lr, maximize=True)
+>>>>>>> ec7e5c0722bfeb375dd0ae14f703f443447843f3
 
         for i in range(NUM_ITERS):
             opt.zero_grad()

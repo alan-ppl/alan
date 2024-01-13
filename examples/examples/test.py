@@ -1,14 +1,35 @@
-from posteriordb import PosteriorDatabase
-import os
-pdb_path = os.path.join(os.getcwd(), "posteriordb/posterior_database")
-my_pdb = PosteriorDatabase(pdb_path)
+import torch as t
+from alan import Normal, Bernoulli, Plate, BoundPlate, Problem, Data, checkpoint, OptParam, QEMParam
 
-print(my_pdb.posterior_names())
+computation_strategy = checkpoint
 
-posterior = my_pdb.posterior("radon_all-radon_pooled")
+P = Plate(
+    mu = Normal(0, 1, sample_shape = t.Size([2])), 
+    p1 = Plate(
+        theta = Normal('mu', 1, sample_shape = t.Size([2])),
+        obs = Bernoulli(logits = lambda theta, x: theta @ x)
+    )
+)
+    
+Q = Plate(
+    mu = Normal(QEMParam(t.zeros((2,))), QEMParam(t.ones((2,)))),
+    p1 = Plate(
+        theta = Normal('mu', 1),
+        obs = Data()
+    )
+)
 
-print(posterior.information)
 
-print(posterior.model.code("stan"))
+platesizes = {'p1': 3}
 
-print(len(posterior.data.values()['county_idx']))
+inputs = {'x': t.randn((3, 2)).rename('p1', ...)}
+P = BoundPlate(P, platesizes, inputs=inputs)
+Q = BoundPlate(Q, platesizes)
+
+P_sample = P.sample()
+data = {'obs': t.tensor([1., 1., 0.], names=('p1',))}
+
+prob = Problem(P, Q, data)
+
+sample = prob.sample(K=10)
+sample.update_qem_params(0.01)

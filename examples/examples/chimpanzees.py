@@ -1,68 +1,81 @@
-#Probabilistic PCA on MNIST data
+#Chimpanzee multilevel model from chapter 12 of statistical rethinking
+#Data from https://github.com/pymc-devs/pymc-resources/blob/main/Rethinking/Data/chimpanzees.csv
+
 import torch as t
-from alan import Normal, MultivariateNormal, Plate, BoundPlate, Problem, Data, mean, OptParam, QEMParam, checkpoint, no_checkpoint, Split
-import torchvision
+from alan import Normal, Binomial, Plate, BoundPlate, Problem, Data, mean, OptParam, QEMParam, checkpoint, no_checkpoint, Split
+
+import numpy as np
 from pathlib import Path
 
+
 def load_data_covariates(device, run, data_dir="data"):
-    #Get MNIST from torch
+    data = np.genfromtxt("data/chimpanzees.csv", delimiter=";", skip_header=1)
 
+    #Zero index the chimps
+    data[:, 0] = data[:, 0] - 1
 
-    trainset = torchvision.datasets.MNIST(root='./data', train=True,
-                                            download=True)
-
-    testset = torchvision.datasets.MNIST(root='./data', train=False)
-
-    #Cast to float
-    trainset.data = trainset.data.float()
-    testset.data = testset.data.float()
-
-    #Centering the data
-    trainset.data = trainset.data - trainset.data.mean()
-    testset.data = testset.data - testset.data.mean()
-      
-    #Flatten
-    trainset.data = trainset.data.flatten(1)
-    testset.data = testset.data.flatten(1)
+    d_prosoc_left = t.tensor(np.stack(np.split(data[:,5], np.unique(data[:, 0], return_index=True)[1][1:]))).float().rename('actors', 'chimps')
+    d_condition = t.tensor(np.stack(np.split(data[:,2], np.unique(data[:, 0], return_index=True)[1][1:]))).float().rename('actors', 'chimps') 
+       
+    Nactors = d_prosoc_left.shape[0]
+    Nchimps = d_prosoc_left.shape[1]
     
+    train_x = {'prosoc_left': d_prosoc_left[:,:int(Nchimps*0.8)], 'condition': d_condition[:,:int(Nchimps*0.8)]}
+    all_x = {'prosoc_left': d_prosoc_left, 'condition': d_condition}
+    
+    platesizes = {'actors': Nactors, 'chimps': int(Nchimps*0.8)}
+    all_platesizes = {'actors': Nactors, 'chimps': Nchimps}
+    
+    obs = t.tensor(np.stack(np.split(data[:,7], np.unique(data[:, 0], return_index=True)[1][1:]))).float()
+    train_y = {'obs':obs[:,:int(Nchimps*0.8)].rename('actors', 'chimps')}
+    all_y = {'obs':obs.rename('actors', 'chimps')}
 
-    platesizes = {'plate1': trainset.data.shape[0]}
-    all_platesizes = {'plate1': trainset.data.shape[0] + testset.data.shape[0]}
-
-    train_data = {'x': trainset.data.rename('plate1', ...).to(device)}
-    train_inputs = {}
-
-    all_data = {'x': t.cat([trainset.data, testset.data], dim=0).rename('plate1', ...).to(device)}
-    all_inputs = {}
-
-    return platesizes, all_platesizes,  train_data, all_data, train_inputs, all_inputs
+    return platesizes, all_platesizes,  train_y, all_y, train_x, all_x
 
 def generate_problem(device, platesizes, data, covariates, Q_param_type):
     
-    K = 16
-    lamb = 1
+    # Need to index into a_actor with 'actor'
+    #Just dropping actor from the plate for now
     P_plate = Plate(
-        w = Normal(t.zeros((28**2,K)), 1),
-        plate1 = Plate(
-            x = MultivariateNormal(t.zeros((28**2,)), lambda w: w @ w.t() + lamb**2 * t.eye(28**2)),
-        ),
+        bp = Normal(0,10),
+        bpC = Normal(0,10), 
+        a = Normal(0,10),
+        log_sigma_actor = Normal(0,1),
+        actors = Plate(
+            a_actor = Normal(0., lambda log_sigma_actor: log_sigma_actor.exp()),
+            chimps = Plate(
+                obs = Binomial(total_count='bp', logits=lambda a, bp, bpC, condition, prosoc_left: a + (bp+ bpC*condition) * prosoc_left),
+            )
+        )
+    
     )
 
     if Q_param_type == "opt": 
         Q_plate = Plate(
-            w = Normal(OptParam(0.), OptParam(1., transformation=t.exp), sample_shape=t.Size([28**2, K])),
-            plate1 = Plate(
-                x = Data()
-            ),
+            bp = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+            bpC = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+            a = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+            log_sigma_actor = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+            actors = Plate(
+                a_actor = Normal(OptParam(0.), OptParam(1.,  transformation=t.exp)),
+                chimps = Plate(
+                    obs = Data(),  
+                )
+            )
         )
     elif Q_param_type == "qem":
         Q_plate = Plate(
-            w = Normal(QEMParam(t.zeros((28**2, K))), QEMParam(t.ones((28**2, K)))),
-            plate1 = Plate(
-                x = Data()
-            ),
+            bp = Normal(QEMParam(0.), QEMParam(1.)),
+            bpC = Normal(QEMParam(0.), QEMParam(1.)),
+            a = Normal(QEMParam(0.), QEMParam(1.)),
+            log_sigma_actor = Normal(QEMParam(0.), QEMParam(1.)),
+            actors = Plate(
+                a_actor = Normal(QEMParam(0.), QEMParam(1.)),
+                chimps = Plate(
+                    obs = Data(),
+                )
+            )
         )
-
     P_bound_plate = BoundPlate(P_plate, platesizes, inputs=covariates)
     Q_bound_plate = BoundPlate(Q_plate, platesizes)
 
@@ -80,8 +93,7 @@ def load_and_generate_problem(device, Q_param_type, run=0, data_dir='data/'):
     return problem, all_data, all_covariates, all_platesizes
 
 if __name__ == "__main__":
-    computation_strategy = Split('plate1', 32)
-    Path("plots/MNIST_PPCA").mkdir(parents=True, exist_ok=True)
+    Path("plots/chimpanzees").mkdir(parents=True, exist_ok=True)
     DO_PLOT   = True
     DO_PREDLL = True
     NUM_ITERS = 100
@@ -90,7 +102,7 @@ if __name__ == "__main__":
     K = 10
 
     vi_lr = 0.1
-    rws_lr = 0.1
+    rws_lr = 0.01
     qem_lr = 0.1
 
     device = t.device('cuda' if t.cuda.is_available() else 'cpu')
@@ -124,15 +136,15 @@ if __name__ == "__main__":
             opt.zero_grad()
 
             sample = prob.sample(K, True)
-            elbo = sample.elbo_vi(computation_strategy=computation_strategy)
+            elbo = sample.elbo_vi()
             elbos['vi'][num_run, i] = elbo.detach()
 
             if DO_PREDLL:
-                importance_sample = sample.importance_sample(N=10, computation_strategy=computation_strategy)
+                importance_sample = sample.importance_sample(N=10)
                 extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
                 ll = extended_importance_sample.predictive_ll(all_data)
-                lls['vi'][num_run, i] = ll['y']
-                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['y']:.3f}")
+                lls['vi'][num_run, i] = ll['obs']
+                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
             else:
                 print(f"Iter {i}. Elbo: {elbo:.3f}")
 
@@ -155,15 +167,15 @@ if __name__ == "__main__":
             opt.zero_grad()
 
             sample = prob.sample(K, True)
-            elbo = sample.elbo_rws(computation_strategy=computation_strategy)
+            elbo = sample.elbo_rws()
             elbos['rws'][num_run, i] = elbo.detach()
 
             if DO_PREDLL:
-                importance_sample = sample.importance_sample(N=10, computation_strategy=computation_strategy)
+                importance_sample = sample.importance_sample(N=10)
                 extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
                 ll = extended_importance_sample.predictive_ll(all_data)
-                lls['rws'][num_run, i] = ll['y']
-                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['y']:.3f}")
+                lls['rws'][num_run, i] = ll['obs']
+                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
             else:
                 print(f"Iter {i}. Elbo: {elbo:.3f}")
 
@@ -183,19 +195,19 @@ if __name__ == "__main__":
 
         for i in range(NUM_ITERS):
             sample = prob.sample(K, True)
-            elbo = sample.elbo_nograd(computation_strategy=computation_strategy)
+            elbo = sample.elbo_nograd()
             elbos['qem'][num_run, i] = elbo
 
             if DO_PREDLL:
-                importance_sample = sample.importance_sample(N=10, computation_strategy=computation_strategy)
+                importance_sample = sample.importance_sample(N=10)
                 extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
                 ll = extended_importance_sample.predictive_ll(all_data)
-                lls['qem'][num_run, i] = ll['y']
-                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['y']:.3f}")
+                lls['qem'][num_run, i] = ll['obs']
+                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
             else:
                 print(f"Iter {i}. Elbo: {elbo:.3f}")
 
-            sample.update_qem_params(qem_lr, computation_strategy=computation_strategy)
+            sample.update_qem_params(qem_lr)
 
     if DO_PLOT:
         for key in elbos.keys():
@@ -211,9 +223,10 @@ if __name__ == "__main__":
         plt.legend()
         plt.xlabel('Iteration')
         plt.ylabel('ELBO')
-        plt.title(f'MNIST_PPCA (K={K})')
+        plt.ylim(-200,0)
+        plt.title(f'Chimpanzees (K={K})')
         plt.tight_layout()
-        plt.savefig('plots/MNIST_PPCA /quick_elbos.png')
+        plt.savefig('plots/chimpanzees/quick_predlls.png')
 
         if DO_PREDLL:
             plt.figure()
@@ -223,6 +236,7 @@ if __name__ == "__main__":
             plt.legend()
             plt.xlabel('Iteration')
             plt.ylabel('PredLL')
-            plt.title(f'MNIST_PPCA  (K={K})')
+            plt.ylim(-200,100)
+            plt.title(f'Chimpanzees (K={K})')
             plt.tight_layout()
-            plt.savefig('plots/MNIST_PPCA /quick_predlls.png')
+            plt.savefig('plots/chimpanzees/quick_predlls.png')

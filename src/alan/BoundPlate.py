@@ -16,7 +16,6 @@ def named2torchdim_flat2tree(flat_named:dict, all_platedims, plate):
 
 def expand_named(x, names:list[str], all_platesizes:dict[str, int]):
     names_x = non_none_names(x)
-
     for name_x in names_x:
         if name_x not in all_platesizes:
             raise Exception(f"{name_x} is specified on a parameter, but is not given in all_platesizes")
