@@ -1,59 +1,74 @@
 import torch as t
-from alan import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
+from alan import Normal, Bernoulli, HalfCauchy, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
 
 def load_data_covariates(device, run=0, data_dir='data/'):
-    M, N = 300, 5
+    # num_actors, num_actors_extended = 6, 7
+    # num_blocks, num_blocks_extended = 4, 6
+    num_actors, num_blocks = 7, 6
+    num_repeats, num_repeats_extended = 10, 12
 
-    platesizes = {'plate_1': M, 'plate_2': N}
-    all_platesizes = {'plate_1': M, 'plate_2': 2*N}
+    platesizes = {'plate_actors': num_actors, 'plate_blocks': num_blocks, 'plate_repeats': num_repeats}
+    # all_platesizes = {'plate_actors': num_actors_extended, 'plate_blocks': num_blocks_extended}
+    all_platesizes = {'plate_actors': num_actors, 'plate_blocks': num_blocks, 'plate_repeats': num_repeats_extended}
 
-    data = {'obs':t.load(f'{data_dir}data_y_{N}_{M}.pt')}
-    test_data = {'obs':t.load(f'{data_dir}test_data_y_{N}_{M}.pt')}
-    all_data = {'obs': t.cat([data['obs'],test_data['obs']], -1).rename('plate_1','plate_2')}
-    data['obs'] = data['obs'].rename('plate_1','plate_2')
-    all_data['obs'] = all_data['obs'].rename('plate_1','plate_2')
+    # platesizes = {'plate_actors': num_actors, 'plate_blocks': num_blocks}
+    # all_platesizes = {'plate_actors': num_actors, 'plate_blocks': num_blocks}
 
-    covariates = {'x':t.load(f'{data_dir}weights_{N}_{M}.pt')}
-    test_covariates = {'x':t.load(f'{data_dir}test_weights_{N}_{M}.pt')}
-    all_covariates = {'x': t.cat([covariates['x'],test_covariates['x']],-2).rename('plate_1','plate_2',...)}
-    covariates['x'] = covariates['x'].rename('plate_1','plate_2',...)
-    all_covariates['x'] = all_covariates['x'].rename('plate_1','plate_2',...)
+    data = {'obs':t.load(f'{data_dir}data_train.pt')}
+    test_data = {'obs':t.load(f'{data_dir}data_test.pt')}
+    all_data = {'obs': t.cat([data['obs'],test_data['obs']], -1).rename('plate_actors','plate_blocks','plate_repeats')}
+    
+    data['obs'] = data['obs'].rename('plate_actors','plate_blocks','plate_repeats')
+
+
+    covariates      = {'condition':   t.load(f'{data_dir}condition_train.pt'),
+                       'prosoc_left': t.load(f'{data_dir}prosoc_left_train.pt')}
+    test_covariates = {'condition':   t.load(f'{data_dir}condition_test.pt'),
+                       'prosoc_left': t.load(f'{data_dir}prosoc_left_test.pt')}
+    all_covariates  = {'condition':   t.cat([covariates['condition'],
+                                             test_covariates['condition']],-1).rename('plate_actors','plate_blocks','plate_repeats'),
+                       'prosoc_left': t.cat([covariates['prosoc_left'],
+                                             test_covariates['prosoc_left']],-1).rename('plate_actors','plate_blocks','plate_repeats')}
+    
+    covariates['condition'] = covariates['condition'].rename('plate_actors','plate_blocks','plate_repeats')
+    covariates['prosoc_left'] = covariates['prosoc_left'].rename('plate_actors','plate_blocks','plate_repeats')
 
     # data['obs'] = data['obs'].to(device)
-    # covariates['x'] = covariates['x'].to(device)
+    # covariates['condition'] = covariates['condition'].to(device)
+    # covariates['prosoc_left'] = covariates['prosoc_left'].to(device)
 
     # all_data['obs'] = all_data['obs'].to(device)
-    # all_covariates['x'] = all_covariates['x'].to(device)
+    # all_covariates['condition'] = all_covariates['condition'].to(device)
+    # all_covariates['prosoc_left'] = all_covariates['prosoc_left'].to(device)
 
     return platesizes, all_platesizes, data, all_data, covariates, all_covariates
 
 def generate_problem(device, platesizes, data, covariates, Q_param_type):
-    d_z = 18
-    M, N = 300, 5
 
     P = Plate(
-        mu_z_global_mean = Normal(0., 1.),
-        mu_z_global_log_scale = Normal(0., 1.),
-        mu_z = Normal("mu_z_global_mean", 
-                      lambda mu_z_global_log_scale: mu_z_global_log_scale.exp(), 
-                      sample_shape = t.Size([d_z]),
-        ),
+        sigma_block = HalfCauchy(1.),
+        sigma_actor = HalfCauchy(1.),
 
-        psi_z_global_mean = Normal(0., 1.),
-        psi_z_global_log_scale = Normal(0., 1.),
-        psi_z = Normal("psi_z_global_mean", 
-                       lambda psi_z_global_log_scale: psi_z_global_log_scale.exp(), 
-                       sample_shape = t.Size([d_z]),
-        ),
+        beta_PC = Normal(0., 10.),
+        beta_P = Normal(0., 10.),
 
-        # mu_z = Normal(t.zeros((d_z,)), t.ones((d_z,))),
-        # psi_z = Normal(t.zeros((d_z,)), t.ones((d_z,))),
+        alpha = Normal(0., 10.),
 
-        plate_1 = Plate(
-            z = Normal("mu_z", lambda psi_z: psi_z.exp()),
+        # plate_block = Plate(
+        # ),
 
-            plate_2 = Plate(
-                obs = Bernoulli(logits = lambda z, x: z @ x),
+        # plate_actors = Plate(
+        # ),
+
+        plate_actors = Plate(
+            alpha_actor = Normal(0., 'sigma_actor'),
+
+            plate_blocks = Plate(
+                alpha_block = Normal(0., 'sigma_block'),
+
+                plate_repeats = Plate(
+                    obs = Bernoulli(logits=lambda alpha, alpha_block, alpha_actor, beta_PC, beta_P, condition, prosoc_left: alpha + alpha_actor + alpha_block + (beta_P + beta_PC*condition)*prosoc_left),
+                )
             )
         ),
     )
@@ -62,63 +77,56 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
 
     if Q_param_type == "opt":
         Q = Plate(
-            mu_z_global_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-            mu_z_global_log_scale = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-            mu_z = Normal("mu_z_global_mean", 
-                          lambda mu_z_global_log_scale: mu_z_global_log_scale.exp(), 
-                          sample_shape = t.Size([d_z]),
-            ),
+            sigma_block = HalfCauchy(OptParam(1.)),
+            sigma_actor = HalfCauchy(OptParam(1.)),
 
-            psi_z_global_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-            psi_z_global_log_scale = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-            psi_z = Normal("psi_z_global_mean", 
-                          lambda psi_z_global_log_scale: psi_z_global_log_scale.exp(), 
-                          sample_shape = t.Size([d_z]),
-            ),
+            # sigma_block = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+            # sigma_actor = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
 
-            # mu_z = Normal(OptParam(t.zeros((d_z,))), OptParam(t.zeros((d_z,)), transformation=t.exp)),
-            # psi_z = Normal(OptParam(t.zeros((d_z,))), OptParam(t.zeros((d_z,)), transformation=t.exp)),
+            beta_PC = Normal(OptParam(0.), OptParam(t.tensor(10.).log(), transformation=t.exp)),
+            beta_P = Normal(OptParam(0.), OptParam(t.tensor(10.).log(), transformation=t.exp)),
 
-            plate_1 = Plate(
-                # z = Normal("z_mean", lambda z_log_scale: z_log_scale.exp()),
-                z = Normal(OptParam(t.zeros((d_z,))), OptParam(t.zeros((d_z,)), transformation=t.exp)),
+            alpha = Normal(OptParam(0.), OptParam(t.tensor(10.).log(), transformation=t.exp)),
 
-                plate_2 = Plate(
-                    obs = Data()
+            plate_actors = Plate(
+                alpha_actor = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+
+                plate_blocks = Plate(
+                    alpha_block = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+
+                    plate_repeats = Plate(
+                        obs = Data()
+                    )
                 )
             ),
         )
 
-        Q = BoundPlate(Q, platesizes, inputs = covariates)#,
-                        # extra_opt_params = {"z_mean":   t.zeros((M, d_z), names=('plate_1', None)),
-                        #                     "z_log_scale": t.zeros((M, d_z), names=('plate_1', None))})
-
+        Q = BoundPlate(Q, platesizes, inputs = covariates)
+        
     else:
         assert Q_param_type == 'qem'
 
         Q = Plate(
-            mu_z_global_mean = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
-            mu_z_global_log_scale = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
-            mu_z = Normal("mu_z_global_mean", 
-                          lambda mu_z_global_log_scale: mu_z_global_log_scale.exp(), 
-                          sample_shape = t.Size([d_z]),
-            ),
+            sigma_block = HalfCauchy(OptParam(1.)),
+            sigma_actor = HalfCauchy(OptParam(1.)),
 
-            psi_z_global_mean = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
-            psi_z_global_log_scale = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
-            psi_z = Normal("psi_z_global_mean", 
-                          lambda psi_z_global_log_scale: psi_z_global_log_scale.exp(), 
-                          sample_shape = t.Size([d_z]),
-            ),
+            # sigma_block = Normal(QEMParam(0.), QEMParam(1.)),
+            # sigma_actor = Normal(QEMParam(0.), QEMParam(1.)),
 
-            # mu_z = Normal(QEMParam(t.zeros((d_z,))), QEMParam(t.ones((d_z,)))),
-            # psi_z = Normal(QEMParam(t.zeros((d_z,))), QEMParam(t.ones((d_z,)))),
+            beta_PC = Normal(QEMParam(0.), QEMParam(t.tensor(10.).log())),
+            beta_P = Normal(QEMParam(0.), QEMParam(t.tensor(10.).log())),
 
-            plate_1 = Plate(
-                z = Normal(QEMParam(t.zeros((d_z,))), QEMParam(t.ones((d_z,)))),
+            alpha = Normal(QEMParam(0.), QEMParam(t.tensor(10.).log())),
 
-                plate_2 = Plate(
-                    obs = Data()
+            plate_actors = Plate(
+                alpha_actor = Normal(QEMParam(0.), QEMParam(1.)),
+
+                plate_blocks = Plate(
+                    alpha_block = Normal(QEMParam(0.), QEMParam(1.)),
+
+                    plate_repeats = Plate(
+                        obs = Data()
+                    )
                 )
             ),
         )
@@ -137,17 +145,17 @@ def load_and_generate_problem(device, Q_param_type, run=0, data_dir='data/'):
     return problem, all_data, all_covariates, all_platesizes
 
 if __name__ == "__main__":
-    # import torchopt
+    import torchopt
     DO_PLOT   = True
     DO_PREDLL = True
-    NUM_ITERS = 1
+    NUM_ITERS = 250
     NUM_RUNS  = 1
 
-    K = 10
+    K = 5
 
-    vi_lr = 0.001
-    rws_lr = 0.001
-    qem_lr = 0.001
+    vi_lr = 0.1
+    rws_lr = 0.1
+    qem_lr = 0.1
 
     device = t.device('cuda' if t.cuda.is_available() else 'cpu')
     # device='cpu'
@@ -166,7 +174,7 @@ if __name__ == "__main__":
         print(f"Run {num_run}")
         print()
         print(f"VI")
-        t.manual_seed(num_run)
+        t.manual_seed(-num_run)
         prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, 'opt')
 
         for key in all_data.keys():
@@ -174,8 +182,8 @@ if __name__ == "__main__":
         for key in all_covariates.keys():
             all_covariates[key] = all_covariates[key].to(device)
 
-        opt = t.optim.Adam(prob.Q.parameters(), lr=vi_lr)
-        # opt = torchopt.Adam(prob.Q.parameters(), lr=vi_lr)
+        # opt = t.optim.Adam(prob.Q.parameters(), lr=vi_lr)
+        opt = torchopt.Adam(prob.Q.parameters(), lr=vi_lr)
         for i in range(NUM_ITERS):
             opt.zero_grad()
 
@@ -206,8 +214,8 @@ if __name__ == "__main__":
         for key in all_covariates.keys():
             all_covariates[key] = all_covariates[key].to(device)
 
-        opt = t.optim.Adam(prob.Q.parameters(), lr=rws_lr)
-        # opt = torchopt.Adam(prob.Q.parameters(), lr=rws_lr, maximize=True)
+        # opt_P = t.optim.Adam(prob.Q.parameters(), lr=rws_lr)
+        opt = torchopt.Adam(prob.Q.parameters(), lr=rws_lr, maximize=True)
 
         for i in range(NUM_ITERS):
             opt.zero_grad()
