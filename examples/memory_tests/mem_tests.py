@@ -4,7 +4,6 @@ from alan import Normal, Plate, BoundPlate, Group, Problem, Data, mean, var, mea
 import numpy as np
 
 import pickle
-import time 
 t.manual_seed(0)
 
 #Has to be cuda for memory profiling
@@ -70,14 +69,24 @@ for p_idx in range(no_Ps):
 
             #Compute moments from marginals
             try:
+                #Run for ten iterations to "warmup"
                 for _ in range(10):
+                    marginals = sample.marginals(computation_strategy=comp_modes[mode])
+                    marginal_moments = marginals.moments([('theta', mean), ('theta', mean2), ('theta', mean2), ('theta', var)])
+                
+                start = t.cuda.Event(enable_timing=True)
+                end = t.cuda.Event(enable_timing=True)
+                start.record()
+                for _ in range(100):
                     t.cuda.reset_peak_memory_stats()
-                    start = time.time()
                     marginals = sample.marginals(computation_strategy=comp_modes[mode])
                     marginal_moments = marginals.moments([('theta', mean), ('theta', mean2), ('theta', mean2), ('theta', var)])
                     end = time.time()
-                    mem_usage[mode][p_idx, K_idx] += t.cuda.max_memory_allocated()/10
-                    time_usage[mode][p_idx, K_idx] += (end-start)/10
+                    mem_usage[mode][p_idx, K_idx] += t.cuda.max_memory_allocated()/100
+                    
+                end.record()
+                t.cuda.synchronize()
+                time_usage[mode][p_idx, K_idx] = start.elapsed_time(end)
             except:
                 mem_usage[mode][p_idx, K_idx] = float('nan')
                 time_usage[mode][p_idx, K_idx] = float('nan')
