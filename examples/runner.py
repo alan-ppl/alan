@@ -72,50 +72,57 @@ def run_experiment(cfg):
                     # opt = t.optim.Adam(prob.Q.parameters(), lr=lr)
                     opt = torchopt.Adam(prob.Q.parameters(), lr=lr, maximize=True)
                 
+                try:
+                    for i in range(num_iters+1):
+                        elbo_start_time = safe_time(device)
 
-                for i in range(num_iters+1):
-                    elbo_start_time = safe_time(device)
+                        if cfg.method == 'vi' or cfg.method == 'rws':
+                            opt.zero_grad()
 
-                    if cfg.method == 'vi' or cfg.method == 'rws':
-                        opt.zero_grad()
+                        sample = prob.sample(K, True)
 
-                    sample = prob.sample(K, True)
+                        if cfg.method == 'vi':
+                            elbo = sample.elbo_vi()
+                        elif cfg.method == 'rws':
+                            elbo = sample.elbo_rws()
+                        elif cfg.method == 'qem':
+                            elbo = sample.elbo_nograd()
 
-                    if cfg.method == 'vi':
-                        elbo = sample.elbo_vi()
-                    elif cfg.method == 'rws':
-                        elbo = sample.elbo_rws()
-                    elif cfg.method == 'qem':
-                        elbo = sample.elbo_nograd()
+                        elbo_end_time = safe_time(device)
 
-                    elbo_end_time = safe_time(device)
+                        elbos[K_idx, lr_idx, i, num_run] = elbo.item()
 
-                    elbos[K_idx, lr_idx, i, num_run] = elbo.item()
+                        if do_predll:
+                            importance_sample = sample.importance_sample(N=N_predll)
+                            extended_importance_sample = importance_sample.extend(all_platesizes, all_covariates)
+                            ll = extended_importance_sample.predictive_ll(all_data)
+                            
+                            p_lls[K_idx, lr_idx, i, num_run] = ll['obs'].item()
 
-                    if do_predll:
-                        importance_sample = sample.importance_sample(N=N_predll)
-                        extended_importance_sample = importance_sample.extend(all_platesizes, all_covariates)
-                        ll = extended_importance_sample.predictive_ll(all_data)
-                        
-                        p_lls[K_idx, lr_idx, i, num_run] = ll['obs'].item()
+                            if i % 50 == 0:
+                                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
 
-                        if i % 50 == 0:
-                            print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
+                        if not do_predll and i % 50 == 0:
+                            print(f"Iter {i}. Elbo: {elbo:.3f}")
 
-                    if not do_predll and i % 50 == 0:
-                        print(f"Iter {i}. Elbo: {elbo:.3f}")
+                        update_start_time = safe_time(device)
 
-                    update_start_time = safe_time(device)
+                        if i < num_iters and (cfg.method == 'vi' or cfg.method == 'rws'):
+                            (-elbo).backward()
+                            opt.step()
+                        else:
+                            sample.update_qem_params(lr)
 
-                    if i < num_iters and (cfg.method == 'vi' or cfg.method == 'rws'):
-                        (-elbo).backward()
-                        opt.step()
-                    else:
-                        sample.update_qem_params(lr)
+                        update_end_time = safe_time(device)
 
-                    update_end_time = safe_time(device)
-
-                    iter_times[K_idx, lr_idx, i, num_run] = elbo_end_time - elbo_start_time + update_end_time - update_start_time
+                        iter_times[K_idx, lr_idx, i, num_run] = elbo_end_time - elbo_start_time + update_end_time - update_start_time
+                
+                except Exception as e:
+                    print(f"num_run: {num_run} K: {K} lr: {lr} failed at iteration {i} with exception {e}.")
+                    if cfg.write_job_status:
+                        with open(f"{cfg.model}/job_status/{cfg.method}_status.txt", "a") as f:
+                            f.write(f"num_run: {num_run} K: {K} lr: {lr} failed at iteration {i} with exception {e}.\n")
+                    continue
 
             if cfg.write_job_status:
                 with open(f"{cfg.model}/job_status/{cfg.method}_status.txt", "a") as f:
