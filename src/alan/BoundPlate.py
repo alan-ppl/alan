@@ -26,9 +26,9 @@ def expand_named(x, names:list[str], all_platesizes:dict[str, int]):
         if name not in all_platesizes:
             raise Exception(f"{name} is a plate dimension, but is not given in all_platesizes")
 
-    extra_platenames = list(set(names).difference(names_x))
+    extra_platenames = set(names).difference(names_x)
 
-    extra_plate_shape = [all_platesizes[name] for name in extra_platenames]
+    extra_plate_shape = [all_platesizes[name] for name in names if name in extra_platenames]
     return x.expand(*extra_plate_shape, *x.shape).contiguous().refine_names(*names, *x.names)
 
 def non_none_names(x):
