@@ -32,22 +32,22 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
     M, N = 300, 5
 
     P = Plate(
-        mu_z_global_mean = Normal(0., 1.),
-        mu_z_global_log_scale = Normal(0., 1.),
-        mu_z = Normal("mu_z_global_mean", 
-                      lambda mu_z_global_log_scale: mu_z_global_log_scale.exp(), 
-                      sample_shape = t.Size([d_z]),
-        ),
+        # mu_z_global_mean = Normal(0., 1.),
+        # mu_z_global_log_scale = Normal(0., 1.),
+        # mu_z = Normal("mu_z_global_mean", 
+        #               lambda mu_z_global_log_scale: mu_z_global_log_scale.exp(), 
+        #               sample_shape = t.Size([d_z]),
+        # ),
 
-        psi_z_global_mean = Normal(0., 1.),
-        psi_z_global_log_scale = Normal(0., 1.),
-        psi_z = Normal("psi_z_global_mean", 
-                       lambda psi_z_global_log_scale: psi_z_global_log_scale.exp(), 
-                       sample_shape = t.Size([d_z]),
-        ),
+        # psi_z_global_mean = Normal(0., 1.),
+        # psi_z_global_log_scale = Normal(0., 1.),
+        # psi_z = Normal("psi_z_global_mean", 
+        #                lambda psi_z_global_log_scale: psi_z_global_log_scale.exp(), 
+        #                sample_shape = t.Size([d_z]),
+        # ),
 
-        # mu_z = Normal(t.zeros((d_z,)), t.ones((d_z,))),
-        # psi_z = Normal(t.zeros((d_z,)), t.ones((d_z,))),
+        mu_z = Normal(t.zeros((d_z,)), t.ones((d_z,))),
+        psi_z = Normal(t.zeros((d_z,)), t.ones((d_z,))),
 
         plate_1 = Plate(
             z = Normal("mu_z", lambda psi_z: psi_z.exp()),
@@ -62,22 +62,22 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
 
     if Q_param_type == "opt":
         Q = Plate(
-            mu_z_global_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-            mu_z_global_log_scale = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-            mu_z = Normal("mu_z_global_mean", 
-                          lambda mu_z_global_log_scale: mu_z_global_log_scale.exp(), 
-                          sample_shape = t.Size([d_z]),
-            ),
+            # mu_z_global_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+            # mu_z_global_log_scale = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+            # mu_z = Normal("mu_z_global_mean", 
+            #               lambda mu_z_global_log_scale: mu_z_global_log_scale.exp(), 
+            #               sample_shape = t.Size([d_z]),
+            # ),
 
-            psi_z_global_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-            psi_z_global_log_scale = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-            psi_z = Normal("psi_z_global_mean", 
-                          lambda psi_z_global_log_scale: psi_z_global_log_scale.exp(), 
-                          sample_shape = t.Size([d_z]),
-            ),
+            # psi_z_global_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+            # psi_z_global_log_scale = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+            # psi_z = Normal("psi_z_global_mean", 
+            #               lambda psi_z_global_log_scale: psi_z_global_log_scale.exp(), 
+            #               sample_shape = t.Size([d_z]),
+            # ),
 
-            # mu_z = Normal(OptParam(t.zeros((d_z,))), OptParam(t.zeros((d_z,)), transformation=t.exp)),
-            # psi_z = Normal(OptParam(t.zeros((d_z,))), OptParam(t.zeros((d_z,)), transformation=t.exp)),
+            mu_z = Normal(OptParam(t.zeros((d_z,))), OptParam(t.zeros((d_z,)), transformation=t.exp)),
+            psi_z = Normal(OptParam(t.zeros((d_z,))), OptParam(t.zeros((d_z,)), transformation=t.exp)),
 
             plate_1 = Plate(
                 # z = Normal("z_mean", lambda z_log_scale: z_log_scale.exp()),
@@ -97,22 +97,22 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
         assert Q_param_type == 'qem'
 
         Q = Plate(
-            mu_z_global_mean = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
-            mu_z_global_log_scale = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
-            mu_z = Normal("mu_z_global_mean", 
-                          lambda mu_z_global_log_scale: mu_z_global_log_scale.exp(), 
-                          sample_shape = t.Size([d_z]),
-            ),
+            # mu_z_global_mean = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+            # mu_z_global_log_scale = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+            # mu_z = Normal("mu_z_global_mean", 
+            #               lambda mu_z_global_log_scale: mu_z_global_log_scale.exp(), 
+            #               sample_shape = t.Size([d_z]),
+            # ),
 
-            psi_z_global_mean = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
-            psi_z_global_log_scale = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
-            psi_z = Normal("psi_z_global_mean", 
-                          lambda psi_z_global_log_scale: psi_z_global_log_scale.exp(), 
-                          sample_shape = t.Size([d_z]),
-            ),
+            # psi_z_global_mean = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+            # psi_z_global_log_scale = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+            # psi_z = Normal("psi_z_global_mean", 
+            #               lambda psi_z_global_log_scale: psi_z_global_log_scale.exp(), 
+            #               sample_shape = t.Size([d_z]),
+            # ),
 
-            # mu_z = Normal(QEMParam(t.zeros((d_z,))), QEMParam(t.ones((d_z,)))),
-            # psi_z = Normal(QEMParam(t.zeros((d_z,))), QEMParam(t.ones((d_z,)))),
+            mu_z = Normal(QEMParam(t.zeros((d_z,))), QEMParam(t.ones((d_z,)))),
+            psi_z = Normal(QEMParam(t.zeros((d_z,))), QEMParam(t.ones((d_z,)))),
 
             plate_1 = Plate(
                 z = Normal(QEMParam(t.zeros((d_z,))), QEMParam(t.ones((d_z,)))),
@@ -137,17 +137,16 @@ def load_and_generate_problem(device, Q_param_type, run=0, data_dir='data/'):
     return problem, all_data, all_covariates, all_platesizes
 
 if __name__ == "__main__":
-    # import torchopt
     DO_PLOT   = True
     DO_PREDLL = True
-    NUM_ITERS = 1
-    NUM_RUNS  = 1
+    NUM_ITERS = 10#0
+    NUM_RUNS  = 2
 
-    K = 10
+    K = 30
 
-    vi_lr = 0.001
-    rws_lr = 0.001
-    qem_lr = 0.001
+    vi_lr = 0.3
+    rws_lr = 0.3
+    qem_lr = 0.3
 
     device = t.device('cuda' if t.cuda.is_available() else 'cpu')
     # device='cpu'
@@ -175,11 +174,6 @@ if __name__ == "__main__":
             all_covariates[key] = all_covariates[key].to(device)
 
         opt = t.optim.Adam(prob.Q.parameters(), lr=vi_lr)
-<<<<<<< HEAD
-        # opt = torchopt.Adam(prob.Q.parameters(), lr=vi_lr)
-=======
-        #opt = torchopt.Adam(prob.Q.parameters(), lr=vi_lr)
->>>>>>> ec7e5c0722bfeb375dd0ae14f703f443447843f3
         for i in range(NUM_ITERS):
             opt.zero_grad()
 
@@ -211,11 +205,6 @@ if __name__ == "__main__":
             all_covariates[key] = all_covariates[key].to(device)
 
         opt = t.optim.Adam(prob.Q.parameters(), lr=rws_lr)
-<<<<<<< HEAD
-        # opt = torchopt.Adam(prob.Q.parameters(), lr=rws_lr, maximize=True)
-=======
-        #opt = torchopt.Adam(prob.Q.parameters(), lr=rws_lr, maximize=True)
->>>>>>> ec7e5c0722bfeb375dd0ae14f703f443447843f3
 
         for i in range(NUM_ITERS):
             opt.zero_grad()
