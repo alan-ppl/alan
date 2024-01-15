@@ -119,8 +119,7 @@ def collect_lps(lps, Ks_to_sum):
         Ks_to_sample.append(_Ks_to_sum)
 
         #Instantiates but doesn't save lp with _Ks_to_sample dims
-        lps.append(checkpoint(logsumexp_sum, _Ks_to_sum, *lps_to_reduce, use_reentrant=False))
-        #lps.append(logsumexp_sum(_Ks_to_sum, *lps_to_reduce))
+        lps.append(logsumexp_sum(_Ks_to_sum, *lps_to_reduce))
         all_reduced_lps.append([*lps])
 
     all_reduced_lps = all_reduced_lps[:-1]
