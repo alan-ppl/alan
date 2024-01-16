@@ -1,11 +1,11 @@
 import torch as t
-from alan import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
+from alan import Normal, Bernoulli, ContinuousBernoulli, Uniform, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
 
 def load_data_covariates(device, run=0, data_dir='data/'):
     M, J, I, Returns = 6, 12, 50, 5
 
     platesizes = {'plate_Years': M, 'plate_Birds':J, 'plate_Ids':I, 'plate_Replicate': Returns}
-    all_platesizes = {'plate_Years': M, 'plate_Birds':J, 'plate_Ids':2*I, 'plate_Replicate': Returns}
+    all_platesizes = {'plate_Years': M, 'plate_Birds':J, 'plate_Ids':6*I, 'plate_Replicate': Returns}
 
     data = {'obs':t.load(f'{data_dir}birds_train_{run}.pt').rename('plate_Years', 'plate_Birds', 'plate_Ids','plate_Replicate')}
     test_data = {'obs':t.load(f'{data_dir}birds_test_{run}.pt').rename('plate_Years', 'plate_Birds', 'plate_Ids','plate_Replicate')}
@@ -17,6 +17,9 @@ def load_data_covariates(device, run=0, data_dir='data/'):
         'quality': t.load(f'{data_dir}quality_test_{run}.pt').rename('plate_Years', 'plate_Birds', 'plate_Ids').float()}
     all_covariates = {'weather': t.cat([covariates['weather'],test_covariates['weather']],-1),
         'quality': t.cat([covariates['quality'],test_covariates['quality']],-1)}
+    
+    data['obs'] = data['obs'].float()
+    all_data['obs'] = all_data['obs'].float()
 
     return platesizes, all_platesizes, data, all_data, covariates, all_covariates
 
@@ -32,12 +35,14 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                 plate_Ids = Plate(
                     beta = Normal('bird_mean', 1.),
                     
-                    z = Bernoulli(logits=lambda weather, bird_mean: bird_mean*weather),
+                    # u = Uniform(0., 1.),
+                    z = ContinuousBernoulli(logits=lambda weather, bird_mean: bird_mean*weather),
 
                     alpha = Normal('bird_mean', 1.),
 
                     plate_Replicate = Plate(
                         obs = Bernoulli(logits=lambda alpha, quality, z: alpha * quality * z)
+                        # obs = Bernoulli(logits=lambda alpha, quality, bird_mean, weather, u: alpha * quality * (bird_mean*weather + t.log(u/1-u)))
                     )
                 ),
             )
@@ -57,7 +62,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                     plate_Ids = Plate(
                         beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                         
-                        z = Bernoulli(logits=lambda weather: OptParam(0., transformation=lambda x: x*weather)),
+                        z = ContinuousBernoulli(logits=lambda weather, bird_mean: bird_mean*weather),
 
                         alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
 
@@ -74,30 +79,25 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
         assert Q_param_type == 'qem'
 
         Q = Plate(
-            mu_z_global_mean = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
-            mu_z_global_log_scale = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
-            mu_z = Normal("mu_z_global_mean", 
-                          lambda mu_z_global_log_scale: mu_z_global_log_scale.exp(), 
-                          sample_shape = t.Size([d_z]),
-            ),
+            plate_Years = Plate(
+                year_mean = Normal(QEMParam(0.), QEMParam(1.)),
 
-            psi_z_global_mean = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
-            psi_z_global_log_scale = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
-            psi_z = Normal("psi_z_global_mean", 
-                          lambda psi_z_global_log_scale: psi_z_global_log_scale.exp(), 
-                          sample_shape = t.Size([d_z]),
-            ),
+                plate_Birds = Plate(
+                    bird_mean = Normal(QEMParam(0.), QEMParam(1.)),
 
-            # mu_z = Normal(QEMParam(t.zeros((d_z,))), QEMParam(t.ones((d_z,)))),
-            # psi_z = Normal(QEMParam(t.zeros((d_z,))), QEMParam(t.ones((d_z,)))),
+                    plate_Ids = Plate(
+                        beta = Normal(QEMParam(0.), QEMParam(1.)),
+                        
+                        z = ContinuousBernoulli(logits=lambda weather, bird_mean: bird_mean*weather),
 
-            plate_1 = Plate(
-                z = Normal(QEMParam(t.zeros((d_z,))), QEMParam(t.ones((d_z,)))),
+                        alpha = Normal(QEMParam(0.), QEMParam(1.)),
 
-                plate_2 = Plate(
-                    obs = Data()
+                        plate_Replicate = Plate(
+                            obs = Data()
+                        )
+                    ),
                 )
-            ),
+            )
         )
 
         Q = BoundPlate(Q, platesizes, inputs = covariates)
@@ -114,17 +114,17 @@ def load_and_generate_problem(device, Q_param_type, run=0, data_dir='data/'):
     return problem, all_data, all_covariates, all_platesizes
 
 if __name__ == "__main__":
-    # import torchopt
+    import torchopt
     DO_PLOT   = True
     DO_PREDLL = True
     NUM_ITERS = 100
     NUM_RUNS  = 1
 
-    K = 3
+    K = 20
 
-    vi_lr = 0.2
-    rws_lr = 0.2
-    qem_lr = 0.2
+    vi_lr = 0.1
+    rws_lr = 0.1
+    qem_lr = 0.1
 
     device = t.device('cuda' if t.cuda.is_available() else 'cpu')
     # device='cpu'
@@ -143,7 +143,7 @@ if __name__ == "__main__":
         print(f"Run {num_run}")
         print()
         print(f"VI")
-        t.manual_seed(num_run*-2.3)
+        t.manual_seed(num_run)
         prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, 'opt')
 
         for key in all_data.keys():
@@ -174,7 +174,7 @@ if __name__ == "__main__":
 
         print()
         print(f"RWS")
-        t.manual_seed(num_run*-2.3)
+        t.manual_seed(num_run)
 
         prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, 'opt')
 
@@ -183,10 +183,10 @@ if __name__ == "__main__":
         for key in all_covariates.keys():
             all_covariates[key] = all_covariates[key].to(device)
 
-        opt = t.optim.Adam(prob.Q.parameters(), lr=rws_lr)
-        # opt = torchopt.Adam(prob.Q.parameters(), lr=rws_lr, maximize=True)
+        # opt = t.optim.Adam(prob.Q.parameters(), lr=rws_lr, maximize=True)
+        opt = torchopt.Adam(prob.Q.parameters(), lr=rws_lr, maximize=True)
 
-        for i in range(0):#NUM_ITERS):
+        for i in range(NUM_ITERS):
             opt.zero_grad()
 
             sample = prob.sample(K, True)
@@ -207,7 +207,7 @@ if __name__ == "__main__":
 
         print()
         print(f"QEM")
-        t.manual_seed(num_run*-2.3)
+        t.manual_seed(num_run)
 
         prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, 'qem')
 
@@ -241,7 +241,7 @@ if __name__ == "__main__":
 
         plt.figure()
         plt.plot(t.arange(NUM_ITERS), elbos['vi'].mean(0), label=f'VI lr={vi_lr}')
-        # plt.plot(t.arange(NUM_ITERS), elbos['rws'].mean(0), label=f'RWS lr={rws_lr}')
+        plt.plot(t.arange(NUM_ITERS), elbos['rws'].mean(0), label=f'RWS lr={rws_lr}')
         plt.plot(t.arange(NUM_ITERS), elbos['qem'].mean(0), label=f'QEM lr={qem_lr}')
         plt.legend()
         plt.xlabel('Iteration')
@@ -252,7 +252,7 @@ if __name__ == "__main__":
         if DO_PREDLL:
             plt.figure()
             plt.plot(t.arange(NUM_ITERS), lls['vi'].mean(0), label=f'VI lr={vi_lr}')
-            # plt.plot(t.arange(NUM_ITERS), lls['rws'].mean(0), label=f'RWS lr={rws_lr}')
+            plt.plot(t.arange(NUM_ITERS), lls['rws'].mean(0), label=f'RWS lr={rws_lr}')
             plt.plot(t.arange(NUM_ITERS), lls['qem'].mean(0), label=f'QEM lr={qem_lr}')
             plt.legend()
             plt.xlabel('Iteration')
