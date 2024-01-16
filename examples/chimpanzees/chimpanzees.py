@@ -113,10 +113,10 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             # sigma_block = Normal(QEMParam(0.), QEMParam(1.)),
             # sigma_actor = Normal(QEMParam(0.), QEMParam(1.)),
 
-            beta_PC = Normal(QEMParam(0.), QEMParam(t.tensor(10.).log())),
-            beta_P = Normal(QEMParam(0.), QEMParam(t.tensor(10.).log())),
+            beta_PC = Normal(QEMParam(0.), QEMParam(t.tensor(10.))),
+            beta_P = Normal(QEMParam(0.), QEMParam(t.tensor(10.))),
 
-            alpha = Normal(QEMParam(0.), QEMParam(t.tensor(10.).log())),
+            alpha = Normal(QEMParam(0.), QEMParam(t.tensor(10.))),
 
             plate_actors = Plate(
                 alpha_actor = Normal(QEMParam(0.), QEMParam(1.)),
@@ -148,7 +148,7 @@ if __name__ == "__main__":
     import torchopt
     DO_PLOT   = True
     DO_PREDLL = True
-    NUM_ITERS = 250
+    NUM_ITERS = 100
     NUM_RUNS  = 1
 
     K = 5
@@ -174,7 +174,7 @@ if __name__ == "__main__":
         print(f"Run {num_run}")
         print()
         print(f"VI")
-        t.manual_seed(-num_run)
+        t.manual_seed(num_run)
         prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, 'opt')
 
         for key in all_data.keys():
@@ -182,8 +182,8 @@ if __name__ == "__main__":
         for key in all_covariates.keys():
             all_covariates[key] = all_covariates[key].to(device)
 
-        # opt = t.optim.Adam(prob.Q.parameters(), lr=vi_lr)
-        opt = torchopt.Adam(prob.Q.parameters(), lr=vi_lr)
+        opt = t.optim.Adam(prob.Q.parameters(), lr=vi_lr)
+        # opt = torchopt.Adam(prob.Q.parameters(), lr=vi_lr)
         for i in range(NUM_ITERS):
             opt.zero_grad()
 
@@ -214,7 +214,7 @@ if __name__ == "__main__":
         for key in all_covariates.keys():
             all_covariates[key] = all_covariates[key].to(device)
 
-        # opt_P = t.optim.Adam(prob.Q.parameters(), lr=rws_lr)
+        # opt_P = t.optim.Adam(prob.Q.parameters(), lr=rws_lr, maximize=True)
         opt = torchopt.Adam(prob.Q.parameters(), lr=rws_lr, maximize=True)
 
         for i in range(NUM_ITERS):
