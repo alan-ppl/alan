@@ -33,29 +33,28 @@ def load_data_covariates(device, run, data_dir="data"):
 def generate_problem(device, platesizes, data, covariates, Q_param_type):
     
     N_feat = covariates['x'].shape[1]
-    P_plate = Plate( 
-        log_mu_scale = Normal(0.,1.),
+    P_plate = Plate(
+        alpha = Normal(0., 1.), 
+        mu = Normal(0,1, sample_shape = t.Size([N_feat])),
         plate1 = Plate(
-            mu = Normal(0., lambda log_mu_scale: log_mu_scale.exp(), sample_shape = t.Size([N_feat])),
-            obs = Bernoulli(logits=lambda mu, x: mu @ x),
+            obs = Bernoulli(logits=lambda alpha, mu, x: alpha + mu @ x)
         ),   
     )
 
-
     if Q_param_type == "opt": 
         Q_plate = Plate(
-            log_mu_scale = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+            alpha = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+            mu = Normal(OptParam(0.), OptParam(1., transformation=t.exp), sample_shape = t.Size([N_feat])),
             plate1 = Plate(
-                mu = Normal(OptParam(0.), OptParam(1.,  transformation=t.exp), sample_shape = t.Size([N_feat])),
-                obs = Data(),
+                obs = Data()
             ),   
-        ) 
+        )
     elif Q_param_type == "qem":
         Q_plate = Plate(
-            log_mu_scale = Normal(QEMParam(0.), QEMParam(1.)),
+            alpha = Normal(QEMParam(0.), QEMParam(1.)),
+            mu = Normal(QEMParam(t.zeros((N_feat,))), QEMParam(t.ones((N_feat,)))),
             plate1 = Plate(
-                mu = Normal(QEMParam(t.zeros(N_feat,)), QEMParam(t.ones(N_feat,))),
-                obs = Data(),
+                obs = Data()
             ),   
         )
     P_bound_plate = BoundPlate(P_plate, platesizes, inputs=covariates)
@@ -84,7 +83,7 @@ if __name__ == "__main__":
     K = 10
 
     vi_lr = 0.1
-    rws_lr = 0.1
+    rws_lr = 0.01
     qem_lr = 0.1
 
     device = t.device('cuda' if t.cuda.is_available() else 'cpu')

@@ -14,20 +14,20 @@ def load_data_covariates(device, run, data_dir="data"):
     #Load tensors and rename
     log_radon = t.load(os.path.join(data_dir, "log_radon.pt"))
     basement = t.load(os.path.join(data_dir, "basement.pt"))
-    log_uranium = t.load(os.path.join(data_dir, "log_uranium.pt"))
-    
+    log_uranium = t.load(os.path.join(data_dir, "log_u.pt"))
+
     platesizes = {'States': int(log_radon.shape[0] * 0.8), 'Counties': int(log_radon.shape[1] * 0.8), 'Zips': int(log_radon.shape[2] * 0.8)}
     all_platesizes = {'States': log_radon.shape[0], 'Counties': log_radon.shape[1], 'Zips': log_radon.shape[2]}
+
+    train_log_radon = {'obs': log_radon[:platesizes['States'], :platesizes['Counties'], :platesizes['Zips']].rename('States', 'Counties', 'Zips').to(device)}
+    all_log_radon = {'obs': log_radon.float().rename('States', 'Counties', 'Zips').to(device)}
+
+    train_inputs = {'basement': basement[:platesizes['States'], :platesizes['Counties'], :platesizes['Zips']].rename('States', 'Counties', 'Zips').to(device),
+                    'log_uranium': log_uranium[:platesizes['States'], :platesizes['Counties'], :platesizes['Zips']].rename('States', 'Counties', 'Zips').to(device)}
     
-    train_log_radon = {'obs': log_radon[:platesizes['States'], :platesizes['Counties'], :platesizes['Zips']].to(device)}
-    all_log_radon = {'obs': log_radon.to(device)}
-    
-    train_inputs = {'basement': basement[:platesizes['States'], :platesizes['Counties'], :platesizes['Zips']].to(device),
-                    'log_uranium': log_uranium[:platesizes['States'], :platesizes['Counties'], :platesizes['Zips']].to(device)}
-    
-    all_inputs = {'basement': basement.to(device),
-                    'log_uranium': log_uranium.to(device)}
-    
+    all_inputs = {'basement': basement.rename('States', 'Counties', 'Zips').to(device),
+                    'log_uranium': log_uranium.rename('States', 'Counties', 'Zips').to(device)}
+
     return platesizes, all_platesizes,  train_log_radon, all_log_radon, train_inputs, all_inputs
 
 def generate_problem(device, platesizes, data, covariates, Q_param_type):
@@ -41,12 +41,10 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             Counties = Plate(
                 County_mean = Normal('State_mean', lambda State_log_sigma: State_log_sigma.exp()),
                 County_log_sigma = Normal(0., 1.),
-                Zips = Plate(
-                    Zip_mean = Normal('County_mean', lambda County_log_sigma: County_log_sigma.exp()),
-                    Zip_log_sigma = Normal(0., 1.),
-                    Beta_u = Normal(0., 1.),
-                    Beta_basement = Normal(0., 1.),
-                    obs = Normal(lambda Zip_mean, basement, log_uranium, Beta_basement, Beta_u: Zip_mean + basement*Beta_basement + log_uranium * Beta_u, lambda Zip_log_sigma: Zip_log_sigma.exp()),
+                Beta_u = Normal(0., 1.),
+                Beta_basement = Normal(0., 1.),
+                Zips = Plate( 
+                    obs = Normal(lambda County_mean, basement, log_uranium, Beta_basement, Beta_u: County_mean + basement*Beta_basement + log_uranium * Beta_u, lambda County_log_sigma: County_log_sigma.exp()),
                 ),
             ),
         ),
@@ -64,15 +62,13 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                 Counties = Plate(
                     County_mean = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
                     County_log_sigma = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+                    Beta_u = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+                    Beta_basement = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
                     Zips = Plate(
-                        Zip_mean = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
-                        Zip_log_sigma = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
-                        Beta_u = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
-                        Beta_basement = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
                         obs = Data(),
                     ),
                 ),
-            ),
+            ),  
         )
     elif Q_param_type == "qem":
         Q_plate = Plate(
@@ -84,15 +80,13 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                 Counties = Plate(
                     County_mean = Normal(QEMParam(0.), QEMParam(1.)),
                     County_log_sigma = Normal(QEMParam(0.), QEMParam(1.)),
+                    Beta_u = Normal(QEMParam(0.), QEMParam(1.)),
+                    Beta_basement = Normal(QEMParam(0.), QEMParam(1.)),
                     Zips = Plate(
-                        Zip_mean = Normal(QEMParam(0.), QEMParam(1.)),
-                        Zip_log_sigma = Normal(QEMParam(0.), QEMParam(1.)),
-                        Beta_u = Normal(QEMParam(0.), QEMParam(1.)),
-                        Beta_basement = Normal(QEMParam(0.), QEMParam(1.)),
                         obs = Data(),
                     ),
                 ),
-            ),
+            ),  
         )
      
     P_bound_plate = BoundPlate(P_plate, platesizes, inputs=covariates)

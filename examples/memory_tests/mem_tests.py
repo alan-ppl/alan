@@ -81,7 +81,6 @@ for p_idx in range(no_Ps):
                     t.cuda.reset_peak_memory_stats()
                     marginals = sample.marginals(computation_strategy=comp_modes[mode])
                     marginal_moments = marginals.moments([('theta', mean), ('theta', mean2), ('theta', mean2), ('theta', var)])
-                    end = time.time()
                     mem_usage[mode][p_idx, K_idx] += t.cuda.max_memory_allocated()/100
                     
                 end.record()
