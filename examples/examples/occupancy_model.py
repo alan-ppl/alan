@@ -25,14 +25,11 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
         alpha = Normal(0.,2.5),
         beta = Normal(0.,2.5),
         log_sigma = Normal(0.,1),
-        Sigma = Beta(2.,2.),
         species = Plate(
             u = Normal(0, lambda log_sigma: log_sigma.exp()),
             v = Normal(0, lambda log_sigma: log_sigma.exp()),
-            w = Bernoulli(logits='Sigma'),
             sites = Plate(
-                z = Bernoulli(logits=lambda u, alpha: u + alpha),
-                y = Binomial(total_count=18, logits=lambda z,v,beta: z * (v+beta)),
+                y = Binomial(total_count=18, logits=lambda v,beta: (v+beta)),
             ),
         ),   
     )
@@ -43,13 +40,10 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             alpha = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
             beta = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
             log_sigma = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
-            Sigma = Beta(OptParam(2.), OptParam(2.)),
             species = Plate(
                 u = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
                 v = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
-                w = Bernoulli(logits=OptParam(0.)),
                 sites = Plate(
-                    z = Bernoulli(logits=OptParam(0.)),
                     y = Data()
                 ),
             ),
@@ -59,13 +53,10 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             alpha = Normal(QEMParam(0.), QEMParam(1.)),
             beta = Normal(QEMParam(0.), QEMParam(1.)),
             log_sigma = Normal(QEMParam(0.), QEMParam(1.)),
-            Sigma = Beta(QEMParam(2.), QEMParam(2.)),
             species = Plate(
                 u = Normal(QEMParam(0.), QEMParam(1.)),
                 v = Normal(QEMParam(0.), QEMParam(1.)),
-                w = Bernoulli(logits=QEMParam(0.)),
                 sites = Plate(
-                    z = Bernoulli(logits=QEMParam(0.)),
                     y = Data()
                 ),
             ),
@@ -91,14 +82,14 @@ if __name__ == "__main__":
     Path("plots/occupancy").mkdir(parents=True, exist_ok=True)
     DO_PLOT   = True
     DO_PREDLL = True
-    NUM_ITERS = 100
+    NUM_ITERS = 20
     NUM_RUNS  = 1
 
     K = 10
 
-    vi_lr = 0.1
-    rws_lr = 0.1
-    qem_lr = 0.1
+    vi_lr = 0.01
+    rws_lr = 0.01
+    qem_lr = 0.3
 
     device = t.device('cuda' if t.cuda.is_available() else 'cpu')
     # device='cpu'
@@ -116,35 +107,35 @@ if __name__ == "__main__":
     for num_run in range(NUM_RUNS):
         print(f"Run {num_run}")
         print()
-        # print(f"VI")
-        # t.manual_seed(num_run)
-        # prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, 'opt')
+        print(f"VI")
+        t.manual_seed(num_run)
+        prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, 'opt')
 
-        # for key in all_data.keys():
-        #     all_data[key] = all_data[key].to(device)
-        # for key in all_covariates.keys():
-        #     all_covariates[key] = all_covariates[key].to(device)
+        for key in all_data.keys():
+            all_data[key] = all_data[key].to(device)
+        for key in all_covariates.keys():
+            all_covariates[key] = all_covariates[key].to(device)
 
-        # opt = t.optim.Adam(prob.Q.parameters(), lr=vi_lr)
+        opt = t.optim.Adam(prob.Q.parameters(), lr=vi_lr)
 
-        # for i in range(NUM_ITERS):
-        #     opt.zero_grad()
+        for i in range(NUM_ITERS):
+            opt.zero_grad()
 
-        #     sample = prob.sample(K, True)
-        #     elbo = sample.elbo_vi()
-        #     elbos['vi'][num_run, i] = elbo.detach()
+            sample = prob.sample(K, True)
+            elbo = sample.elbo_vi()
+            elbos['vi'][num_run, i] = elbo.detach()
 
-        #     if DO_PREDLL:
-        #         importance_sample = sample.importance_sample(N=10)
-        #         extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
-        #         ll = extended_importance_sample.predictive_ll(all_data)
-        #         lls['vi'][num_run, i] = ll['y']
-        #         print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['y']:.3f}")
-        #     else:
-        #         print(f"Iter {i}. Elbo: {elbo:.3f}")
+            if DO_PREDLL:
+                importance_sample = sample.importance_sample(N=10)
+                extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
+                ll = extended_importance_sample.predictive_ll(all_data)
+                lls['vi'][num_run, i] = ll['y']
+                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['y']:.3f}")
+            else:
+                print(f"Iter {i}. Elbo: {elbo:.3f}")
 
-        #     (-elbo).backward()
-        #     opt.step()
+            (-elbo).backward()
+            opt.step()
 
         print()
         print(f"RWS")
@@ -189,7 +180,7 @@ if __name__ == "__main__":
             all_covariates[key] = all_covariates[key].to(device)
 
         for i in range(NUM_ITERS):
-            sample = prob.sample(K, True)
+            sample = prob.sample(K, False)
             elbo = sample.elbo_nograd()
             elbos['qem'][num_run, i] = elbo
 

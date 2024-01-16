@@ -9,21 +9,22 @@ from pathlib import Path
 def load_data_covariates(device, run, data_dir="data"):
     data = np.loadtxt("data/australian.dat", delimiter=" ")
 
+    
     train = data[:500]
     test = data[500:]
 
-    train_x = t.tensor(train[:, :-1])
+    train_x = {'x': t.tensor(train[:, :-1]).float().rename('plate1',...)}
     train_y = {'obs': t.tensor(train[:, -1]).float().rename('plate1')}
 
-    all_x = t.tensor(data[:, :-1])
+    all_x = {'x': t.tensor(data[:, :-1]).float().rename('plate1',...)}
     all_y = {'obs': t.tensor(data[:, -1]).float().rename('plate1')}
 
-    #Append 1s for bias
-    train_x = {'x': t.cat([train_x, t.ones(train_x.shape[0], 1)], dim=1).float().rename('plate1',...)}
-    all_x = {'x': t.cat([all_x, t.ones(all_x.shape[0], 1)], dim=1).float().rename('plate1',...)}
     
     platesizes = {'plate1': train_x['x'].shape[0]}
     all_platesizes = {'plate1': all_x['x'].shape[0]}
+    
+    print(platesizes)
+    print(all_platesizes)
 
     return platesizes, all_platesizes,  train_y, all_y, train_x, all_x
 
@@ -31,26 +32,26 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
     
     N_feat = covariates['x'].shape[1]
     P_plate = Plate(
-        log_mu_scale = Normal(0,1), 
+        alpha = Normal(0., 1.), 
+        mu = Normal(0,1, sample_shape = t.Size([N_feat])),
         plate1 = Plate(
-            mu = Normal(0, lambda log_mu_scale: log_mu_scale.exp(), sample_shape = t.Size([N_feat])),
-            obs = Bernoulli(logits=lambda mu, x: mu @ x)
+            obs = Bernoulli(logits=lambda alpha, mu, x: alpha + mu @ x)
         ),   
     )
 
     if Q_param_type == "opt": 
         Q_plate = Plate(
-            log_mu_scale = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+            alpha = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+            mu = Normal(OptParam(0.), OptParam(1., transformation=t.exp), sample_shape = t.Size([N_feat])),
             plate1 = Plate(
-                mu = Normal(OptParam(0.), OptParam(1.,  transformation=t.exp), sample_shape = t.Size([N_feat])),
                 obs = Data()
             ),   
         )
     elif Q_param_type == "qem":
         Q_plate = Plate(
-            log_mu_scale = Normal(QEMParam(0.), QEMParam(1.)),
+            alpha = Normal(QEMParam(0.), QEMParam(1.)),
+            mu = Normal(QEMParam(t.zeros((N_feat,))), QEMParam(t.ones((N_feat,)))),
             plate1 = Plate(
-                mu = Normal(QEMParam(t.zeros(N_feat,)), QEMParam(t.ones(N_feat,))),
                 obs = Data()
             ),   
         )
@@ -195,26 +196,26 @@ if __name__ == "__main__":
         import matplotlib.pyplot as plt
 
         plt.figure()
-        plt.plot(t.arange(NUM_ITERS), elbos['vi'].mean(0), label=f'VI lr={vi_lr}')
-        plt.plot(t.arange(NUM_ITERS), elbos['rws'].mean(0), label=f'RWS lr={rws_lr}')
-        plt.plot(t.arange(NUM_ITERS), elbos['qem'].mean(0), label=f'QEM lr={qem_lr}')
+        plt.plot(t.arange(NUM_ITERS), elbos['vi'][0], label=f'VI lr={vi_lr}')
+        plt.plot(t.arange(NUM_ITERS), elbos['rws'][0], label=f'RWS lr={rws_lr}')
+        plt.plot(t.arange(NUM_ITERS), elbos['qem'][0], label=f'QEM lr={qem_lr}')
         plt.legend()
         plt.xlabel('Iteration')
         plt.ylabel('ELBO')
-        plt.ylim(-2500,0)
+        # plt.ylim(-2500,0)
         plt.title(f'Australian (K={K})')
         plt.tight_layout()
         plt.savefig('plots/australian/quick_elbos.png')
 
         if DO_PREDLL:
             plt.figure()
-            plt.plot(t.arange(NUM_ITERS), lls['vi'].mean(0), label=f'VI lr={vi_lr}')
-            plt.plot(t.arange(NUM_ITERS), lls['rws'].mean(0), label=f'RWS lr={rws_lr}')
-            plt.plot(t.arange(NUM_ITERS), lls['qem'].mean(0), label=f'QEM lr={qem_lr}')
+            plt.plot(t.arange(NUM_ITERS), lls['vi'][0], label=f'VI lr={vi_lr}')
+            plt.plot(t.arange(NUM_ITERS), lls['rws'][0], label=f'RWS lr={rws_lr}')
+            plt.plot(t.arange(NUM_ITERS), lls['qem'][0], label=f'QEM lr={qem_lr}')
             plt.legend()
             plt.xlabel('Iteration')
             plt.ylabel('PredLL')
-            plt.ylim(-80000,0)
+            # plt.ylim(-80000,0)
             plt.title(f'Austrailian (K={K})')
             plt.tight_layout()
             plt.savefig('plots/australian/quick_predlls.png')

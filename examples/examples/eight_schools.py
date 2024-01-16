@@ -1,5 +1,5 @@
 ###
-# From Bayesian Data Analysis, section 5.5 (Gelman et al. 2013):
+# Adapted from Bayesian Data Analysis, section 5.5 (Gelman et al. 2013):
 
 # A study was performed for the Educational Testing Service to analyze the effects of special coaching programs for SAT-V 
 # (Scholastic Aptitude Test-Verbal) in each of eight high schools. The outcome variable in each study was the score on a special 
@@ -24,9 +24,8 @@ import os
 def load_data_covariates(device, run, data_dir="data"):
     pdb_path = os.path.join(os.getcwd(), "posteriordb/posterior_database")
     my_pdb = PosteriorDatabase(pdb_path)
-
+    
     posterior = my_pdb.posterior("eight_schools-eight_schools_centered")
-
     data = posterior.data.values()
 
     #Treatment effects
@@ -50,12 +49,10 @@ def load_data_covariates(device, run, data_dir="data"):
 def generate_problem(device, platesizes, data, covariates, Q_param_type):
     
     P_plate = Plate( 
-        tau = Normal(0, 1),
-        log_mu_scale = Normal(0, 1),
+        mu = Normal(0., 5.),
+        log_sigma = Normal(0., 1.),
         J = Plate(
-            mu = Normal(0, lambda log_mu_scale: log_mu_scale.exp()),
-            theta = Normal('mu', lambda tau: tau.exp()),
-            obs = Normal('theta', 'sigma'),
+            obs = Normal('mu', lambda log_sigma: log_sigma.exp()),
         ),   
     )
 
@@ -63,21 +60,17 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
 
     if Q_param_type == "opt": 
         Q_plate = Plate( 
-            tau = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
-            log_mu_scale = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+            mu = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+            log_sigma = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
             J = Plate(
-                mu = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
-                theta = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
                 obs = Data(),
             ),   
         )
     elif Q_param_type == "qem":
         Q_plate = Plate( 
-            tau = Normal(QEMParam(0.), QEMParam(1.)),
-            log_mu_scale = Normal(QEMParam(0.), QEMParam(1.)),
+            mu = Normal(QEMParam(0.), QEMParam(1.)),
+            log_sigma = Normal(QEMParam(0.), QEMParam(1.)),
             J = Plate(
-                mu = Normal(QEMParam(0.), QEMParam(1.)),
-                theta = Normal(QEMParam(0.), QEMParam(1.)),
                 obs = Data(),
             ),   
         )

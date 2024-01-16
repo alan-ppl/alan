@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import torch as t
 
+from pathlib import Path
 np.random.seed(0)
 
 #Zips
@@ -77,9 +78,10 @@ log_u = t.tensor(df_first_reading['log_u'].values).reshape(S,M,N).float()
 log_radon = t.tensor(df_first_reading['log_radon'].values).reshape(S,M,N).float()
 
 #Save these
-t.save(basement, 'basement.pt')
-t.save(log_u, 'log_u.pt')
-t.save(log_radon, 'log_radon.pt')
+Path("data/").mkdir(parents=True, exist_ok=True)
+t.save(basement, 'data/basement.pt')
+t.save(log_u, 'data/log_u.pt')
+t.save(log_radon, 'data/log_radon.pt')
 
 
 
