@@ -50,7 +50,9 @@ class BernoulliConversion(AbstractConversion):
     @staticmethod
     def test_conv(N):
         return {'logits': t.randn(N)}
-
+    
+class ContinuousBernoulliConversion(BernoulliConversion):
+    dist = t.distributions.ContinuousBernoulli
 
 class PoissonConversion(AbstractConversion):
     dist = t.distributions.Poisson
@@ -249,6 +251,7 @@ class MultivariateNormalConversion(AbstractConversion):
 
 conversion_dict = {
     t.distributions.Bernoulli: BernoulliConversion,
+    t.distributions.ContinuousBernoulli: ContinuousBernoulliConversion,
     t.distributions.Beta: BetaConversion,
     t.distributions.Dirichlet: DirichletConversion,
     t.distributions.Poisson: PoissonConversion,

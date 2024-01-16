@@ -2,10 +2,11 @@ import torch as t
 from alan import Normal, Bernoulli, ContinuousBernoulli, Uniform, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
 
 def load_data_covariates(device, run=0, data_dir='data/'):
-    M, J, I, Returns = 6, 12, 50, 5
+    M, J, I, Returns = 6, 12, 200, 5
+    I_extended = 300
 
     platesizes = {'plate_Years': M, 'plate_Birds':J, 'plate_Ids':I, 'plate_Replicate': Returns}
-    all_platesizes = {'plate_Years': M, 'plate_Birds':J, 'plate_Ids':6*I, 'plate_Replicate': Returns}
+    all_platesizes = {'plate_Years': M, 'plate_Birds':J, 'plate_Ids':I_extended, 'plate_Replicate': Returns}
 
     data = {'obs':t.load(f'{data_dir}birds_train_{run}.pt').rename('plate_Years', 'plate_Birds', 'plate_Ids','plate_Replicate')}
     test_data = {'obs':t.load(f'{data_dir}birds_test_{run}.pt').rename('plate_Years', 'plate_Birds', 'plate_Ids','plate_Replicate')}
@@ -62,7 +63,8 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                     plate_Ids = Plate(
                         beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                         
-                        z = ContinuousBernoulli(logits=lambda weather, bird_mean: bird_mean*weather),
+                        # z = ContinuousBernoulli(logits=lambda weather, bird_mean: bird_mean*weather),
+                        z = ContinuousBernoulli(OptParam(t.tensor(0.5).log(), transformation=t.exp)),
 
                         alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
 
@@ -88,7 +90,8 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                     plate_Ids = Plate(
                         beta = Normal(QEMParam(0.), QEMParam(1.)),
                         
-                        z = ContinuousBernoulli(logits=lambda weather, bird_mean: bird_mean*weather),
+                        # z = ContinuousBernoulli(logits=lambda weather, bird_mean: bird_mean*weather),
+                        z = ContinuousBernoulli(QEMParam(0.5)),
 
                         alpha = Normal(QEMParam(0.), QEMParam(1.)),
 
@@ -120,7 +123,7 @@ if __name__ == "__main__":
     NUM_ITERS = 100
     NUM_RUNS  = 1
 
-    K = 20
+    K = 3
 
     vi_lr = 0.1
     rws_lr = 0.1

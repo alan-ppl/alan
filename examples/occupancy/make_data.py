@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 import torch as t
 import re
-from alan.experiment_utils import seed_torch
 import glob
 import os
 
@@ -30,7 +29,7 @@ i=0
 k = 0
 while i < 10:
     print(i)
-    seed_torch(k)
+    t.manual_seed(k)
     k += 1
 
 
@@ -48,7 +47,7 @@ while i < 10:
 
         M = 6
         J = 12
-        I = 100
+        I = 300
 
         # print(birds[['Count10', 'Count20', 'Count30', 'Count40', 'Count50']].max)
         weather['RouteDataID'] = weather['RouteDataID'] + weather['Year']
@@ -92,13 +91,21 @@ while i < 10:
         birds = df_new[['Count10', 'Count20', 'Count30', 'Count40', 'Count50']].to_numpy()[:df_new.shape[0]-df_new.shape[0]%(M*J*I),:].reshape(M,J,-1,5)[:,:,:300,:]
 
 
-        t.save(t.from_numpy(weather_new)[:,:,:I//2], 'data/weather_train_{}.pt'.format(i))
-        t.save(t.from_numpy(quality)[:,:,:I//2], 'data/quality_train_{}.pt'.format(i))
-        t.save(t.from_numpy(birds)[:,:,:I//2,:], 'data/birds_train_{}.pt'.format(i))
+        # t.save(t.from_numpy(weather_new)[:,:,:I//2], 'data/weather_train_{}.pt'.format(i))
+        # t.save(t.from_numpy(quality)[:,:,:I//2], 'data/quality_train_{}.pt'.format(i))
+        # t.save(t.from_numpy(birds)[:,:,:I//2,:], 'data/birds_train_{}.pt'.format(i))
 
-        t.save(t.from_numpy(weather_new)[:,:,I//2:], 'data/weather_test_{}.pt'.format(i))
-        t.save(t.from_numpy(quality)[:,:,I//2:], 'data/quality_test_{}.pt'.format(i))
-        t.save(t.from_numpy(birds)[:,:,I//2:,:], 'data/birds_test_{}.pt'.format(i))
+        # t.save(t.from_numpy(weather_new)[:,:,I//2:], 'data/weather_test_{}.pt'.format(i))
+        # t.save(t.from_numpy(quality)[:,:,I//2:], 'data/quality_test_{}.pt'.format(i))
+        # t.save(t.from_numpy(birds)[:,:,I//2:,:], 'data/birds_test_{}.pt'.format(i))
+
+        t.save(t.from_numpy(weather_new)[:,:,:2*I//3], 'data/weather_train_{}.pt'.format(i))
+        t.save(t.from_numpy(quality)[:,:,:2*I//3], 'data/quality_train_{}.pt'.format(i))
+        t.save(t.from_numpy(birds)[:,:,:2*I//3,:], 'data/birds_train_{}.pt'.format(i))
+
+        t.save(t.from_numpy(weather_new)[:,:,2*I//3:], 'data/weather_test_{}.pt'.format(i))
+        t.save(t.from_numpy(quality)[:,:,2*I//3:], 'data/quality_test_{}.pt'.format(i))
+        t.save(t.from_numpy(birds)[:,:,2*I//3:,:], 'data/birds_test_{}.pt'.format(i))
 
         i += 1
     except:
