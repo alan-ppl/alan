@@ -314,8 +314,11 @@ class Sample():
         for (varnames, m) in moms:
             samples = [flat_sample[varname] for varname in varnames]
 
+            #Avoid using set intersection to maintain order of dims
+            platedimss = [generic_dims(sample) for sample in samples]
+            platedimss = [[dim for dim in platedims if dim in set_all_platedims] for platedims in platedimss]
+            
             #Check that the variables are heirachically nested within plates.
-            platedimss = [set(generic_dims(sample)).intersection(set_all_platedims) for sample in samples]
             longest_platedims = sorted(platedimss, key=len)[-1]
             for platedims in platedimss:
                 assert set(platedims).issubset(longest_platedims)
