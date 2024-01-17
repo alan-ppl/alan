@@ -27,7 +27,7 @@ for file in all_files:
 
 i=0
 k = 0
-while i < 10:
+while i < 3:
     print(i)
     t.manual_seed(k)
     k += 1
@@ -91,14 +91,6 @@ while i < 10:
         birds = df_new[['Count10', 'Count20', 'Count30', 'Count40', 'Count50']].to_numpy()[:df_new.shape[0]-df_new.shape[0]%(M*J*I),:].reshape(M,J,-1,5)[:,:,:300,:]
 
 
-        # t.save(t.from_numpy(weather_new)[:,:,:I//2], 'data/weather_train_{}.pt'.format(i))
-        # t.save(t.from_numpy(quality)[:,:,:I//2], 'data/quality_train_{}.pt'.format(i))
-        # t.save(t.from_numpy(birds)[:,:,:I//2,:], 'data/birds_train_{}.pt'.format(i))
-
-        # t.save(t.from_numpy(weather_new)[:,:,I//2:], 'data/weather_test_{}.pt'.format(i))
-        # t.save(t.from_numpy(quality)[:,:,I//2:], 'data/quality_test_{}.pt'.format(i))
-        # t.save(t.from_numpy(birds)[:,:,I//2:,:], 'data/birds_test_{}.pt'.format(i))
-
         t.save(t.from_numpy(weather_new)[:,:,:2*I//3], 'data/weather_train_{}.pt'.format(i))
         t.save(t.from_numpy(quality)[:,:,:2*I//3], 'data/quality_train_{}.pt'.format(i))
         t.save(t.from_numpy(birds)[:,:,:2*I//3,:], 'data/birds_train_{}.pt'.format(i))
@@ -106,6 +98,15 @@ while i < 10:
         t.save(t.from_numpy(weather_new)[:,:,2*I//3:], 'data/weather_test_{}.pt'.format(i))
         t.save(t.from_numpy(quality)[:,:,2*I//3:], 'data/quality_test_{}.pt'.format(i))
         t.save(t.from_numpy(birds)[:,:,2*I//3:,:], 'data/birds_test_{}.pt'.format(i))
+
+        # if you want to split on replicates not on IDs
+        # t.save(t.from_numpy(weather_new)[:,:,:I], 'data/weather_train_{}.pt'.format(i))
+        # t.save(t.from_numpy(quality)[:,:,:I], 'data/quality_train_{}.pt'.format(i))
+        # t.save(t.from_numpy(birds)[:,:,:I,:3], 'data/birds_train_{}.pt'.format(i))
+
+        # t.save(t.from_numpy(weather_new)[:,:,:I], 'data/weather_test_{}.pt'.format(i))
+        # t.save(t.from_numpy(quality)[:,:,:I], 'data/quality_test_{}.pt'.format(i))
+        # t.save(t.from_numpy(birds)[:,:,:I,3:], 'data/birds_test_{}.pt'.format(i))
 
         i += 1
     except:

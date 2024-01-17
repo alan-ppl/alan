@@ -1,16 +1,16 @@
 import torch as t
 from alan import Normal, Bernoulli, ContinuousBernoulli, Uniform, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
 
-def load_data_covariates(device, run=0, data_dir='data/'):
+def load_data_covariates(device, run=0, data_dir='data/', fake_data=False):
     M, J, I, Returns = 6, 12, 200, 5
     I_extended = 300
 
     platesizes = {'plate_Years': M, 'plate_Birds':J, 'plate_Ids':I, 'plate_Replicate': Returns}
     all_platesizes = {'plate_Years': M, 'plate_Birds':J, 'plate_Ids':I_extended, 'plate_Replicate': Returns}
 
-    data = {'obs':t.load(f'{data_dir}birds_train_{run}.pt').rename('plate_Years', 'plate_Birds', 'plate_Ids','plate_Replicate')}
-    test_data = {'obs':t.load(f'{data_dir}birds_test_{run}.pt').rename('plate_Years', 'plate_Birds', 'plate_Ids','plate_Replicate')}
-    all_data = {'obs': t.cat([data['obs'],test_data['obs']],-2)}
+    # if splitting on Replicates not on Ids:
+    # platesizes = {'plate_Years': M, 'plate_Birds':J, 'plate_Ids':I_extended, 'plate_Replicate': 3}
+    # all_platesizes = {'plate_Years': M, 'plate_Birds':J, 'plate_Ids':I_extended, 'plate_Replicate': 5}
 
     covariates = {'weather': t.load(f'{data_dir}weather_train_{run}.pt').rename('plate_Years', 'plate_Birds', 'plate_Ids').float(),
         'quality': t.load(f'{data_dir}quality_train_{run}.pt').rename('plate_Years', 'plate_Birds', 'plate_Ids').float()}
@@ -19,13 +19,30 @@ def load_data_covariates(device, run=0, data_dir='data/'):
     all_covariates = {'weather': t.cat([covariates['weather'],test_covariates['weather']],-1),
         'quality': t.cat([covariates['quality'],test_covariates['quality']],-1)}
     
-    data['obs'] = data['obs'].float()
-    all_data['obs'] = all_data['obs'].float()
+    if not fake_data:
+        data = {'obs':t.load(f'{data_dir}birds_train_{run}.pt').rename('plate_Years', 'plate_Birds', 'plate_Ids','plate_Replicate')}
+        test_data = {'obs':t.load(f'{data_dir}birds_test_{run}.pt').rename('plate_Years', 'plate_Birds', 'plate_Ids','plate_Replicate')}
+
+        all_data = {'obs': t.cat([data['obs'],test_data['obs']],-2)}
+
+        # if splitting on Replicates not on Ids:
+        # all_data = {'obs': t.cat([data['obs'],test_data['obs']],-1)}
+
+        data['obs'] = data['obs'].float()
+        all_data['obs'] = all_data['obs'].float()
+
+    else:
+        print("Sampling fake data")
+        P = get_P(all_platesizes, all_covariates)
+        all_data = {'obs': P.sample()['obs'].align_to('plate_Years', 'plate_Birds', 'plate_Ids', 'plate_Replicate')}
+
+        data = {'obs': all_data['obs'][:,:,:I,:]}
+
+        # breakpoint()
 
     return platesizes, all_platesizes, data, all_data, covariates, all_covariates
 
-def generate_problem(device, platesizes, data, covariates, Q_param_type):
-
+def get_P(platesizes, covariates):
     P = Plate(
         plate_Years = Plate(
             year_mean = Normal(0., 1.),
@@ -51,6 +68,12 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
     )
 
     P = BoundPlate(P, platesizes, inputs = covariates)
+
+    return P
+
+def generate_problem(device, platesizes, data, covariates, Q_param_type):
+
+    P = get_P(platesizes, covariates)
 
     if Q_param_type == "opt":
         Q = Plate(
@@ -110,20 +133,23 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
 
     return prob
 
-def load_and_generate_problem(device, Q_param_type, run=0, data_dir='data/'):
-    platesizes, all_platesizes, data, all_data, covariates, all_covariates = load_data_covariates(device, run, data_dir)
+def load_and_generate_problem(device, Q_param_type, run=0, data_dir='data/', fake_data=False):
+    fake_data = True
+    platesizes, all_platesizes, data, all_data, covariates, all_covariates = load_data_covariates(device, run, data_dir, fake_data)
     problem = generate_problem(device, platesizes, data, covariates, Q_param_type)
-    
+
+    # if splitting on Replicates not on Ids:
+    # all_covariates = covariates
     return problem, all_data, all_covariates, all_platesizes
 
 if __name__ == "__main__":
     import torchopt
     DO_PLOT   = True
     DO_PREDLL = True
-    NUM_ITERS = 100
+    NUM_ITERS = 250
     NUM_RUNS  = 1
 
-    K = 3
+    K = 5
 
     vi_lr = 0.1
     rws_lr = 0.1
@@ -186,8 +212,8 @@ if __name__ == "__main__":
         for key in all_covariates.keys():
             all_covariates[key] = all_covariates[key].to(device)
 
-        # opt = t.optim.Adam(prob.Q.parameters(), lr=rws_lr, maximize=True)
-        opt = torchopt.Adam(prob.Q.parameters(), lr=rws_lr, maximize=True)
+        opt = t.optim.Adam(prob.Q.parameters(), lr=rws_lr, maximize=True)
+        # opt = torchopt.Adam(prob.Q.parameters(), lr=rws_lr, maximize=True)
 
         for i in range(NUM_ITERS):
             opt.zero_grad()
@@ -249,7 +275,7 @@ if __name__ == "__main__":
         plt.legend()
         plt.xlabel('Iteration')
         plt.ylabel('ELBO')
-        plt.title(f'Movielens (K={K})')
+        plt.title(f'Occupancy (K={K})')
         plt.savefig('plots/quick_elbos.png')
 
         if DO_PREDLL:
@@ -260,5 +286,5 @@ if __name__ == "__main__":
             plt.legend()
             plt.xlabel('Iteration')
             plt.ylabel('PredLL')
-            plt.title(f'Movielens (K={K})')
+            plt.title(f'Occupancy (K={K})')
             plt.savefig('plots/quick_predlls.png')
