@@ -13,6 +13,7 @@ def smooth(x, window):
     for i in range(1,len(x)):
         if x[i] != np.nan:
             result[i] = x[max(i-window, 0):i].mean()
+        # result[i,:] = np.nanmean(x[max(i-window, 0):i,:], 1)
 
     return result
 
@@ -65,16 +66,19 @@ def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 25
         # Average out over the seeds and convert any 0 elbos or p_lls to NaNs
         elbos[method_name] = np.stack(elbos[method_name])
         p_lls[method_name] = np.stack(p_lls[method_name])
+        iter_times[method_name] = np.stack(iter_times[method_name])
 
         elbos[method_name][elbos[method_name] == 0] = np.nan
         p_lls[method_name][p_lls[method_name] == 0] = np.nan
+        iter_times[method_name][iter_times[method_name] == 0] = np.nan
 
         # elbos[method_name] = np.stack(elbos[method_name]).mean(0)
         # p_lls[method_name] = np.stack(p_lls[method_name]).mean(0)
         elbos[method_name] = np.nanmean(np.stack(elbos[method_name]),0)  # ignore nans in mean calculation
         p_lls[method_name] = np.nanmean(np.stack(p_lls[method_name]),0)
 
-        iter_times[method_name] = np.stack(iter_times[method_name]).mean(0)
+        # iter_times[method_name] = iter_times[method_name].mean(0)
+        iter_times[method_name] = np.nanmean(iter_times[method_name],0)
 
     # Create the subplots (top row x=iter, bottom row x=time)
     fig, axs = plt.subplots(2, 2, figsize=(13, 7))
@@ -92,13 +96,21 @@ def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 25
 
                 for j, lr in enumerate(lrs[method_name]):
                     # breakpoint()
-                    mean_values = elbos[method_name][K_idx,j].mean(1)
+                    # mean_values = elbos[method_name][K_idx,j].mean(1)
+                    mean_values = np.nanmean(elbos[method_name][K_idx,j], 1)
+                    # mean_values = elbos[method_name][K_idx,j]
+
+
+                    # if mean_values[7000:8000].mean() > mean_values[9000:10000].mean():
+                    #     print(f"WARNING: ELBO is decreasing for method {method_name} K {K} lr {lr} ({mean_values[7000:8000].mean()} > {mean_values[9000:10000].mean()})")
 
                     smoothed_mean_values = smooth(mean_values, window_size)
                     
                     std_errs = elbos[method_name][K_idx,j].std(1)/np.sqrt(elbos[method_name].shape[3])
                     
-                    times = iter_times[method_name][K_idx,j].mean(1).cumsum()
+                    # times = iter_times[method_name][K_idx,j].mean(1).cumsum()
+                    times = np.nanmean(iter_times[method_name][K_idx,j], 1).cumsum()
+                    # times = iter_times[method_name][K_idx,j].cumsum(0)
 
                     alpha_val = 1 - 0.5*j/len(lrs)
 
@@ -124,13 +136,17 @@ def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 25
                 colour = f'C{k*len(method_names) + i}'
 
                 for j, lr in enumerate(lrs[method_name]):
-                    mean_values = p_lls[method_name][K_idx,j].mean(1)
+                    # mean_values = p_lls[method_name][K_idx,j].mean(1)
+                    mean_values = np.nanmean(p_lls[method_name][K_idx,j], 1)
+                    # mean_values = p_lls[method_name][K_idx,j]
 
                     smoothed_mean_values = smooth(mean_values, window_size)
 
                     std_errs = p_lls[method_name][K_idx,j].std(1)/np.sqrt(p_lls[method_name].shape[3])
                     
-                    times = iter_times[method_name][K_idx,j].mean(1).cumsum()
+                    # times = iter_times[method_name][K_idx,j].mean(1).cumsum()
+                    times = np.nanmean(iter_times[method_name][K_idx,j], 1).cumsum()
+                    # times = iter_times[method_name][K_idx,j].cumsum(0)
 
                     alpha_val = 1 - 0.5*j/len(lrs)
 
@@ -165,7 +181,7 @@ def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 25
         # Show the plots
         # plt.show()
         plt.savefig(f'{model_name}/plots/results_{window_size}{"_K" + str(Ks_to_plot) if Ks_to_plot != "all" else ""}.png')
-        plt.savefig(f'{model_name}/plots/results_{window_size}.pdf')
+        plt.savefig(f'{model_name}/plots/results_{window_size}{"_K" + str(Ks_to_plot) if Ks_to_plot != "all" else ""}.pdf')
 
         # Clear the plots
         for ax in axs.flatten():
@@ -184,17 +200,25 @@ if __name__ == '__main__':
 
     for K in [3, 10, 30]:
 
-        # plot('movielens', method_names=['qem','vi'], results_subfolder='', Ks_to_plot=[K])
+        # plot('movielens', method_names=['qem','vi','rws'], results_subfolder='', Ks_to_plot=[K])
             #   elbo_ylims=elbo_ylims_per_K['movielens'][K], pll_ylims=pll_ylims_per_K['movielens'][K])
 
-        plot('movielens', results_subfolder='regular_version_final_FULL/', Ks_to_plot=[K],
-              method_lrs_to_ignore={'qem': [0.01,0.2], 'rws': [0.0001], 'vi': [0.0001,0.2]},
-              elbo_ylims=elbo_ylims_per_K['movielens'][K], pll_ylims=pll_ylims_per_K['movielens'][K])
+        # plot('movielens', results_subfolder='regular_version_final_FULL/', Ks_to_plot=[K],
+        #       method_lrs_to_ignore={'qem': [0.01,0.2], 'rws': [0.0001], 'vi': [0.0001,0.2]},
+        #       elbo_ylims=elbo_ylims_per_K['movielens'][K], pll_ylims=pll_ylims_per_K['movielens'][K])
 
         # plot('movielens', results_subfolder='regular_version_final/', Ks_to_plot=[K],
         #       method_lrs_to_ignore={'qem': [0.01], 'rws': [0.0001], 'vi': [0.0001]},
         #       elbo_ylims=elbo_ylims_per_K['movielens'][K], pll_ylims=pll_ylims_per_K['movielens'][K])
 
+        plot('movielens', results_subfolder='10000iter/', Ks_to_plot=[K])
+
         # plot('bus_breakdown', results_subfolder='', Ks_to_plot=[K],
         #       method_lrs_to_ignore={'qem': [0.01], 'rws': [0.0001], 'vi': [0.0001]},
         #       elbo_ylims=elbo_ylims_per_K['bus_breakdown'][K], pll_ylims=pll_ylims_per_K['bus_breakdown'][K])
+
+        plot('chimpanzees', results_subfolder='', Ks_to_plot=[K])
+        
+        plot('occupancy', results_subfolder='', Ks_to_plot=[K])
+
+
