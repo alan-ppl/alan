@@ -16,14 +16,14 @@ def load_data_covariates(device, run, data_dir="data"):
     basement = t.load(os.path.join(data_dir, "basement.pt"))
     log_uranium = t.load(os.path.join(data_dir, "log_u.pt"))
 
-    platesizes = {'States': int(log_radon.shape[0] * 0.8), 'Counties': int(log_radon.shape[1] * 0.8), 'Zips': int(log_radon.shape[2] * 0.8)}
+    platesizes = {'States': log_radon.shape[0], 'Counties': log_radon.shape[1], 'Zips': int(log_radon.shape[2] * 0.8)}
     all_platesizes = {'States': log_radon.shape[0], 'Counties': log_radon.shape[1], 'Zips': log_radon.shape[2]}
 
-    train_log_radon = {'obs': log_radon[:platesizes['States'], :platesizes['Counties'], :platesizes['Zips']].rename('States', 'Counties', 'Zips').to(device)}
+    train_log_radon = {'obs': log_radon[:, :, :platesizes['Zips']].rename('States', 'Counties', 'Zips').to(device)}
     all_log_radon = {'obs': log_radon.float().rename('States', 'Counties', 'Zips').to(device)}
 
-    train_inputs = {'basement': basement[:platesizes['States'], :platesizes['Counties'], :platesizes['Zips']].rename('States', 'Counties', 'Zips').to(device),
-                    'log_uranium': log_uranium[:platesizes['States'], :platesizes['Counties'], :platesizes['Zips']].rename('States', 'Counties', 'Zips').to(device)}
+    train_inputs = {'basement': basement[:, :, :platesizes['Zips']].rename('States', 'Counties', 'Zips').to(device),
+                    'log_uranium': log_uranium[:, :, :platesizes['Zips']].rename('States', 'Counties', 'Zips').to(device)}
     
     all_inputs = {'basement': basement.rename('States', 'Counties', 'Zips').to(device),
                     'log_uranium': log_uranium.rename('States', 'Counties', 'Zips').to(device)}
@@ -195,7 +195,33 @@ if __name__ == "__main__":
 
             (-elbo).backward()
             opt.step()
+            
+        print()
+        print(f"QEM")
+        t.manual_seed(num_run)
 
+        prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, 'qem')
+
+        for key in all_data.keys():
+            all_data[key] = all_data[key].to(device)
+        for key in all_covariates.keys():
+            all_covariates[key] = all_covariates[key].to(device)
+
+        for i in range(NUM_ITERS):
+            sample = prob.sample(K, True)
+            elbo = sample.elbo_nograd()
+            elbos['qem'][num_run, i] = elbo
+
+            if DO_PREDLL:
+                importance_sample = sample.importance_sample(N=10)
+                extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
+                ll = extended_importance_sample.predictive_ll(all_data)
+                lls['qem'][num_run, i] = ll['y']
+                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['y']:.3f}")
+            else:
+                print(f"Iter {i}. Elbo: {elbo:.3f}")
+
+            sample.update_qem_params(qem_lr)
 
     if DO_PLOT:
         for key in elbos.keys():
