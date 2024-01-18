@@ -144,6 +144,8 @@ class Timeseries(nn.Module):
 
         sample_prev = sample.order(K_dim)[Kinit_dim]
 
+        print(initial_state[None,...].shape)
+        print(sample_prev.order(T_dim)[:-1].shape)
         sample_prev = t.cat([
             initial_state[None, ...],
             sample_prev.order(T_dim)[:-1],
