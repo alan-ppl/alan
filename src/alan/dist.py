@@ -190,7 +190,6 @@ class Dist(torch.nn.Module):
             elif isinstance(func_val, torch.Tensor):
                 tensor_args[distargname] = func_val
             else:
-                print(distargname, func_val)
                 assert isinstance(func_val, Number)
                 self.val_args[distargname] = func_val
 
