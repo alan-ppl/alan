@@ -87,6 +87,12 @@ while i < 3:
         weather_new = df_new[['StartTemp']].to_numpy()[:df_new.shape[0]-df_new.shape[0]%(M*J*I),:].reshape(M,J,-1)[:,:,:300]
         quality = df_new[['QualityCurrentID']].to_numpy()[:df_new.shape[0]-df_new.shape[0]%(M*J*I),:].reshape(M,J,-1)[:,:,:300]
 
+        # drop bird axis for covariates
+        # breakpoint()
+        # weather_new = weather_new[:,0,:]
+        # quality = quality[:,0,:]
+
+
         df_new[['Count10', 'Count20', 'Count30', 'Count40', 'Count50']] = (df_new[['Count10', 'Count20', 'Count30', 'Count40', 'Count50']] > 0).astype(int)
         birds = df_new[['Count10', 'Count20', 'Count30', 'Count40', 'Count50']].to_numpy()[:df_new.shape[0]-df_new.shape[0]%(M*J*I),:].reshape(M,J,-1,5)[:,:,:300,:]
 
@@ -110,5 +116,5 @@ while i < 3:
         # t.save(t.from_numpy(birds)[:,:,:I,3:], 'data/birds_test_{}.pt'.format(i))
 
         i += 1
-    except:
-        None
+    except Exception as e:
+        print(e)

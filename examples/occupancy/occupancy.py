@@ -1,5 +1,5 @@
 import torch as t
-from alan import Normal, Bernoulli, ContinuousBernoulli, Uniform, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
+from alan import Normal, Binomial, Bernoulli, ContinuousBernoulli, Uniform, Beta, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
 
 def load_data_covariates(device, run=0, data_dir='data/', fake_data=False):
     M, J, I, Returns = 6, 12, 200, 5
@@ -31,6 +31,8 @@ def load_data_covariates(device, run=0, data_dir='data/', fake_data=False):
         data['obs'] = data['obs'].float()
         all_data['obs'] = all_data['obs'].float()
 
+        # breakpoint()
+
     else:
         print("Sampling fake data")
         P = get_P(all_platesizes, all_covariates)
@@ -44,23 +46,36 @@ def load_data_covariates(device, run=0, data_dir='data/', fake_data=False):
 
 def get_P(platesizes, covariates):
     P = Plate(
-        plate_Years = Plate(
-            year_mean = Normal(0., 1.),
+        # how common is any bird?
+        bird_mean_mean = Normal(0., 1.), 
+        bird_mean_log_var = Normal(0., 1.),
 
-            plate_Birds = Plate(
-                bird_mean = Normal('year_mean', 1.),
+        # alpha = effect of quality on bird - how easy it is to see
+        alpha_mean = Normal(0., 1.),
+        alpha_log_var = Normal(0., 1.),
+
+        # beta = effect of weather on bird - how common it is hot weather (-> "temperature") 
+        beta_mean = Normal(0., 1.),
+        beta_log_var = Normal(0., 1.),
+
+        plate_Birds = Plate(
+            bird_mean = Normal('bird_mean_mean', lambda bird_mean_log_var: bird_mean_log_var.exp()), # how common is this bird?
+
+            alpha = Normal('alpha_mean', lambda alpha_log_var: alpha_log_var.exp()), # how easy is this bird to see?
+
+            beta = Normal('beta_mean', lambda beta_log_var: beta_log_var.exp()), # how much does weather affect this bird?
+
+            plate_Years = Plate(
+                bird_year_mean = Normal('bird_mean', 1.), # how common is this bird this year?
 
                 plate_Ids = Plate(
-                    beta = Normal('bird_mean', 1.),
                     
-                    # u = Uniform(0., 1.),
-                    z = ContinuousBernoulli(logits=lambda weather, bird_mean: bird_mean*weather),
-
-                    alpha = Normal('bird_mean', 1.),
+                    # z = Binomial(total_count=10, logits=lambda weather, bird_year_mean, beta: bird_year_mean*weather*beta), # how many of this bird were actually present?
+                    z = Bernoulli(logits=lambda weather, bird_year_mean, beta: bird_year_mean*weather*beta), # how many of this bird were actually present?
 
                     plate_Replicate = Plate(
-                        obs = Bernoulli(logits=lambda alpha, quality, z: alpha * quality * z)
-                        # obs = Bernoulli(logits=lambda alpha, quality, bird_mean, weather, u: alpha * quality * (bird_mean*weather + t.log(u/1-u)))
+                        # obs = Binomial(total_count=10, logits=lambda alpha, quality, z: alpha * quality * z) # how many of this bird did we actually see?
+                        obs = Bernoulli(logits=lambda alpha, quality, z: alpha * quality * z) # how many of this bird did we actually see?
                     )
                 ),
             )
@@ -77,19 +92,29 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
 
     if Q_param_type == "opt":
         Q = Plate(
-            plate_Years = Plate(
-                year_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+            bird_mean_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp),),
+            bird_mean_log_var = Normal(OptParam(0.), OptParam(0., transformation=t.exp),),
 
-                plate_Birds = Plate(
-                    bird_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+            alpha_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp),),
+            alpha_log_var = Normal(OptParam(0.), OptParam(0., transformation=t.exp),),
+
+            beta_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp),),
+            beta_log_var = Normal(OptParam(0.), OptParam(0., transformation=t.exp),),
+
+            plate_Birds = Plate(
+                bird_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp),), # how common is this bird?
+
+                alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp),), # how easy is this bird to see?
+
+                beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp),), # how much does weather affect this bird?
+
+                plate_Years = Plate(
+                    bird_year_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp),), # how common is this bird this year?
 
                     plate_Ids = Plate(
-                        beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                         
-                        # z = ContinuousBernoulli(logits=lambda weather, bird_mean: bird_mean*weather),
-                        z = ContinuousBernoulli(OptParam(t.tensor(0.5).log(), transformation=t.exp)),
-
-                        alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                        # z = Binomial(total_count=10, logits=lambda weather, bird_year_mean, beta: bird_year_mean*weather*beta), # how many of this bird were actually present?
+                        z = Bernoulli(logits=lambda weather, bird_year_mean, beta: bird_year_mean*weather*beta), # how many of this bird were actually present?
 
                         plate_Replicate = Plate(
                             obs = Data()
@@ -104,28 +129,38 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
         assert Q_param_type == 'qem'
 
         Q = Plate(
-            plate_Years = Plate(
-                year_mean = Normal(QEMParam(0.), QEMParam(1.)),
+            bird_mean_mean = Normal(OptParam(0.), OptParam(1.),),
+            bird_mean_log_var = Normal(OptParam(0.), OptParam(1.),),
 
-                plate_Birds = Plate(
-                    bird_mean = Normal(QEMParam(0.), QEMParam(1.)),
+            alpha_mean = Normal(OptParam(0.), OptParam(1.),),
+            alpha_log_var = Normal(OptParam(0.), OptParam(1.),),
+
+            beta_mean = Normal(OptParam(0.), OptParam(1.),),
+            beta_log_var = Normal(OptParam(0.), OptParam(1.),),
+
+            plate_Birds = Plate(
+                bird_mean = Normal(OptParam(0.), OptParam(1.),), # how common is this bird?
+
+                alpha = Normal(OptParam(0.), OptParam(1.),), # how easy is this bird to see?
+
+                beta = Normal(OptParam(0.), OptParam(1.),), # how much does weather affect this bird?
+
+                plate_Years = Plate(
+                    bird_year_mean = Normal(OptParam(0.), OptParam(1.),), # how common is this bird this year?
 
                     plate_Ids = Plate(
-                        beta = Normal(QEMParam(0.), QEMParam(1.)),
                         
-                        # z = ContinuousBernoulli(logits=lambda weather, bird_mean: bird_mean*weather),
-                        z = ContinuousBernoulli(QEMParam(0.5)),
-
-                        alpha = Normal(QEMParam(0.), QEMParam(1.)),
+                        # z = Binomial(total_count=10, logits=lambda weather, bird_year_mean, beta: bird_year_mean*weather*beta), # how many of this bird were actually present?
+                        z = Bernoulli(logits=lambda weather, bird_year_mean, beta: bird_year_mean*weather*beta), # how many of this bird were actually present?
 
                         plate_Replicate = Plate(
                             obs = Data()
+
                         )
                     ),
                 )
             )
         )
-
         Q = BoundPlate(Q, platesizes, inputs = covariates)
 
     prob = Problem(P, Q, data)
@@ -143,13 +178,12 @@ def _load_and_generate_problem(device, Q_param_type, run=0, data_dir='data/', fa
     return problem, all_data, all_covariates, all_platesizes
 
 if __name__ == "__main__":
-    import torchopt
     DO_PLOT   = True
     DO_PREDLL = True
-    NUM_ITERS = 250
-    NUM_RUNS  = 1
+    NUM_ITERS = 100
+    NUM_RUNS  = 3
 
-    K = 15
+    K = 3
 
     vi_lr = 0.1
     rws_lr = 0.1
@@ -181,18 +215,19 @@ if __name__ == "__main__":
     for num_run in range(NUM_RUNS):
         print(f"Run {num_run}")
         print()
-        print(f"VI")
-        t.manual_seed(num_run)
-        prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, 'opt')
+        # print(f"VI")
+        # t.manual_seed(num_run)
+        # prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, 'opt')
 
-        for key in all_data.keys():
-            all_data[key] = all_data[key].to(device)
-        for key in all_covariates.keys():
-            all_covariates[key] = all_covariates[key].to(device)
+        # for key in all_data.keys():
+        #     all_data[key] = all_data[key].to(device)
+        # for key in all_covariates.keys():
+        #     all_covariates[key] = all_covariates[key].to(device)
 
-        opt = t.optim.Adam(prob.Q.parameters(), lr=vi_lr)
+        # opt = t.optim.Adam(prob.Q.parameters(), lr=vi_lr)
         # opt = torchopt.Adam(prob.Q.parameters(), lr=vi_lr)
         for i in range(NUM_ITERS):
+            break
             opt.zero_grad()
 
             sample = prob.sample(K, True)
@@ -228,12 +263,12 @@ if __name__ == "__main__":
         for i in range(NUM_ITERS):
             opt.zero_grad()
 
-            sample = prob.sample(K, True)
+            sample = prob.sample(K, False)
             elbo = sample.elbo_rws()
             elbos['rws'][num_run, i] = elbo.detach()
 
             if DO_PREDLL:
-                importance_sample = sample.importance_sample(N=100)
+                importance_sample = sample.importance_sample(N=3)
                 extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
                 ll = extended_importance_sample.predictive_ll(all_data)
                 lls['rws'][num_run, i] = ll['obs']
@@ -256,12 +291,12 @@ if __name__ == "__main__":
             all_covariates[key] = all_covariates[key].to(device)
 
         for i in range(NUM_ITERS):
-            sample = prob.sample(K, True)
+            sample = prob.sample(K, False)
             elbo = sample.elbo_nograd()
             elbos['qem'][num_run, i] = elbo
 
             if DO_PREDLL:
-                importance_sample = sample.importance_sample(N=10)
+                importance_sample = sample.importance_sample(N=3)
                 extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
                 ll = extended_importance_sample.predictive_ll(all_data)
                 lls['qem'][num_run, i] = ll['obs']
@@ -285,7 +320,7 @@ if __name__ == "__main__":
         plt.legend()
         plt.xlabel('Iteration')
         plt.ylabel('ELBO')
-        plt.title(f'Occupancy (K={K})')
+        plt.title(f'Occupancy (K={K}, extending on Ids, {"FAKE" if FAKE_DATA else "REAL"} data)')
         plt.savefig('plots/quick_elbos.png')
 
         if DO_PREDLL:
@@ -296,5 +331,5 @@ if __name__ == "__main__":
             plt.legend()
             plt.xlabel('Iteration')
             plt.ylabel('PredLL')
-            plt.title(f'Occupancy (K={K})')
+            plt.title(f'Occupancy (K={K}, extending on Ids, {"FAKE" if FAKE_DATA else "REAL"} data)')
             plt.savefig('plots/quick_predlls.png')
