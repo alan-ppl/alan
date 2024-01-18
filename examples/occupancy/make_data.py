@@ -90,7 +90,7 @@ while i < 3:
         df_new[['Count10', 'Count20', 'Count30', 'Count40', 'Count50']] = (df_new[['Count10', 'Count20', 'Count30', 'Count40', 'Count50']] > 0).astype(int)
         birds = df_new[['Count10', 'Count20', 'Count30', 'Count40', 'Count50']].to_numpy()[:df_new.shape[0]-df_new.shape[0]%(M*J*I),:].reshape(M,J,-1,5)[:,:,:300,:]
 
-
+        birds = birds[:,:,t.randperm(I),:]
         t.save(t.from_numpy(weather_new)[:,:,:2*I//3], 'data/weather_train_{}.pt'.format(i))
         t.save(t.from_numpy(quality)[:,:,:2*I//3], 'data/quality_train_{}.pt'.format(i))
         t.save(t.from_numpy(birds)[:,:,:2*I//3,:], 'data/birds_train_{}.pt'.format(i))
@@ -100,6 +100,7 @@ while i < 3:
         t.save(t.from_numpy(birds)[:,:,2*I//3:,:], 'data/birds_test_{}.pt'.format(i))
 
         # if you want to split on replicates not on IDs
+        # birds = birds[:,:,:,t.randperm(5)]
         # t.save(t.from_numpy(weather_new)[:,:,:I], 'data/weather_train_{}.pt'.format(i))
         # t.save(t.from_numpy(quality)[:,:,:I], 'data/quality_train_{}.pt'.format(i))
         # t.save(t.from_numpy(birds)[:,:,:I,:3], 'data/birds_train_{}.pt'.format(i))
