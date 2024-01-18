@@ -1,5 +1,4 @@
 import torch as t
-import torchopt
 from alan import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, Data
 import pickle
 import time
@@ -66,11 +65,9 @@ def run_experiment(cfg):
                 prob = model.generate_problem(device, platesizes, data, covariates, Q_param_type='qem' if cfg.method == 'qem' else 'opt')
 
                 if cfg.method == 'vi': 
-                    # opt = t.optim.Adam(prob.Q.parameters(), lr=lr)
-                    opt = torchopt.Adam(prob.Q.parameters(), lr=lr)
+                    opt = t.optim.Adam(prob.Q.parameters(), lr=lr)
                 elif cfg.method == 'rws':
-                    # opt = t.optim.Adam(prob.Q.parameters(), lr=lr)
-                    opt = torchopt.Adam(prob.Q.parameters(), lr=lr, maximize=True)
+                    opt = t.optim.Adam(prob.Q.parameters(), lr=lr, maximize=True)
                 
                 try:
                     for i in range(num_iters+1):

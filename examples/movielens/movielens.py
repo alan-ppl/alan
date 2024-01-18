@@ -139,14 +139,14 @@ def load_and_generate_problem(device, Q_param_type, run=0, data_dir='data/'):
 if __name__ == "__main__":
     DO_PLOT   = True
     DO_PREDLL = True
-    NUM_ITERS = 10#0
+    NUM_ITERS = 100
     NUM_RUNS  = 2
 
-    K = 30
+    K = 10
 
-    vi_lr = 0.3
-    rws_lr = 0.3
-    qem_lr = 0.3
+    vi_lr = 0.1
+    rws_lr = 0.1
+    qem_lr = 0.1
 
     device = t.device('cuda' if t.cuda.is_available() else 'cpu')
     # device='cpu'
@@ -204,7 +204,7 @@ if __name__ == "__main__":
         for key in all_covariates.keys():
             all_covariates[key] = all_covariates[key].to(device)
 
-        opt = t.optim.Adam(prob.Q.parameters(), lr=rws_lr)
+        opt = t.optim.Adam(prob.Q.parameters(), lr=rws_lr, maximize=True)
 
         for i in range(NUM_ITERS):
             opt.zero_grad()
