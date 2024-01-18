@@ -14,7 +14,22 @@ def inverse_digamma(y):
     """
     x_init_for_big_y = y.exp()+0.5
     x_init_for_small_y = -t.reciprocal(y-t.digamma(t.ones(())))
+
+    # remove any names from tensors
+    names = y.names
+    assert names == x_init_for_big_y.names
+    assert names == x_init_for_small_y.names
+
+    y = y.rename(None)
+    x_init_for_big_y = x_init_for_big_y.rename(None)
+    x_init_for_small_y = x_init_for_small_y.rename(None)
+
     x = t.where(y>-2.22, x_init_for_big_y, x_init_for_small_y)
+
+    # put names back in
+    x = x.refine_names(*names, ...)
+    y = y.refine_names(*names, ...)
+
     for _ in range(6):
         x = x - (t.digamma(x) - y)/grad_digamma(x)
     return x
@@ -144,7 +159,10 @@ class BetaConversion(AbstractConversion):
         return (t.digamma(concentration1) - norm, t.digamma(concentration0) - norm)
     @staticmethod
     def mean2conv(Elogx, Elog1mx):
-        logp = t.stack([Elogx, Elog1mx], -1)
+        names = Elogx.names
+        assert names == Elog1mx.names
+
+        logp = t.stack([Elogx.rename(None), Elog1mx.rename(None)], -1).refine_names(*names, ...)
         c = DirichletConversion.mean2conv(logp)['concentration']
         return {'concentration1': c[..., 0], 'concentration0': c[..., 1]}
     @staticmethod
