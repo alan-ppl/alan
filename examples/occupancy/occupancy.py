@@ -133,8 +133,8 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
 
     return prob
 
-def load_and_generate_problem(device, Q_param_type, run=0, data_dir='data/', fake_data=False):
-    fake_data = True
+def _load_and_generate_problem(device, Q_param_type, run=0, data_dir='data/', fake_data=False):
+    # fake_data = True
     platesizes, all_platesizes, data, all_data, covariates, all_covariates = load_data_covariates(device, run, data_dir, fake_data)
     problem = generate_problem(device, platesizes, data, covariates, Q_param_type)
 
@@ -149,7 +149,7 @@ if __name__ == "__main__":
     NUM_ITERS = 250
     NUM_RUNS  = 1
 
-    K = 5
+    K = 15
 
     vi_lr = 0.1
     rws_lr = 0.1
@@ -157,6 +157,16 @@ if __name__ == "__main__":
 
     device = t.device('cuda' if t.cuda.is_available() else 'cpu')
     # device='cpu'
+
+    FAKE_DATA = False
+
+    if FAKE_DATA:
+        def load_and_generate_problem(device, Q_param_type, run=0, data_dir='data/'):
+            return _load_and_generate_problem(device, Q_param_type, run, data_dir, fake_data=True)
+        
+    else:
+        def load_and_generate_problem(device, Q_param_type, run=0, data_dir='data/'):
+            return _load_and_generate_problem(device, Q_param_type, run, data_dir, fake_data=False)
 
     elbos = {'vi' : t.zeros((NUM_RUNS, NUM_ITERS)).to(device),
              'rws': t.zeros((NUM_RUNS, NUM_ITERS)).to(device),
@@ -223,7 +233,7 @@ if __name__ == "__main__":
             elbos['rws'][num_run, i] = elbo.detach()
 
             if DO_PREDLL:
-                importance_sample = sample.importance_sample(N=10)
+                importance_sample = sample.importance_sample(N=100)
                 extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
                 ll = extended_importance_sample.predictive_ll(all_data)
                 lls['rws'][num_run, i] = ll['obs']
