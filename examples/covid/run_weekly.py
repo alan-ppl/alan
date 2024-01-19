@@ -135,6 +135,7 @@ data = {'obs':newcases_weekly[:,:platesizes['nWs']]}
 all_data = {'obs':newcases_weekly}
 
 
+
 P_bound_plate = BoundPlate(P_plate, platesizes, inputs=covariates)
 Q_bound_plate = BoundPlate(Q_plate, platesizes, inputs=covariates)
 
