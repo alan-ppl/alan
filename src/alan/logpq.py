@@ -221,7 +221,7 @@ def logPQ_gdt(
         lq, Kinit_q = dist_Q.log_prob(sample_k, scope=scope, T_dim=T_dim, K_dim=Kdim)
 
         if Kinit_q is not None:
-            assert Kinit_p is Kinit_Q
+            assert Kinit_p is Kinit_q
 
         if Kinit_p is not None:
             assert isinstance(Kinit_p, Dim)
