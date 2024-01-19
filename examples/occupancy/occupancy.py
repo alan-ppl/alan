@@ -179,7 +179,7 @@ def _load_and_generate_problem(device, Q_param_type, run=0, data_dir='data/', fa
 
 if __name__ == "__main__":
     DO_PLOT   = True
-    DO_PREDLL = True
+    DO_PREDLL = False
     NUM_ITERS = 100
     NUM_RUNS  = 3
 
@@ -226,25 +226,24 @@ if __name__ == "__main__":
 
         # opt = t.optim.Adam(prob.Q.parameters(), lr=vi_lr)
         # opt = torchopt.Adam(prob.Q.parameters(), lr=vi_lr)
-        for i in range(NUM_ITERS):
-            break
-            opt.zero_grad()
+        # for i in range(NUM_ITERS):
+        #     opt.zero_grad()
 
-            sample = prob.sample(K, True)
-            elbo = sample.elbo_vi()
-            elbos['vi'][num_run, i] = elbo.detach()
+        #     sample = prob.sample(K, True)
+        #     elbo = sample.elbo_vi()
+        #     elbos['vi'][num_run, i] = elbo.detach()
 
-            if DO_PREDLL:
-                importance_sample = sample.importance_sample(N=10)
-                extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
-                ll = extended_importance_sample.predictive_ll(all_data)
-                lls['vi'][num_run, i] = ll['obs']
-                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
-            else:
-                print(f"Iter {i}. Elbo: {elbo:.3f}")
+        #     if DO_PREDLL:
+        #         importance_sample = sample.importance_sample(N=10)
+        #         extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
+        #         ll = extended_importance_sample.predictive_ll(all_data)
+        #         lls['vi'][num_run, i] = ll['obs']
+        #         print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
+        #     else:
+        #         print(f"Iter {i}. Elbo: {elbo:.3f}")
 
-            (-elbo).backward()
-            opt.step()
+        #     (-elbo).backward()
+        #     opt.step()
 
         print()
         print(f"RWS")
@@ -314,7 +313,7 @@ if __name__ == "__main__":
         import matplotlib.pyplot as plt
 
         plt.figure()
-        plt.plot(t.arange(NUM_ITERS), elbos['vi'].mean(0), label=f'VI lr={vi_lr}')
+        # plt.plot(t.arange(NUM_ITERS), elbos['vi'].mean(0), label=f'VI lr={vi_lr}')
         plt.plot(t.arange(NUM_ITERS), elbos['rws'].mean(0), label=f'RWS lr={rws_lr}')
         plt.plot(t.arange(NUM_ITERS), elbos['qem'].mean(0), label=f'QEM lr={qem_lr}')
         plt.legend()
@@ -325,7 +324,7 @@ if __name__ == "__main__":
 
         if DO_PREDLL:
             plt.figure()
-            plt.plot(t.arange(NUM_ITERS), lls['vi'].mean(0), label=f'VI lr={vi_lr}')
+            # plt.plot(t.arange(NUM_ITERS), lls['vi'].mean(0), label=f'VI lr={vi_lr}')
             plt.plot(t.arange(NUM_ITERS), lls['rws'].mean(0), label=f'RWS lr={rws_lr}')
             plt.plot(t.arange(NUM_ITERS), lls['qem'].mean(0), label=f'QEM lr={qem_lr}')
             plt.legend()

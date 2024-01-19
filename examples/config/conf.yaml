@@ -9,6 +9,6 @@
   predll:
     do_predll: True
     N_predll: 100
-  lrs: [1e-2, 1e-3, 1e-4]
+  lrs: [0.1, 0.01, 0.001, 0.0001]
   dataset_seed: 0
   write_job_status: True
