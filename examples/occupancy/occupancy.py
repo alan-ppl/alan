@@ -71,11 +71,11 @@ def get_P(platesizes, covariates):
                 plate_Ids = Plate(
                     
                     # z = Binomial(total_count=10, logits=lambda weather, bird_year_mean, beta: bird_year_mean*weather*beta), # how many of this bird were actually present?
-                    z = Bernoulli(logits=lambda weather, bird_year_mean, beta: bird_year_mean*weather*beta), # how many of this bird were actually present?
+                    z = Bernoulli(logits=lambda weather, bird_year_mean, beta: bird_year_mean*weather*beta), # was this bird actually present?
 
                     plate_Replicate = Plate(
                         # obs = Binomial(total_count=10, logits=lambda alpha, quality, z: alpha * quality * z) # how many of this bird did we actually see?
-                        obs = Bernoulli(logits=lambda alpha, quality, z: alpha * quality * z) # how many of this bird did we actually see?
+                        obs = Bernoulli(logits=lambda alpha, quality, z: alpha * quality * z + (1-z)*(-10)) # did we actually see this bird?
                     )
                 ),
             )
@@ -114,7 +114,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                     plate_Ids = Plate(
                         
                         # z = Binomial(total_count=10, logits=lambda weather, bird_year_mean, beta: bird_year_mean*weather*beta), # how many of this bird were actually present?
-                        z = Bernoulli(logits=lambda weather, bird_year_mean, beta: bird_year_mean*weather*beta), # how many of this bird were actually present?
+                        z = Bernoulli(logits=lambda weather, bird_year_mean, beta: bird_year_mean*weather*beta), # was this bird actually present?
 
                         plate_Replicate = Plate(
                             obs = Data()
@@ -151,7 +151,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                     plate_Ids = Plate(
                         
                         # z = Binomial(total_count=10, logits=lambda weather, bird_year_mean, beta: bird_year_mean*weather*beta), # how many of this bird were actually present?
-                        z = Bernoulli(logits=lambda weather, bird_year_mean, beta: bird_year_mean*weather*beta), # how many of this bird were actually present?
+                        z = Bernoulli(logits=lambda weather, bird_year_mean, beta: bird_year_mean*weather*beta), # was this bird actually present?
 
                         plate_Replicate = Plate(
                             obs = Data()
@@ -179,9 +179,9 @@ def _load_and_generate_problem(device, Q_param_type, run=0, data_dir='data/', fa
 
 if __name__ == "__main__":
     DO_PLOT   = True
-    DO_PREDLL = False
-    NUM_ITERS = 100
-    NUM_RUNS  = 3
+    DO_PREDLL = True
+    NUM_ITERS = 5
+    NUM_RUNS  = 1
 
     K = 3
 
