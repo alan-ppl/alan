@@ -46,13 +46,20 @@ def sample_Ks(lps, Ks_to_sum, N_dim, num_samples):
 
     #Now that we have the list of reduced factors and which Kdims to sample from each factor we can sample from each factor in turn
     indices = {}
-    
+
     for lps, kdims_to_sample in zip(lps_for_sampling[::-1], Ks_to_sample[::-1]): 
+        # this is a hack to avoid sampling from the empty set
+        # (ideally we wouldn't have an empty set in the first place)
+        if len(kdims_to_sample) < 1:
+            continue
+        
         lp = sum(lps)
 
         for dim in list(set(generic_dims(lp)).intersection(set(indices.keys()))):
             lp = lp.order(dim)[indices[dim]]
         
+        assert len(kdims_to_sample) > 0
+            
         #If there is more than one Kdim to sample from this factor we need to sample from the joint distribution
         #To do this we sample from a multinomial over the indices of the lp tensor
         #We then unravel the indices and assign them to the appropriate Kdim
