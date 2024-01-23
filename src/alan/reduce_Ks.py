@@ -48,18 +48,12 @@ def sample_Ks(lps, Ks_to_sum, N_dim, num_samples):
     indices = {}
 
     for lps, kdims_to_sample in zip(lps_for_sampling[::-1], Ks_to_sample[::-1]): 
-        # this is a hack to avoid sampling from the empty set
-        # (ideally we wouldn't have an empty set in the first place)
-        if len(kdims_to_sample) < 1:
-            continue
         
         lp = sum(lps)
 
         for dim in list(set(generic_dims(lp)).intersection(set(indices.keys()))):
             lp = lp.order(dim)[indices[dim]]
-        
-        assert len(kdims_to_sample) > 0
-            
+
         #If there is more than one Kdim to sample from this factor we need to sample from the joint distribution
         #To do this we sample from a multinomial over the indices of the lp tensor
         #We then unravel the indices and assign them to the appropriate Kdim
@@ -109,7 +103,7 @@ def collect_lps(lps, Ks_to_sum):
     call (which ensures a reasonably efficient implementation for each reduction).
     """
     assert_unique_dim_iter(Ks_to_sum)
-        
+    
     args, out_dims = einsum_args(lps, Ks_to_sum)
     path = opt_einsum.contract_path(*args)[0]
     
@@ -133,5 +127,15 @@ def collect_lps(lps, Ks_to_sum):
 
     assert 1==len(lps)
     result = lps[0]
+
+    # Find indices of any empty K sets
+    empty_K_idxs = []
+    for i in range(len(Ks_to_sample)):
+        if Ks_to_sample[i] == ():
+            empty_K_idxs.append(i)
+
+    # Remove empty K sets and corresponding reduced lps
+    all_reduced_lps = [lps for i, lps in enumerate(all_reduced_lps) if i not in empty_K_idxs]
+    Ks_to_sample = [Ks for i, Ks in enumerate(Ks_to_sample) if i not in empty_K_idxs]
     
     return result, all_reduced_lps, Ks_to_sample
