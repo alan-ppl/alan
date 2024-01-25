@@ -19,14 +19,14 @@ def load_data_covariates(device, run, data_dir="data"):
     platesizes = {'States': log_radon.shape[0], 'Counties': log_radon.shape[1], 'Zips': int(log_radon.shape[2] * 0.8)}
     all_platesizes = {'States': log_radon.shape[0], 'Counties': log_radon.shape[1], 'Zips': log_radon.shape[2]}
 
-    train_log_radon = {'obs': log_radon[:, :, :platesizes['Zips']].rename('States', 'Counties', 'Zips').to(device)}
-    all_log_radon = {'obs': log_radon.float().rename('States', 'Counties', 'Zips').to(device)}
+    train_log_radon = {'obs': log_radon[:, :, :platesizes['Zips']].rename('States', 'Counties', 'Zips')}
+    all_log_radon = {'obs': log_radon.float().rename('States', 'Counties', 'Zips')}
 
-    train_inputs = {'basement': basement[:, :, :platesizes['Zips']].rename('States', 'Counties', 'Zips').to(device),
-                    'log_uranium': log_uranium[:, :, :platesizes['Zips']].rename('States', 'Counties', 'Zips').to(device)}
+    train_inputs = {'basement': basement[:, :, :platesizes['Zips']].rename('States', 'Counties', 'Zips'),
+                    'log_uranium': log_uranium[:, :, :platesizes['Zips']].rename('States', 'Counties', 'Zips')}
     
-    all_inputs = {'basement': basement.rename('States', 'Counties', 'Zips').to(device),
-                    'log_uranium': log_uranium.rename('States', 'Counties', 'Zips').to(device)}
+    all_inputs = {'basement': basement.rename('States', 'Counties', 'Zips'),
+                    'log_uranium': log_uranium.rename('States', 'Counties', 'Zips')}
 
     return platesizes, all_platesizes,  train_log_radon, all_log_radon, train_inputs, all_inputs
 
