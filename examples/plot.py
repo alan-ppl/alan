@@ -17,7 +17,7 @@ def smooth(x, window):
 
     return result
 
-def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 25, 50], dataset_seeds=[0], results_subfolder='', Ks_to_plot='all', method_lrs_to_ignore={}, elbo_ylims=None, pll_ylims=None):
+def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 25, 50], dataset_seeds=[0], results_subfolder='', Ks_to_plot='all', method_lrs_to_ignore={}, elbo_ylims=None, pll_ylims=None, save_pdf=False):
 
     print(f'Plotting {model_name} with Ks {Ks_to_plot}.')
 
@@ -181,7 +181,8 @@ def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 25
         # Show the plots
         # plt.show()
         plt.savefig(f'{model_name}/plots/results_{window_size}{"_K" + str(Ks_to_plot) if Ks_to_plot != "all" else ""}.png')
-        plt.savefig(f'{model_name}/plots/results_{window_size}{"_K" + str(Ks_to_plot) if Ks_to_plot != "all" else ""}.pdf')
+        if save_pdf:
+            plt.savefig(f'{model_name}/plots/results_{window_size}{"_K" + str(Ks_to_plot) if Ks_to_plot != "all" else ""}.pdf')
 
         # Clear the plots
         for ax in axs.flatten():
@@ -198,27 +199,24 @@ if __name__ == '__main__':
     pll_ylims_per_K  = {'movielens':     {3: (-1150, None), 10: (-1100, -940), 30: (-1060, -940)},
                         'bus_breakdown': {3: (-7000, None), 10: (-3500, None), 30: (-2800, -1750)}}
 
-    for K in [3, 10, 30]:
+    # for K in [3, 10, 30]:
+    #     plot('movielens', method_names=['qem','vi','rws'], results_subfolder='', Ks_to_plot=[K])
+    #           elbo_ylims=elbo_ylims_per_K['movielens'][K], pll_ylims=pll_ylims_per_K['movielens'][K])
 
-        # plot('movielens', method_names=['qem','vi','rws'], results_subfolder='', Ks_to_plot=[K])
-            #   elbo_ylims=elbo_ylims_per_K['movielens'][K], pll_ylims=pll_ylims_per_K['movielens'][K])
+    #     plot('bus_breakdown', results_subfolder='', Ks_to_plot=[K],
+    #           method_lrs_to_ignore={'qem': [0.01], 'rws': [0.0001], 'vi': [0.0001]},
+    #           elbo_ylims=elbo_ylims_per_K['bus_breakdown'][K], pll_ylims=pll_ylims_per_K['bus_breakdown'][K])
 
-        # plot('movielens', results_subfolder='regular_version_final_FULL/', Ks_to_plot=[K],
-        #       method_lrs_to_ignore={'qem': [0.01,0.2], 'rws': [0.0001], 'vi': [0.0001,0.2]},
-        #       elbo_ylims=elbo_ylims_per_K['movielens'][K], pll_ylims=pll_ylims_per_K['movielens'][K])
-
-        # plot('movielens', results_subfolder='regular_version_final/', Ks_to_plot=[K],
-        #       method_lrs_to_ignore={'qem': [0.01], 'rws': [0.0001], 'vi': [0.0001]},
-        #       elbo_ylims=elbo_ylims_per_K['movielens'][K], pll_ylims=pll_ylims_per_K['movielens'][K])
-
-        plot('movielens', results_subfolder='10000iter/', Ks_to_plot=[K])
-
-        # plot('bus_breakdown', results_subfolder='', Ks_to_plot=[K],
-        #       method_lrs_to_ignore={'qem': [0.01], 'rws': [0.0001], 'vi': [0.0001]},
-        #       elbo_ylims=elbo_ylims_per_K['bus_breakdown'][K], pll_ylims=pll_ylims_per_K['bus_breakdown'][K])
-
-        plot('chimpanzees', results_subfolder='', Ks_to_plot=[K])
+    #     plot('chimpanzees', results_subfolder='K3_10_30/', Ks_to_plot=[K])
         
-        plot('occupancy', results_subfolder='', Ks_to_plot=[K])
+    #     plot('occupancy', results_subfolder='', Ks_to_plot=[K])
 
+        
+    for K in [3, 5, 10]:
+        plot('occupancy', results_subfolder='', Ks_to_plot=[K], method_names=['qem','rws'])
+    #     plot('chimpanzees', results_subfolder='', Ks_to_plot=[K],)
 
+    # chimp_lrs_to_ignore = [0.0001, 0.001]
+    # chimp_5_15_method_lrs_to_ignore = {'qem': chimp_lrs_to_ignore, 'rws': chimp_lrs_to_ignore, 'vi': chimp_lrs_to_ignore}
+    # plot('chimpanzees', results_subfolder='K5_15_lr_all/', Ks_to_plot=[5], method_lrs_to_ignore=chimp_5_15_method_lrs_to_ignore)
+    # plot('chimpanzees', results_subfolder='K5_15_lr_all/', Ks_to_plot=[15], method_lrs_to_ignore=chimp_5_15_method_lrs_to_ignore)
