@@ -3,9 +3,8 @@
   method: ???
   num_runs: 5
   num_iters: 1000
-  plate_names: []
-  plate_sizes: []
   Ks: [3,10,30] #,100]
+  reparam: True
   predll:
     do_predll: True
     N_predll: 100

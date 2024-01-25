@@ -28,6 +28,8 @@ def run_experiment(cfg):
     do_predll = cfg.predll.do_predll
     N_predll = cfg.predll.N_predll
 
+    reparam = cfg.reparam
+
     spec = importlib.util.spec_from_file_location(cfg.model, f"{cfg.model}/{cfg.model}.py")
     model = importlib.util.module_from_spec(spec)
     sys.modules[cfg.model] = model
@@ -76,7 +78,7 @@ def run_experiment(cfg):
                         if cfg.method == 'vi' or cfg.method == 'rws':
                             opt.zero_grad()
 
-                        sample = prob.sample(K, True)
+                        sample = prob.sample(K, reparam)
 
                         if cfg.method == 'vi':
                             elbo = sample.elbo_vi()
