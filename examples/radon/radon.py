@@ -54,16 +54,16 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
 
     if Q_param_type == "opt": 
         Q_plate = Plate(
-            global_mean = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
-            global_log_sigma = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+            global_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+            global_log_sigma = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
             States = Plate(
-                State_mean = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
-                State_log_sigma = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+                State_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                State_log_sigma = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                 Counties = Plate(
-                    County_mean = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
-                    County_log_sigma = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
-                    Beta_u = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
-                    Beta_basement = Normal(OptParam(0.), OptParam(1., transformation=t.exp)),
+                    County_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                    County_log_sigma = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                    Beta_u = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                    Beta_basement = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                     Zips = Plate(
                         obs = Data(),
                     ),

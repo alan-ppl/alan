@@ -135,7 +135,8 @@ def _logPQ_plate(
             lp = chain_logmmexp(lp)# Kprevs x Kcurrs
             assert 2 == lp.ndim
 
-            lp = lp.logsumexp(-1)
+            #lp = lp.logsumexp(-1)
+            lp = t.logsumexp(lp, -1)
             assert 1 == lp.ndim
             #Put torchdim back. 
             #Stupid trailing None is necessary, because otherwise the list of K_inits is just splatted in, rather than being treated as a group.

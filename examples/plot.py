@@ -180,9 +180,9 @@ def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 25
 
         # Show the plots
         # plt.show()
-        plt.savefig(f'{model_name}/plots/results_{window_size}{"_K" + str(Ks_to_plot) if Ks_to_plot != "all" else ""}.png')
+        plt.savefig(f'{model_name}/plots/{model_name}_{window_size}{"_K" + str(Ks_to_plot) if Ks_to_plot != "all" else ""}.png')
         if save_pdf:
-            plt.savefig(f'{model_name}/plots/results_{window_size}{"_K" + str(Ks_to_plot) if Ks_to_plot != "all" else ""}.pdf')
+            plt.savefig(f'{model_name}/plots/{model_name}_{window_size}{"_K" + str(Ks_to_plot) if Ks_to_plot != "all" else ""}.pdf')
 
         # Clear the plots
         for ax in axs.flatten():
@@ -195,9 +195,11 @@ if __name__ == '__main__':
     #      method_lrs_to_ignore={'qem': [0.01], 'rws': [0.0001], 'vi': [0.0001]})
     
     elbo_ylims_per_K = {'movielens':     {3: (-6500, None), 10: (-3000, -950), 30: (-2000, -950)},
-                        'bus_breakdown': {3: (-6000, None), 10: (-3300, None), 30: (-2750, None)}}
+                        'bus_breakdown': {3: (-6000, None), 10: (-3300, None), 30: (-2750, None)},
+                        'radon':        {3: (-800, -450), 10: (-580, -480), 30: (-500, -480)}}
     pll_ylims_per_K  = {'movielens':     {3: (-1150, None), 10: (-1100, -940), 30: (-1060, -940)},
-                        'bus_breakdown': {3: (-7000, None), 10: (-3500, None), 30: (-2800, -1750)}}
+                        'bus_breakdown': {3: (-7000, None), 10: (-3500, None), 30: (-2800, -1750)},
+                        'radon':        {3: (-300, None), 10: (-155, -130), 30: (-150, -130)}}
 
     # for K in [3, 10, 30]:
     #     plot('movielens', method_names=['qem','vi','rws'], results_subfolder='', Ks_to_plot=[K])
@@ -212,8 +214,10 @@ if __name__ == '__main__':
     #     plot('occupancy', results_subfolder='', Ks_to_plot=[K])
 
         
-    for K in [3, 5, 10]:
-        plot('occupancy', results_subfolder='', Ks_to_plot=[K], method_names=['qem','rws'])
+    for K in [3, 10, 30]:
+        plot('radon', results_subfolder='', Ks_to_plot=[K], method_names=['qem','rws', 'vi'], 
+             elbo_ylims=elbo_ylims_per_K['radon'][K], pll_ylims=pll_ylims_per_K['radon'][K],
+             save_pdf=True)
     #     plot('chimpanzees', results_subfolder='', Ks_to_plot=[K],)
 
     # chimp_lrs_to_ignore = [0.0001, 0.001]
