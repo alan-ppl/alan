@@ -42,7 +42,7 @@ def combine_lrs(model: str, results_subfolders: List[str], ouput_folder: str, me
     for method in methods:
         # before writing to disk, sort by lr
 
-        lr_idxs = np.argsort(ouput[method]['lrs'])
+        lr_idxs = np.argsort(ouput[method]['lrs'])[::-1]
         ouput[method]['lrs'] = np.array(ouput[method]['lrs'])[lr_idxs]
         for key in ['elbos', 'p_lls', 'iter_times']:
             ouput[method][key] = ouput[method][key][:, lr_idxs, :, :]
@@ -51,4 +51,11 @@ def combine_lrs(model: str, results_subfolders: List[str], ouput_folder: str, me
             pickle.dump(ouput[method], f)
 
 if __name__ == '__main__':
-    combine_lrs('chimpanzees', ['K5_15', 'K5_15_lr0.3'], 'K5_15_lr_all', Ks_to_keep=[5,15])
+    # combine_lrs('bus_breakdown', ['final0.1-0.0001', 'lr0.3-1'], 'final1-0.0001', Ks_to_keep=[3,10,30], methods=['qem'])
+
+    # combine_lrs('chimpanzees', ['K5_15', 'K5_15_lr0.3'], 'K5_15_lr_0.001-0.3', Ks_to_keep=[5,15])
+    # combine_lrs('chimpanzees', ['K5_15', 'K5_15_lr0.3', 'K5_15_lr_0.5-1'], 'K5_15_lr_0.001-1', Ks_to_keep=[5,15])
+
+    # combine_lrs('occupancy', ['lr0.01-0.1-0.3', 'lr0.5-1'], 'lr0.01-1', Ks_to_keep=[3,5,10], methods=['qem'])    
+    
+    combine_lrs('movielens', ['regular_version_final_FULL', 'regular_version_lr_0.5-1'], 'regular_version_final_FULL_all_lrs', Ks_to_keep=[3,10,30], methods=['qem'])
