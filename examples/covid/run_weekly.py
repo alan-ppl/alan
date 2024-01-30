@@ -142,7 +142,7 @@ Q_bound_plate = BoundPlate(Q_plate, platesizes, inputs=covariates)
 prob = Problem(P_bound_plate, Q_bound_plate, data)
 
 
-opt = t.optim.Adam(prob.Q.parameters(), lr=0.01)
+opt = t.optim.Adam(prob.Q.parameters(), lr=0.001)
 K=3
 
 for i in range(100):
@@ -151,13 +151,11 @@ for i in range(100):
     sample = prob.sample(K, True)
     elbo = sample.elbo_vi()
 
-    if DO_PREDLL:
-        importance_sample = sample.importance_sample(N=10)
-        extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
-        ll = extended_importance_sample.predictive_ll(all_data)
-        print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
-    else:
-        print(f"Iter {i}. Elbo: {elbo:.3f}")
+    # importance_sample = sample.importance_sample(N=10)
+    # extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
+    # ll = extended_importance_sample.predictive_ll(all_data)
+    # print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
+
 
     (-elbo).backward()
     opt.step()
