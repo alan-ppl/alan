@@ -25,6 +25,7 @@ df = get_data()
 while i < 20:
     print(i)
     t.manual_seed(k)
+    np.random.seed(k)
     k += 1
 
 
