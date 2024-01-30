@@ -12,5 +12,5 @@
   dataset_seed: 0
   write_job_status: True
   split:
-    plate: None
-    size: None
+    plate: null
+    size: null
