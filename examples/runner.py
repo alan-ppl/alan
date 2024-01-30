@@ -1,5 +1,5 @@
 import torch as t
-from alan import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, Data
+from alan import Split
 import pickle
 import time
 import hydra
@@ -29,6 +29,15 @@ def run_experiment(cfg):
     N_predll = cfg.predll.N_predll
 
     reparam = cfg.reparam
+
+    split_plate = cfg.split.plate
+    split_size = cfg.split.size
+
+    if split_plate is not None and split_size is not None:
+        split = Split(split_plate, split_size)
+    else:
+        assert split_plate is None and split_size is None
+        split = None
 
     spec = importlib.util.spec_from_file_location(cfg.model, f"{cfg.model}/{cfg.model}.py")
     model = importlib.util.module_from_spec(spec)
@@ -81,18 +90,18 @@ def run_experiment(cfg):
                         sample = prob.sample(K, reparam)
 
                         if cfg.method == 'vi':
-                            elbo = sample.elbo_vi()
+                            elbo = sample.elbo_vi() if split is None else sample.elbo_vi(computation_strategy = split)
                         elif cfg.method == 'rws':
-                            elbo = sample.elbo_rws()
+                            elbo = sample.elbo_rws() if split is None else sample.elbo_rws(computation_strategy = split)
                         elif cfg.method == 'qem':
-                            elbo = sample.elbo_nograd()
+                            elbo = sample.elbo_nograd() if split is None else sample.elbo_nograd(computation_strategy = split)
 
                         elbo_end_time = safe_time(device)
 
                         elbos[K_idx, lr_idx, i, num_run] = elbo.item()
 
                         if do_predll:
-                            importance_sample = sample.importance_sample(N=N_predll)
+                            importance_sample = sample.importance_sample(N=N_predll) if split is None else sample.importance_sample(N=N_predll, computation_strategy = split)
                             extended_importance_sample = importance_sample.extend(all_platesizes, all_covariates)
                             ll = extended_importance_sample.predictive_ll(all_data)
                             

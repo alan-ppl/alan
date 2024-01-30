@@ -1,6 +1,12 @@
 import torch as t
 import importlib.util
 import sys
+import time
+
+def safe_time(device):
+    if device == 'cuda':
+        t.cuda.synchronize()
+    return time.time()
 
 Q_PARAM_TYPES = {'vi': 'opt', 'rws': 'opt', 'qem': 'qem'}
 
@@ -17,7 +23,10 @@ def run(model_name,
         fake_data = False,
         dataset_seed = 0,
         data_dir = 'data/',
-        device = 'cpu'):
+        device = 'cpu',
+        split = None):
+
+    start_time = safe_time(device)
 
     # ensure device is set correctly
     if device == 'cuda':
@@ -68,16 +77,16 @@ def run(model_name,
 
                 sample = prob.sample(K, reparam)
                 if method == 'vi':
-                    elbo = sample.elbo_vi()
+                    elbo = sample.elbo_vi() if split is None else sample.elbo_vi(computation_strategy = split)
                 elif method == 'rws':
-                    elbo = sample.elbo_rws()
+                    elbo = sample.elbo_rws() if split is None else sample.elbo_rws(computation_strategy = split)
                 elif method == 'qem':
-                    elbo = sample.elbo_nograd()    
+                    elbo = sample.elbo_nograd() if split is None else sample.elbo_nograd(computation_strategy = split)
 
                 elbos[method][num_run, i] = elbo.detach()
 
                 if do_predll:
-                    importance_sample = sample.importance_sample(N=N)
+                    importance_sample = sample.importance_sample(N=N) if split is None else sample.importance_sample(N=N, computation_strategy = split)
                     extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
                     ll = extended_importance_sample.predictive_ll(all_data)
                     lls[method][num_run, i] = ll['obs']
@@ -92,6 +101,10 @@ def run(model_name,
                     sample.update_qem_params(lrs[method])
         
             print()
+
+    end_time = safe_time(device)
+
+    print(f"Total time: {end_time - start_time:.3f} seconds")
 
     if do_plot:
         for key in elbos.keys():
