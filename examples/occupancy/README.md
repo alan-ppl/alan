@@ -12,3 +12,6 @@ mkdir data/
 mkdir results/
 python make_data.py
 ```
+
+# Introduction to multi-species occupancy models
+https://www.jeffdoser.com/files/spoccupancy-web/articles/modelfitting#multi-species-occupancy-models
