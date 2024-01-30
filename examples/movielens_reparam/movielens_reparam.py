@@ -3,7 +3,7 @@ import math
 from alan import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam, Split
 
 d_z = 18
-M, N = 943, 841
+M, N = 300, 5
 
 def load_data_covariates(device, run=0, data_dir='data/', fake_data=False):
     platesizes = {'plate_1': M, 'plate_2': N}

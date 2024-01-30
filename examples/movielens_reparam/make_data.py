@@ -3,8 +3,8 @@ import numpy as np
 import torch as t
 import alan
 
-# from alan.experiment_utils import seed_torch
-# from movielens import generate_model
+from alan.experiment_utils import seed_torch
+from movielens import generate_model
 
 def get_features():
     feats = pd.read_csv('ml-100k/u.item', sep='|', index_col=0, header=None, encoding='latin-1')
@@ -26,24 +26,28 @@ def get_ratings():
     # print(ratings.head(5))
     return t.tensor(ratings.to_numpy())
 
-for i in range(1):
-    t.manual_seed(i)
+for i in range(10):
+    seed_torch(i)
+    #Films
+    Ns = [5,20]
+    #Users
+    Ms = [300,450]
 
-    x = get_features()
 
-    M = x.shape[0]       # number of users (943)
-    N = x.shape[1] // 2  # number of films (1682 // 2 = 841)
 
-    films = np.random.choice(x.shape[1], 2*N, replace=False)
+    for N in Ns:
+        for M in Ms:
+            x = get_features()
+            users = np.random.choice(x.shape[0], M, replace=False)
+            films = np.random.choice(x.shape[1], 2*N, replace=False)
 
-    train_weights = x[:,films[:N],:]
-    test_weights = x[:,films[N:],:]
+            train_weights = x[np.ix_(users ,films[:N])]
+            test_weights = x[np.ix_(users ,films[N:])]
+            train_data = get_ratings()[np.ix_(users ,films[:N])]
+            test_data = get_ratings()[np.ix_(users ,films[N:])]
 
-    train_data = get_ratings()[:,films[:N]]
-    test_data = get_ratings()[:,films[N:]]
+            t.save(train_data, 'data/data_y_{0}_{1}_{2}.pt'.format(N, M,i))
+            t.save(train_weights, 'data/weights_{0}_{1}_{2}.pt'.format(N, M,i))
 
-    t.save(train_data, f'data/data_y_{N}_{M}_{i}.pt')
-    t.save(train_weights, f'data/weights_{N}_{M}_{i}.pt')
-
-    t.save(test_data, f'data/test_data_y_{N}_{M}_{i}.pt')
-    t.save(test_weights, f'data/test_weights_{N}_{M}_{i}.pt')
+            t.save(test_data, 'data/test_data_y_{0}_{1}_{2}.pt'.format(N, M,i))
+            t.save(test_weights, 'data/test_weights_{0}_{1}_{2}.pt'.format(N, M,i))
