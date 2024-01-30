@@ -22,7 +22,7 @@ def check_inputs_params(P:BoundPlate, Q:BoundPlate):
     overlap = set(inputs_params_P.keys()).intersection(inputs_params_Q.keys())
 
     for k in overlap:
-        if not (inputs_params_P[k] == inputs_params_Q[k]).all():
+        if not (inputs_params_P[k] == inputs_params_Q[k]).rename(None).all():
             raise Exception(f"Input / parameter names must be different in P and Q (or they must refer to the same input/parameter).  However, {k} refers to different inputs/parameters in P and Q.  Note that this can happen if you use OptParam / QEMParam for the same parameters in P and Q.  In that case, you should use the explicit `name` kwarg on OptParam/QEMParam.  e.g. `OptParam(1., name='a_loc_P')`")
 
 
