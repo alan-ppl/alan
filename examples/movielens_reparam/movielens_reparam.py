@@ -32,7 +32,7 @@ def load_data_covariates(device, run=0, data_dir='data/', fake_data=False):
 
 def get_P(platesizes, covariates):
     P = Plate(
-        mu_z = Normal(t.zeros((d_z,)), t.ones((d_z,)) / math.log(1000)),
+        mu_z = Normal(t.zeros((d_z,)), t.ones((d_z,)) / 1000),
         psi_z = Normal(t.zeros((d_z,)), t.ones((d_z,))),
 
         plate_1 = Plate(
