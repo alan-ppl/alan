@@ -17,7 +17,7 @@ def smooth(x, window):
 
     return result
 
-def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 25, 50], dataset_seeds=[0], results_subfolder='', Ks_to_plot='all', method_lrs_to_ignore={}, elbo_ylims=None, pll_ylims=None, save_pdf=False):
+def plot(model_name, method_names=['qem', 'rws', 'vi'], window_sizes=[1, 5, 10, 25, 50], dataset_seeds=[0], results_subfolder='', Ks_to_plot='all', method_lrs_to_ignore={}, elbo_ylims=None, pll_ylims=None, save_pdf=False):
 
     print(f'Plotting {model_name} with Ks {Ks_to_plot}.')
 
@@ -61,7 +61,11 @@ def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 25
 
         # Remove the learning rates that we don't want to plot
         if method_name in method_lrs_to_ignore:
+            # lr_idx_to_ignore = [idx for idx, lr in enumerate(lrs) if lrs in method_lrs_to_ignore[method_name]]
+            for x in [elbos, p_lls, iter_times]:
+                x[method_name] = [y[:, [idx for idx in range(len(lrs[method_name])) if idx not in method_lrs_to_ignore[method_name]], ...] for y in x[method_name]]
             lrs[method_name] = [lr for lr in lrs[method_name] if lr not in method_lrs_to_ignore[method_name]]
+
 
         # Average out over the seeds and convert any 0 elbos or p_lls to NaNs
         elbos[method_name] = np.stack(elbos[method_name])
@@ -79,6 +83,7 @@ def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 25
 
         # iter_times[method_name] = iter_times[method_name].mean(0)
         iter_times[method_name] = np.nanmean(iter_times[method_name],0)
+
 
     # Create the subplots (top row x=iter, bottom row x=time)
     fig, axs = plt.subplots(2, 2, figsize=(13, 7))
@@ -112,7 +117,7 @@ def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 25
                     times = np.nanmean(iter_times[method_name][K_idx,j], 1).cumsum()
                     # times = iter_times[method_name][K_idx,j].cumsum(0)
 
-                    alpha_val = 1 - 0.5*j/len(lrs)
+                    alpha_val = 1 - 0.5*j/len(lrs[method_name])
 
                     axs[0,0].plot(smoothed_mean_values, label=f'{method_name.upper()}: K={K}, lr={lr}', color=colour, alpha=alpha_val)
                     # axs[0,0].fill_between(range(len(smoothed_mean_values)), smoothed_mean_values - std_errs, smoothed_mean_values + std_errs, alpha=0.2*alpha_val, color=colour)
@@ -148,7 +153,7 @@ def plot(model_name, method_names=['vi','rws','qem'], window_sizes=[1, 5, 10, 25
                     times = np.nanmean(iter_times[method_name][K_idx,j], 1).cumsum()
                     # times = iter_times[method_name][K_idx,j].cumsum(0)
 
-                    alpha_val = 1 - 0.5*j/len(lrs)
+                    alpha_val = 1 - 0.5*j/len(lrs[method_name])
 
                     # print(mean_values)
                     # breakpoint()
@@ -194,18 +199,24 @@ if __name__ == '__main__':
     # plot('bus_breakdown', results_subfolder='', 
     #      method_lrs_to_ignore={'qem': [0.01], 'rws': [0.0001], 'vi': [0.0001]})
     
-    elbo_ylims_per_K = {'movielens':     {3: (-6500, None), 10: (-3000, -950), 30: (-2000, -950)},
-                        'bus_breakdown': {3: (-6000, None), 10: (-3300, None), 30: (-2750, None)}}
-    pll_ylims_per_K  = {'movielens':     {3: (-1150, None), 10: (-1100, -940), 30: (-1060, -940)},
-                        'bus_breakdown': {3: (-7000, None), 10: (-3500, None), 30: (-2800, -1750)}}
+    elbo_ylims_per_K = {'movielens':     {3: (-4000, -950), 10: (-3000, -950), 30: (-2000, -950)},
+                        'bus_breakdown': {3: (-6000, None), 10: (-3300, None), 30: (-2750, None)},
+                        'occupancy':     {3: (-70000, None), 5: (-55000, None), 10: (-50000, None)},
+                        'chimpanzees':   {5: (-500, -240),  15: (-500, -240)}}
+    pll_ylims_per_K  = {'movielens':     {3: (-1150, -940), 10: (-1100, -940), 30: (-1060, -940)},
+                        'bus_breakdown': {3: (-7000, None), 10: (-3500, None), 30: (-2800, -1750)},
+                        'occupancy':     {3: (-35000, None), 5: (-28000, None), 10: (-24900, None)},
+                        'chimpanzees':   {5: (-50, -40),    15: (-50, -40)}}
 
-    # for K in [3, 10, 30]:
-    #     plot('movielens', method_names=['qem','vi','rws'], results_subfolder='', Ks_to_plot=[K])
-    #           elbo_ylims=elbo_ylims_per_K['movielens'][K], pll_ylims=pll_ylims_per_K['movielens'][K])
 
-    #     plot('bus_breakdown', results_subfolder='', Ks_to_plot=[K],
-    #           method_lrs_to_ignore={'qem': [0.01], 'rws': [0.0001], 'vi': [0.0001]},
-    #           elbo_ylims=elbo_ylims_per_K['bus_breakdown'][K], pll_ylims=pll_ylims_per_K['bus_breakdown'][K])
+    for K in [3, 10, 30]:
+        plot('movielens', results_subfolder='regular_version_final_FULL_all_lrs/', Ks_to_plot=[K],
+              method_lrs_to_ignore={'qem': [], 'rws': [0.0001,0.3,0.5,0.75,1], 'vi': [0.0001,0.5,0.75,1]},
+              elbo_ylims=elbo_ylims_per_K['movielens'][K], pll_ylims=pll_ylims_per_K['movielens'][K])
+
+        plot('bus_breakdown', results_subfolder='final1-0.0001/', Ks_to_plot=[K],
+              method_lrs_to_ignore={'qem': [0.01], 'rws': [0.0001,0.3,0.5,0.75,1], 'vi': [0.0001,0.3,0.5,0.75,1]},)
+            #   elbo_ylims=elbo_ylims_per_K['bus_breakdown'][K], pll_ylims=pll_ylims_per_K['bus_breakdown'][K])
 
     #     plot('chimpanzees', results_subfolder='K3_10_30/', Ks_to_plot=[K])
         
@@ -213,10 +224,14 @@ if __name__ == '__main__':
 
         
     for K in [3, 5, 10]:
-        plot('occupancy', results_subfolder='', Ks_to_plot=[K], method_names=['qem','rws'])
+        plot('occupancy', results_subfolder='lr0.01-1/', Ks_to_plot=[K], method_names=['qem','rws'],)#method_lrs_to_ignore={'rws': [0.5,0.75,1]},)
     #     plot('chimpanzees', results_subfolder='', Ks_to_plot=[K],)
 
-    # chimp_lrs_to_ignore = [0.0001, 0.001]
-    # chimp_5_15_method_lrs_to_ignore = {'qem': chimp_lrs_to_ignore, 'rws': chimp_lrs_to_ignore, 'vi': chimp_lrs_to_ignore}
-    # plot('chimpanzees', results_subfolder='K5_15_lr_all/', Ks_to_plot=[5], method_lrs_to_ignore=chimp_5_15_method_lrs_to_ignore)
-    # plot('chimpanzees', results_subfolder='K5_15_lr_all/', Ks_to_plot=[15], method_lrs_to_ignore=chimp_5_15_method_lrs_to_ignore)
+    chimp_lrs_to_ignore = [0.0001, 0.001, 0.01, 0.5]
+    chimp_5_15_method_lrs_to_ignore = {'qem': chimp_lrs_to_ignore, 'rws': chimp_lrs_to_ignore, 'vi': chimp_lrs_to_ignore}
+
+    plot('chimpanzees', results_subfolder='K5_15_lr_0.001-1/', Ks_to_plot=[5], #method_lrs_to_ignore=chimp_5_15_method_lrs_to_ignore,
+                        elbo_ylims=elbo_ylims_per_K['chimpanzees'][5], pll_ylims=pll_ylims_per_K['chimpanzees'][5])
+    plot('chimpanzees', results_subfolder='K5_15_lr_0.001-1/', Ks_to_plot=[15], #method_lrs_to_ignore=chimp_5_15_method_lrs_to_ignore,
+                        elbo_ylims=elbo_ylims_per_K['chimpanzees'][15], pll_ylims=pll_ylims_per_K['chimpanzees'][15])
+
