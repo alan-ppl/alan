@@ -41,12 +41,12 @@ def get_P(platesizes, covariates):
         mu_beta = Normal(0, 1),
 
         plate_Year = Plate(
-            beta = Normal('mu_beta', lambda sigma_beta: sigma_beta.exp()),
+            beta = Normal('mu_beta', lambda sigma_beta: (sigma_beta / 10).exp()),
 
-            sigma_alpha = Normal(0, 1 / 10),
+            sigma_alpha = Normal(0, 1),
 
             plate_Borough = Plate(
-                alpha = Normal('beta', lambda sigma_alpha: (10*sigma_alpha).exp()),
+                alpha = Normal(lambda beta: 10 * beta, lambda sigma_alpha: (sigma_alpha).exp()),
         
                 plate_ID = Plate(
                     obs = Binomial(total_count=131, logits = lambda alpha, phi, psi, run_type, bus_company_name: alpha + phi @ bus_company_name + psi @ run_type),
