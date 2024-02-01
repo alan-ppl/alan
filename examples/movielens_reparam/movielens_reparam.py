@@ -36,7 +36,7 @@ def get_P(platesizes, covariates):
         psi_z = Normal(t.zeros((d_z,)), t.ones((d_z,))),
 
         plate_1 = Plate(
-            z = Normal("mu_z", lambda psi_z: (psi_z/10).exp()),
+            z = Normal(lambda mu_z: mu_z / 10, lambda psi_z: (psi_z).exp() / 10),
 
             plate_2 = Plate(
                 obs = Bernoulli(logits = lambda z, x: (z*10) @ x),

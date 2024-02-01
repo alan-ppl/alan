@@ -41,7 +41,7 @@ def get_P(platesizes, covariates):
         mu_beta = Normal(0, 1),
 
         plate_Year = Plate(
-            beta = Normal('mu_beta', lambda sigma_beta: (sigma_beta / 10).exp()),
+            beta = Normal(lambda mu_beta: mu_beta / 10, lambda sigma_beta: (sigma_beta).exp() / 10),
 
             sigma_alpha = Normal(0, 1),
 
