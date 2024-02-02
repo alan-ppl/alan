@@ -1,0 +1,14 @@
+---
+  model: ???
+  method: ???
+  num_runs: 100
+  Ks: [1,3,10,30,100,300,1000,3000,10000,30000,100000]
+  reparam: True
+  N_predll: 100
+  dataset_seed: 0
+  fake_data: False
+  write_job_status: True
+  split:
+    min_K: 30
+    plate: null
+    size: null
