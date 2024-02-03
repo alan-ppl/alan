@@ -70,7 +70,7 @@ class SampleNonMP:
             result = self._elbo(self.detached_sample)
         return result
     
-    def _importance_sample_idxs(self, N: int, computation_strategy):
+    def _importance_sample_idxs(self, N: int):
         N_dim = Dim('N', N)
 
         lps = self.logpq(self.detached_sample)
@@ -82,8 +82,8 @@ class SampleNonMP:
 
         return indices, N_dim
 
-    def importance_sample(self, N:int, computation_strategy=checkpoint):
-        indices, N_dim = self._importance_sample_idxs(N, computation_strategy)
+    def importance_sample(self, N:int):
+        indices, N_dim = self._importance_sample_idxs(N)
 
         importance_samples = index_into_non_mp_sample(self.detached_sample, indices, self.Kdim)
 
