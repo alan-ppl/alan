@@ -4,9 +4,11 @@ from .moments import RawMoment, torchdim_moments_mixin, named_moments_mixin
 
 from .Data import Data
 from .dist import Dist
-from .Plate import Plate
+from .Plate import Plate, tensordict2tree, flatten_tree
 from .Timeseries import Timeseries
 from .Split import no_checkpoint
+from .ImportanceSample import ImportanceSample
+from .Sample import index_into_sample
 
 class SampleNonMP:
     def __init__(
@@ -67,6 +69,25 @@ class SampleNonMP:
         with t.no_grad():
             result = self._elbo(self.detached_sample)
         return result
+    
+    def _importance_sample_idxs(self, N: int, computation_strategy):
+        N_dim = Dim('N', N)
+
+        lps = self.logpq(self.detached_sample)
+        lps_max = lps.amax(self.Kdim)
+
+        indices = t.multinomial(t.exp(lps - lps_max), N, replacement=True)
+
+        indices = indices.order(self.Kdim)[N_dim]
+
+        return indices, N_dim
+
+    def importance_sample(self, N:int, computation_strategy=checkpoint):
+        indices, N_dim = self._importance_sample_idxs(N, computation_strategy)
+
+        importance_samples = index_into_non_mp_sample(self.detached_sample, indices, self.Kdim)
+
+        return ImportanceSample(self.problem, importance_samples, N_dim)
 
     def _moments_uniform_input(self, moms):
         """
@@ -180,3 +201,12 @@ def non_mp_log_prob(
     assert set(generic_dims(sum_lpqs)) == set([Kdim])
     assert 0 == sum_lpqs.ndim
     return sum_lpqs
+
+def index_into_non_mp_sample(sample, indices, Kdim):
+    result = {}
+    for k, v in sample.items():
+        if isinstance(v, dict):
+            result[k] = index_into_non_mp_sample(v, indices, Kdim)
+        else:
+            result[k] = v.order(Kdim)[indices]
+    return result
