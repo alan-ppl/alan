@@ -113,8 +113,8 @@ class SampleNonMP:
     def update_qem_params(self, lr:float):
         """
         """
-        self.problem.P._update_qem_params(lr, self, computation_strategy=no_checkpoitn)
-        self.problem.Q._update_qem_params(lr, self, computation_strategy=no_checkpoitn)
+        self.problem.P._update_qem_params(lr, self, computation_strategy=no_checkpoint)
+        self.problem.Q._update_qem_params(lr, self, computation_strategy=no_checkpoint)
 
 
 def unify_dims(sample, Kdim, set_all_platedims):
