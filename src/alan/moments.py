@@ -24,7 +24,7 @@ class RawMoment(Moment):
         assert f_Kdims.issubset(w_Kdims)
         tuple_w_Kdims = tuple(w_Kdims)
         assert 0 < len(tuple_w_Kdims)
-        return (f * weights).sum(tuple_w_Kdims)
+        return (f*weights).detach().sum(tuple_w_Kdims)
 
     def all_raw_moments(self):
         return [self.f]
