@@ -26,8 +26,11 @@ def load_data_covariates(device, run=0, data_dir='data/', fake_data=False, retur
 
         data = {'obs': all_data['obs'][:,:,:I]}
 
+        all_latents = sample
+        latents = sample 
+
         if return_fake_latents:
-            return platesizes, all_platesizes, data, all_data, covariates, all_covariates, sample
+            return platesizes, all_platesizes, data, all_data, covariates, all_covariates, latents, all_latents
 
     return platesizes, all_platesizes, data, all_data, covariates, all_covariates
 

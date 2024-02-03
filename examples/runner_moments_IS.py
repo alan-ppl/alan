@@ -50,7 +50,7 @@ def run_experiment(cfg):
     if not fake_data:
         platesizes, all_platesizes, data, all_data, covariates, all_covariates = model.load_data_covariates(device, dataset_seed, f'{cfg.model}/data/', False)
     else:
-        platesizes, all_platesizes, data, all_data, covariates, all_covariates, fake_latents = model.load_data_covariates(device, dataset_seed, f'{cfg.model}/data/', True, return_fake_latents=True)
+        platesizes, all_platesizes, data, all_data, covariates, all_covariates, fake_latents, _ = model.load_data_covariates(device, dataset_seed, f'{cfg.model}/data/', True, return_fake_latents=True)
 
     # Put extended data, covariates and (if fake_data==True) fake_latents on device
     for key in all_data:
@@ -79,8 +79,9 @@ def run_experiment(cfg):
              "moments": t.zeros((len(Ks), num_runs)),
              "p_ll":    t.zeros((len(Ks), num_runs))}
 
+    job_status_file = f"{cfg.model}/job_status/moments/{cfg.method}{'_FAKE_DATA' if fake_data else ''}_status.txt"
     if cfg.write_job_status:
-        with open(f"{cfg.model}/job_status/moments/{cfg.method}{'_FAKE_DATA' if fake_data else ''}_status.txt", "w") as f:
+        with open(job_status_file, "w") as f:
             f.write(f"Starting job.\n")
 
     for K_idx, K in enumerate(Ks):
@@ -144,7 +145,7 @@ def run_experiment(cfg):
                 MSEs[name][K_idx] *= num_runs/(num_runs-1)
 
         if cfg.write_job_status:
-            with open(f"{cfg.model}/job_status/moments/{cfg.method}{'_FAKE_DATA' if fake_data else ''}_status.txt", "a") as f:
+            with open(job_status_file, "a") as f:
                 f.write(f"K: {K} done in {safe_time(device)-K_start_time}s.\n")
 
         to_pickle = {'elbos': elbos.cpu(), 'p_lls': p_lls.cpu(), 'MSEs': MSEs,
