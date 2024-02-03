@@ -3,7 +3,7 @@ from alan import Normal, Binomial, Plate, BoundPlate, Group, Problem, Data, QEMP
 
 M, J, I = 8, 11, 144765//2
 
-def load_data_covariates(device, run=0, data_dir='data/', fake_data=False):
+def load_data_covariates(device, run=0, data_dir='data/', fake_data=False, return_fake_latents=False):
     platesizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
     all_platesizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':2*I + 1}
 
@@ -21,9 +21,13 @@ def load_data_covariates(device, run=0, data_dir='data/', fake_data=False):
 
     else:
         P = get_P(all_platesizes, all_covariates)
-        all_data = {'obs': P.sample()['obs'].align_to('plate_Year', 'plate_Borough', 'plate_ID')}
+        sample = P.sample()
+        all_data = {'obs': sample.pop('obs').align_to('plate_Year', 'plate_Borough', 'plate_ID')}
 
         data = {'obs': all_data['obs'][:,:,:I]}
+
+        if return_fake_latents:
+            return platesizes, all_platesizes, data, all_data, covariates, all_covariates, sample
 
     return platesizes, all_platesizes, data, all_data, covariates, all_covariates
 
@@ -145,4 +149,4 @@ if __name__ == "__main__":
                      lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1},
                      fake_data = False,
                      device = 'cpu',
-                     split = Split('plate_ID', 1000))
+                     split = Split('plate_ID', 50))

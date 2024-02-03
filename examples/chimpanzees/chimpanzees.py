@@ -1,7 +1,7 @@
 import torch as t
 from alan import Normal, Bernoulli, HalfCauchy, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
 
-def load_data_covariates(device, run=0, data_dir='data/', fake_data=False):
+def load_data_covariates(device, run=0, data_dir='data/', fake_data=False, return_fake_latents=False):
     # num_actors, num_actors_extended = 6, 7
     # num_blocks, num_blocks_extended = 4, 6
     num_actors, num_blocks = 7, 6
@@ -35,9 +35,13 @@ def load_data_covariates(device, run=0, data_dir='data/', fake_data=False):
     
     else:
         P = get_P(all_platesizes, all_covariates)
-        all_data = {'obs': P.sample()['obs'].align_to('plate_actors','plate_blocks','plate_repeats')}
+        sample = P.sample()
+        all_data = {'obs': sample.pop('obs').align_to('plate_actors','plate_blocks','plate_repeats')}
 
         data = {'obs': all_data['obs'][:,:,:num_repeats]}
+
+        if return_fake_latents:
+            return platesizes, all_platesizes, data, all_data, covariates, all_covariates, sample
 
     return platesizes, all_platesizes, data, all_data, covariates, all_covariates
 

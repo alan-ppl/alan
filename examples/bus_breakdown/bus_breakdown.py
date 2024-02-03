@@ -4,7 +4,7 @@ import math
 
 M, J, I = 3, 3, 30
 
-def load_data_covariates(device, run=0, data_dir='data/', fake_data=False):
+def load_data_covariates(device, run=0, data_dir='data/', fake_data=False, return_fake_latents=False):
     platesizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
     all_platesizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':2*I}
 
@@ -22,9 +22,13 @@ def load_data_covariates(device, run=0, data_dir='data/', fake_data=False):
 
     else:
         P = get_P(all_platesizes, all_covariates)
-        all_data = {'obs': P.sample()['obs'].align_to('plate_Year', 'plate_Borough', 'plate_ID')}
+        sample = P.sample()
+        all_data = {'obs': sample.pop('obs').align_to('plate_Year', 'plate_Borough', 'plate_ID')}
 
         data = {'obs': all_data['obs'][:,:,:I]}
+
+        if return_fake_latents:
+            return platesizes, all_platesizes, data, all_data, covariates, all_covariates, sample
 
     return platesizes, all_platesizes, data, all_data, covariates, all_covariates
 

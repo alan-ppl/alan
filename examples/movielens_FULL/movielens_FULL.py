@@ -4,7 +4,7 @@ from alan import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, Data, QEM
 d_z = 18
 M, N = 943, 841
 
-def load_data_covariates(device, run=0, data_dir='data/', fake_data=False):
+def load_data_covariates(device, run=0, data_dir='data/', fake_data=False, return_fake_latents=False):
     platesizes = {'plate_1': M, 'plate_2': N}
     all_platesizes = {'plate_1': M, 'plate_2': 2*N}
 
@@ -23,9 +23,13 @@ def load_data_covariates(device, run=0, data_dir='data/', fake_data=False):
 
     else:
         P = get_P(all_platesizes, all_covariates)
-        all_data = {'obs': P.sample()['obs'].align_to('plate_1', 'plate_2')}
+        sample = P.sample()
+        all_data = {'obs': sample.pop('obs').align_to('plate_1', 'plate_2')}
 
         data = {'obs': all_data['obs'][:,:N]}
+
+        if return_fake_latents:
+            return platesizes, all_platesizes, data, all_data, covariates, all_covariates, sample
 
     return platesizes, all_platesizes, data, all_data, covariates, all_covariates
 

@@ -1,7 +1,7 @@
 import torch as t
 from alan import Normal, Binomial, Bernoulli, ContinuousBernoulli, Uniform, Beta, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
 
-def load_data_covariates(device, run=0, data_dir='data/', fake_data=False):
+def load_data_covariates(device, run=0, data_dir='data/', fake_data=False, return_fake_latents=False):
     M, J, I, Returns = 6, 12, 200, 5
     I_extended = 300
 
@@ -33,9 +33,13 @@ def load_data_covariates(device, run=0, data_dir='data/', fake_data=False):
 
     else:
         P = get_P(all_platesizes, all_covariates)
-        all_data = {'obs': P.sample()['obs'].align_to('plate_Years', 'plate_Birds', 'plate_Ids', 'plate_Replicate')}
+        sample = P.sample()
+        all_data = {'obs': sample.pop('obs').align_to('plate_Years', 'plate_Birds', 'plate_Ids', 'plate_Replicate')}
 
         data = {'obs': all_data['obs'][:,:,:I,:]}
+
+        if return_fake_latents:
+            return platesizes, all_platesizes, data, all_data, covariates, all_covariates, sample
 
     return platesizes, all_platesizes, data, all_data, covariates, all_covariates
 
