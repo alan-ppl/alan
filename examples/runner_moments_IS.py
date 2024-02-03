@@ -80,7 +80,7 @@ def run_experiment(cfg):
              "p_ll":    t.zeros((len(Ks), num_runs))}
 
     if cfg.write_job_status:
-        with open(f"{cfg.model}/job_status/moments/{cfg.method}_status.txt", "w") as f:
+        with open(f"{cfg.model}/job_status/moments/{cfg.method}{'_FAKE_DATA' if fake_data else ''}_status.txt", "w") as f:
             f.write(f"Starting job.\n")
 
     for K_idx, K in enumerate(Ks):
@@ -92,7 +92,7 @@ def run_experiment(cfg):
 
         for num_run in range(num_runs):
 
-            if split_plate is not None and split_size is not None and K >= min_K_for_split:
+            if method != 'global_is' and split_plate is not None and split_size is not None and K >= min_K_for_split:
                 split = Split(split_plate, split_size)
             else:
                 # assert (split_plate is None and split_size is None) or K < min_K_for_split
@@ -144,7 +144,7 @@ def run_experiment(cfg):
                 MSEs[name][K_idx] *= num_runs/(num_runs-1)
 
         if cfg.write_job_status:
-            with open(f"{cfg.model}/job_status/moments/{cfg.method}_status.txt", "a") as f:
+            with open(f"{cfg.model}/job_status/moments/{cfg.method}{'_FAKE_DATA' if fake_data else ''}_status.txt", "a") as f:
                 f.write(f"K: {K} done in {safe_time(device)-K_start_time}s.\n")
 
         to_pickle = {'elbos': elbos.cpu(), 'p_lls': p_lls.cpu(), 'MSEs': MSEs,
