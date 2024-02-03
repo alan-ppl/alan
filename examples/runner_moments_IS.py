@@ -83,7 +83,7 @@ def run_experiment(cfg):
         with open(f"{cfg.model}/job_status/moments/{cfg.method}_status.txt", "w") as f:
             f.write(f"Starting job.\n")
 
-    for K_idx, K in enumerate(Ks[::-1]):
+    for K_idx, K in enumerate(Ks):
 
         print(f"K: {K}")
         K_start_time = safe_time(device)
@@ -118,7 +118,7 @@ def run_experiment(cfg):
 
             for i, name in enumerate(latent_names):
                 if num_run == 0:
-                    moments_collection[name] = t.zeros((num_runs, *moments[i].shape))
+                    moments_collection[name] = t.zeros((num_runs, *moments[i].shape)).to(device)
                 moments_collection[name][num_run] = moments[i]
 
             p_ll_start_time = safe_time(device)
@@ -134,10 +134,6 @@ def run_experiment(cfg):
             times["moments"][K_idx, num_run] = sample_time + moments_time
             times["p_ll"][K_idx, num_run]    = sample_time + p_ll_time
 
-        if cfg.write_job_status:
-            with open(f"{cfg.model}/job_status/moments/{cfg.method}_status.txt", "a") as f:
-                f.write(f"K: {K} done in {safe_time(device)-K_start_time}s.\n")
-
         for i, name in enumerate(latent_names):
             ground_truth = fake_latents[name] if fake_data else moments_collection[name].mean(0)
 
@@ -147,14 +143,17 @@ def run_experiment(cfg):
             if not fake_data:
                 MSEs[name][K_idx] *= num_runs/(num_runs-1)
 
-    to_pickle = {'elbos': elbos.cpu(), 'p_lls': p_lls.cpu(), 'MSEs': MSEs,
-                 'times': times, 'Ks': Ks,  'num_runs': num_runs}
+        if cfg.write_job_status:
+            with open(f"{cfg.model}/job_status/moments/{cfg.method}_status.txt", "a") as f:
+                f.write(f"K: {K} done in {safe_time(device)-K_start_time}s.\n")
 
-    print()
+        to_pickle = {'elbos': elbos.cpu(), 'p_lls': p_lls.cpu(), 'MSEs': MSEs,
+                    'times': times, 'Ks': Ks,  'num_runs': num_runs}
 
-    with open(f'{cfg.model}/results/moments/{cfg.method}{dataset_seed}.pkl', 'wb') as f:
-        pickle.dump(to_pickle, f)
+        with open(f'{cfg.model}/results/moments/{cfg.method}{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
+            pickle.dump(to_pickle, f)
 
+        print()
 
 if __name__ == "__main__":
     run_experiment()
