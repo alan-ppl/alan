@@ -119,7 +119,7 @@ def run_experiment(cfg):
 
             for i, name in enumerate(latent_names):
                 if num_run == 0:
-                    moments_collection[name] = t.zeros((num_runs, *moments[i].shape)).to(device)
+                    moments_collection[name] = t.zeros((num_runs, *moments[i].shape), names=(None, *moments[i].names)).to(device)
                 moments_collection[name][num_run] = moments[i]
 
             p_ll_start_time = safe_time(device)
@@ -136,7 +136,12 @@ def run_experiment(cfg):
             times["p_ll"][K_idx, num_run]    = sample_time + p_ll_time
 
         for i, name in enumerate(latent_names):
-            ground_truth = fake_latents[name] if fake_data else moments_collection[name].mean(0)
+            if fake_data:
+                ground_truth = fake_latents[name]
+                if (None, *ground_truth.names) != moments_collection[name].names:
+                    ground_truth = ground_truth.align_as(moments_collection[name]).mean(0)
+            else:
+                ground_truth = moments_collection[name].mean(0)
 
             MSEs[name][K_idx] = ((moments_collection[name] - ground_truth)**2).mean(0).sum()
 
