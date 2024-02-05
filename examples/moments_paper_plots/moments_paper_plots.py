@@ -8,6 +8,9 @@ ALL_MODEL_NAMES = ['bus_breakdown', 'chimpanzees', 'movielens', 'occupancy']
 DEFAULT_ALPHA_FUNC = lambda i, num_lrs: 1 if i == 0 else 1 - 0.5*i/(num_lrs-1)
 
 def load_results(model_name, method_name, fake_data, dataset_seed=0):
+    if method_name in ['mpis', 'global_is']:
+        with open(f'../{model_name}/results/moments/old_IS/{method_name}{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'rb') as f:
+            return pickle.load(f)
     with open(f'../{model_name}/results/moments/{method_name}{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'rb') as f:
         return pickle.load(f)
     
@@ -36,7 +39,7 @@ def remove_failed_Ks(results, method):
     return results[method]
 
     
-def plot_IS_per_K_one_model(model_name, save_pdf=False):
+def plot_IS_per_K_one_model(model_name, save_pdf=False, scatter=False):
     all_results = {}
     for method in ['mpis', 'global_is']:
         all_results[method] = load_results(model_name, method, False)
@@ -48,11 +51,20 @@ def plot_IS_per_K_one_model(model_name, save_pdf=False):
     fig, ax = plt.subplots(1, 4, figsize=(20, 5))
 
     for i, method in enumerate(['mpis', 'global_is']):
+        colour = 'C' + str(i)
         for j, key in enumerate(['elbos', 'p_lls', 'MSEs', 'MSEs_fake']):
             if key in ['elbos', 'p_lls']:
-                ax[j].plot(all_results[method]['Ks'], all_results[method][key].mean(1), label=method.upper())
+                if scatter:
+                    ax[j].scatter(all_results[method]['Ks'], all_results[method][key].mean(1), label=method.upper(), marker='x', color=colour)
+                else:
+                    ax[j].plot(all_results[method]['Ks'], all_results[method][key].mean(1), label=method.upper(), color=colour)
+                ax[j].errorbar(all_results[method]['Ks'], all_results[method][key].mean(1), yerr=all_results[method][key].std(1)/np.sqrt(all_results[method]['num_runs']), fmt='x', color=colour)
             else:
-                ax[j].plot(all_results[method]['Ks'], all_results[method][key].cpu(), label=method.upper())
+                # if scatter:
+                ax[j].scatter(all_results[method]['Ks'], all_results[method][key].cpu(), label=method.upper(), marker='x', color=colour)
+                if not scatter:
+                    ax[j].plot(all_results[method]['Ks'], all_results[method][key].cpu(), label=method.upper(), color=colour)
+                ax[j].errorbar(all_results[method]['Ks'], all_results[method][key].cpu(), yerr=0, label=method.upper(), color=colour)
             ax[j].set_xlabel('K')
             ax[j].tick_params(axis='x', rotation=45)
 
@@ -61,7 +73,7 @@ def plot_IS_per_K_one_model(model_name, save_pdf=False):
     ax[1].set_ylabel('Predictive Log-Likelihood')
     ax[2].set_ylabel('Total Variance')
     ax[3].set_ylabel('MSE')
-    ax[-1].legend()
+    ax[0].legend()
 
     plt.xticks(rotation=70)
 
@@ -71,7 +83,7 @@ def plot_IS_per_K_one_model(model_name, save_pdf=False):
     if save_pdf:
         plt.savefig(f"plots/{model_name}_IS_per_K.pdf")
 
-def plots_IS_per_K_all_models(save_pdf=False):
+def plots_IS_per_K_all_models(save_pdf=False, scatter=False):
     all_results = {model_name: {} for model_name in ALL_MODEL_NAMES}
     for model_name in ALL_MODEL_NAMES:
         for method in ['mpis', 'global_is']:
@@ -81,15 +93,27 @@ def plots_IS_per_K_all_models(save_pdf=False):
 
             all_results[model_name][method] = remove_failed_Ks(all_results[model_name], method)
 
+    breakpoint()
+
     fig, ax = plt.subplots(2, 4, figsize=(20, 10))
 
     for i, model_name in enumerate(ALL_MODEL_NAMES):
         for j, method in enumerate(['mpis', 'global_is']):
+            colour = 'C' + str(j)
             for k, key in enumerate(['elbos', 'p_lls']):
                 if key in ['elbos', 'p_lls']:
-                    ax[k, i].plot(all_results[model_name][method]['Ks'], all_results[model_name][method][key].mean(1), label=method.upper())
+                    if scatter:
+                        ax[k, i].scatter(all_results[model_name][method]['Ks'], all_results[model_name][method][key].mean(1), label=method.upper(), marker='x', color=colour)
+                    else:
+                        ax[k, i].plot(all_results[model_name][method]['Ks'], all_results[model_name][method][key].mean(1), label=method.upper(), color=colour)
+                    ax[k, i].errorbar(all_results[model_name][method]['Ks'], all_results[model_name][method][key].mean(1), yerr=all_results[model_name][method][key].std(1)/np.sqrt(all_results[model_name][method]['num_runs']), fmt='x', color=colour)
                 else:
-                    ax[k, i].plot(all_results[model_name][method]['Ks'], all_results[model_name][method][key].cpu(), label=method.upper())
+                    if scatter:
+                        ax[k, i].scatter(all_results[model_name][method]['Ks'], all_results[model_name][method][key].cpu(), label=method.upper(), marker='x', color=colour)
+                    else:
+                        ax[k, i].plot(all_results[model_name][method]['Ks'], all_results[model_name][method][key].cpu(), label=method.upper(), color=colour)
+                    ax[k, i].errorbar(all_results[model_name][method]['Ks'], all_results[model_name][method][key].cpu(), yerr=0, label=method.upper(), color=colour)
+                        
                 ax[k, i].set_xlabel('K')
                 ax[k, i].tick_params(axis='x', rotation=45)
 
@@ -280,14 +304,22 @@ def plot_iterative_vs_IS_single_K_all_models(iterative_methods = ['vi', 'rws', '
 
 
 if __name__ == '__main__':
+    mpis_K = {'bus_breakdown': 30,'chimpanzees': 10, 'movielens': 30, 'occupancy': 10},
+    global_is_K = {'bus_breakdown': 100000,'chimpanzees': 100000, 'movielens': 100000, 'occupancy': 100000},
+    
     for model_name in ALL_MODEL_NAMES:
-        # plot_IS_per_K_one_model(model_name)
+        plot_IS_per_K_one_model(model_name)
         if model_name == 'occupancy':
             # plot_iterative_vs_IS_all_K_one_method(model_name, iterative_methods=['rws'])
-            plot_iterative_vs_IS_single_K_one_model(model_name, iterative_methods=['rws'])
+            plot_iterative_vs_IS_single_K_one_model(model_name, iterative_methods=['rws'], mpis_K=mpis_K[model_name], global_is_K=global_is_K[model_name])
         else:
             # plot_iterative_vs_IS_all_K_one_method(model_name, iterative_methods=['vi', 'rws'])
-            plot_iterative_vs_IS_single_K_one_model(model_name, iterative_methods=['vi', 'rws'])
+            plot_iterative_vs_IS_single_K_one_model(model_name, iterative_methods=['vi', 'rws'], mpis_K=mpis_K[model_name], global_is_K=global_is_K[model_name])
     
-    # plots_IS_per_K_all_models()
-    plot_iterative_vs_IS_single_K_all_models(iterative_methods=['vi', 'rws'])
+    plots_IS_per_K_all_models()
+    plot_iterative_vs_IS_single_K_all_models(iterative_methods=['vi', 'rws'],
+                                             mpis_K={'bus_breakdown': 30,
+                                                     'chimpanzees': 10,
+                                                     'movielens': 30,
+                                                     'occupancy': 10},
+                                             global_is_K = 100000)
