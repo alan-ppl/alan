@@ -1,0 +1,9 @@
+---
+  model: ???
+  num_runs: 100
+  dataset_seed: 0
+  fake_data: False
+  write_job_status: True
+  num_samples: 100
+  num_tuning_samples: 1
+  target_accept: 0.8
