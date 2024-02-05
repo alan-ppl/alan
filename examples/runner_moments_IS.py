@@ -153,7 +153,7 @@ def run_experiment(cfg):
             with open(job_status_file, "a") as f:
                 f.write(f"K: {K} done in {safe_time(device)-K_start_time}s.\n")
 
-        to_pickle = {'elbos': elbos.cpu(), 'p_lls': p_lls.cpu(), 'MSEs': MSEs,
+        to_pickle = {'elbos': elbos.cpu(), 'p_lls': p_lls.cpu(), 'MSEs': {k: v.cpu() for k, v in MSEs.items()},
                     'times': times, 'Ks': Ks,  'num_runs': num_runs}
 
         with open(f'{cfg.model}/results/moments/{cfg.method}{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
