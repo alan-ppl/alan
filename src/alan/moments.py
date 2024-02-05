@@ -24,7 +24,15 @@ class RawMoment(Moment):
         assert f_Kdims.issubset(w_Kdims)
         tuple_w_Kdims = tuple(w_Kdims)
         assert 0 < len(tuple_w_Kdims)
-        return (f*weights).detach().sum(tuple_w_Kdims)
+
+        # The below 'detach' is a hack to avoid a bug in how pytorch deals with named tensors.  It should be removed when the bug is fixed.
+        # The problem is that without the detach, the tensor f*weights is not instantiated, causing the sum to error with message "Aborted".
+        # By detaching, we force the instantiation of the tensor, and the sum works fine. (Note that the choice of detatch is somewhat arbitrary.)
+        # 
+        # Potentially, we could replace the line instead by
+        #   return t.sum(f*weights, tuple_w_Kdims)
+        # but this needs to be tested.
+        return (f*weights).detach().sum(tuple_w_Kdims) 
 
     def all_raw_moments(self):
         return [self.f]
