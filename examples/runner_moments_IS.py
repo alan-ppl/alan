@@ -47,6 +47,7 @@ def run_experiment(cfg):
     for folder in ['results/moments', 'job_status/moments', 'plots/moments']:
         Path(f"{cfg.model}/{folder}").mkdir(parents=True, exist_ok=True)
 
+    t.manual_seed(0)
     if not fake_data:
         platesizes, all_platesizes, data, all_data, covariates, all_covariates = model.load_data_covariates(device, dataset_seed, f'{cfg.model}/data/', False)
     else:
