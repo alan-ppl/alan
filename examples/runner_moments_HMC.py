@@ -1,4 +1,4 @@
-# import torch as t
+import torch as t
 import numpy as np
 import pickle
 import time
@@ -54,6 +54,7 @@ def run_experiment(cfg):
     for folder in ['results/moments', 'job_status/moments', 'plots/moments']:
         Path(f"{cfg.model}/{folder}").mkdir(parents=True, exist_ok=True)
 
+    t.manual_seed(0)
     if not fake_data:
         platesizes, all_platesizes, data, all_data, covariates, all_covariates = alan_model.load_data_covariates(device, dataset_seed, f'{cfg.model}/data/', False)
     else:
@@ -92,8 +93,20 @@ def run_experiment(cfg):
     moments_collection = {}
 
     for num_run in range(num_runs):
-        if num_run==1:
-            continue
+        t.manual_seed(0)
+        if not fake_data:
+            platesizes, all_platesizes, data, all_data, covariates, all_covariates = alan_model.load_data_covariates(device, dataset_seed, f'{cfg.model}/data/', False)
+        else:
+            platesizes, all_platesizes, data, all_data, covariates, all_covariates, fake_latents, _ = alan_model.load_data_covariates(device, dataset_seed, f'{cfg.model}/data/', True, return_fake_latents=True)
+
+        # Put extended data, covariates and (if fake_data==True) fake_latents on device
+        # and convert to numpy for pymc
+        for data_covs in [data, all_data, covariates, all_covariates]:
+            for key in data_covs:
+                data_covs[key] = data_covs[key].numpy()
+        if fake_data:
+            for key in fake_latents:
+                fake_latents[key] = fake_latents[key].numpy()
 
         print(f"num_run: {num_run}")
         num_run_start_time = safe_time(device)
@@ -130,7 +143,6 @@ def run_experiment(cfg):
             with open(job_status_file, "a") as f:
                 f.write(f"Done num_run: {num_run} in {safe_time(device)-num_run_start_time}s.\n")
 
-    breakpoint()
     for i, name in enumerate(latent_names):
         if fake_data:
             ground_truth = fake_latents[name]
