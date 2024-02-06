@@ -15,7 +15,7 @@ from models.epi_params import EpidemiologicalParameters
 from models.preprocessing.preprocess_mask_data import Preprocess_masks
 from models.mask_models_weekly import P_plate, Q_plate, model_data
 
-from alan import BoundPlate, Problem
+from alan import BoundPlate, Problem, Split
 
 
 argparser = argparse.ArgumentParser()
@@ -139,23 +139,34 @@ all_data = {'obs':newcases_weekly}
 P_bound_plate = BoundPlate(P_plate, platesizes, inputs=covariates)
 Q_bound_plate = BoundPlate(Q_plate, platesizes, inputs=covariates)
 
-prob = Problem(P_bound_plate, Q_bound_plate, data)
+
+#real data
+
+print(data)
+
+#fake data for testing
+fake_data = {'obs': P_bound_plate.sample()['obs']}
+
+print(fake_data)
+
+prob = Problem(P_bound_plate, Q_bound_plate, fake_data)
 
 
-opt = t.optim.Adam(prob.Q.parameters(), lr=0.001)
-K=3
+opt = t.optim.Adam(prob.Q.parameters(), lr=0.01)
+K=10
 
+computation_strategy = Split('nRs', 20)
 for i in range(100):
     opt.zero_grad()
 
     sample = prob.sample(K, True)
-    elbo = sample.elbo_vi()
+    elbo = sample.elbo_vi(computation_strategy=computation_strategy)
 
     # importance_sample = sample.importance_sample(N=10)
     # extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
     # ll = extended_importance_sample.predictive_ll(all_data)
     # print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
-
+    print(elbo.item())
 
     (-elbo).backward()
     opt.step()
