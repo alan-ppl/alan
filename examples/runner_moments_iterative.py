@@ -156,15 +156,22 @@ def run_experiment(cfg):
         for i, name in enumerate(latent_names):
             if fake_data:
                 ground_truth = fake_latents[name]
+                latent_ndim = ground_truth.ndim # no need for -1 since we haven't yet added the iteration dimension
+
                 if (None, None, *ground_truth.names) != moments_collection[name].names:
                     ground_truth = ground_truth.align_as(moments_collection[name]).mean(1)
+                    latent_ndim = ground_truth.ndim - 1
             else:
                 ground_truth = moments_collection[name].mean(1)
-
-            latent_ndim = ground_truth.ndim # to sum over all dimensions of the latent and NOT over the iter dimension (dim 0)
+                latent_ndim = ground_truth.ndim - 1
             
             # below we transpose the moments_collection to have the num_runs dimension first (so that we can subtract the ground_truth)
-            MSEs[name][lr_idx, :] = ((moments_collection[name].transpose(1,0) - ground_truth)**2).mean(0).sum([-(i+1) for i in range(latent_ndim)])
+            MSE = ((moments_collection[name].transpose(1,0) - ground_truth)**2).mean(0)
+            
+            if latent_ndim > 0:
+                MSE = MSE.sum([-(i+1) for i in range(latent_ndim)])
+
+            MSEs[name][lr_idx, :] = MSE
 
             # if we're using real data, we rescale to obtain the unbiased sample variance estimator
             if not fake_data:
