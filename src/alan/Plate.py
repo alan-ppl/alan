@@ -107,7 +107,7 @@ class Plate():
 
         scope = update_scope(scope, inputs_params)
         sample = {}
-
+        
         for childname, prog in self.grouped_prog.items():
             if isinstance(prog, dict):
                 if not datagroup(prog):

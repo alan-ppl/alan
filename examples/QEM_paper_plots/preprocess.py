@@ -1,7 +1,7 @@
 import pickle
 import numpy as np
 
-def get_best_results(model_name, validation_iter_number=50, method_names=['qem', 'rws', 'vi'], dataset_seeds=[0]):
+def get_best_results(model_name, validation_iter_number=800, method_names=['qem', 'rws', 'vi'], dataset_seeds=[0]):
     print(f"Getting best results for {model_name}.")
 
     results = {method_name: {} for method_name in method_names}
@@ -103,8 +103,9 @@ def get_best_results(model_name, validation_iter_number=50, method_names=['qem',
 if __name__ == "__main__":
 
 
-    get_best_results('bus_breakdown')
-    get_best_results('chimpanzees')
-    get_best_results('movielens')
-    get_best_results('occupancy', method_names=['qem', 'rws'])
-    get_best_results('radon')
+    get_best_results('bus_breakdown_reparam')
+    get_best_results('movielens_reparam')
+    # get_best_results('chimpanzees')
+
+    # get_best_results('occupancy', method_names=['qem', 'rws'])
+    # get_best_results('radon')
