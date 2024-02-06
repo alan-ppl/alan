@@ -21,14 +21,17 @@ def load_results(model_name, method_name, fake_data, dataset_seed=0):
     with open(f'../{model_name}/results/moments/{method_name}{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'rb') as f:
         return pickle.load(f)
     
-def sum_all_MSEs(results):
-    total = None
-    for key in results['MSEs']:
-        if total is None:
-            total = results['MSEs'][key]
-        else:
-            total += results['MSEs'][key]
-    return total
+def choose_MSEs(results, latent_name='all'):
+    if latent_name == 'all':
+        total = None
+        for key in results['MSEs']:
+            if total is None:
+                total = results['MSEs'][key]
+            else:
+                total += results['MSEs'][key]
+        return total
+    else:
+        return results['MSEs'][latent_name]
 
 def remove_failed_Ks(results, method):
     # remove any K-values that are all zeros (i.e. the method failed to sample anything)
@@ -46,12 +49,12 @@ def remove_failed_Ks(results, method):
     return results[method]
 
     
-def plot_IS_per_K_one_model(model_name, save_pdf=False, scatter=False):
+def plot_IS_per_K_one_model(model_name, save_pdf=False, scatter=False, MSE_latent = 'all'):
     all_results = {}
     for method in ['mpis', 'global_is']:
         all_results[method] = load_results(model_name, method, False)
-        all_results[method]['MSEs'] = sum_all_MSEs(all_results[method])
-        all_results[method]['MSEs_fake'] = sum_all_MSEs(load_results(model_name, method, True))
+        all_results[method]['MSEs'] = choose_MSEs(all_results[method], MSE_latent)
+        all_results[method]['MSEs_fake'] = choose_MSEs(load_results(model_name, method, True), MSE_latent)
 
         all_results[method] = remove_failed_Ks(all_results, method)
 
@@ -78,25 +81,27 @@ def plot_IS_per_K_one_model(model_name, save_pdf=False, scatter=False):
     fig.suptitle("IS Comparison for " + model_name.upper())
     ax[0].set_ylabel('ELBO')
     ax[1].set_ylabel('Predictive Log-Likelihood')
-    ax[2].set_ylabel('Total Variance')
-    ax[3].set_ylabel('MSE')
+    ax[2].set_ylabel(f'Total Variance{" of variable " + MSE_latent if MSE_latent != "all" else ""}')
+    ax[3].set_ylabel(f'MSE{" of variable " + MSE_latent if MSE_latent != "all" else ""}')
     ax[0].legend()
 
     plt.xticks(rotation=70)
 
     fig.tight_layout()
 
-    plt.savefig(f"plots/{model_name}_IS_per_K.png")
+    plt.savefig(f"plots/{model_name}_IS_per_K{'_MSE_' + MSE_latent if MSE_latent != 'all' else ''}.png")
     if save_pdf:
-        plt.savefig(f"plots/{model_name}_IS_per_K.pdf")
+        plt.savefig(f"plots/{model_name}_IS_per_K{'_MSE_' + MSE_latent if MSE_latent != 'all' else ''}.pdf")
 
-def plots_IS_per_K_all_models(save_pdf=False, scatter=False, x_axis_time=False):
+    plt.close()
+
+def plots_IS_per_K_all_models(save_pdf=False, scatter=False, x_axis_time=False, MSE_latent = 'all'):
     all_results = {model_name: {} for model_name in ALL_MODEL_NAMES}
     for model_name in ALL_MODEL_NAMES:
         for method in ['mpis', 'global_is']:
             all_results[model_name][method] = load_results(model_name, method, False)
-            all_results[model_name][method]['MSEs'] = sum_all_MSEs(all_results[model_name][method])
-            all_results[model_name][method]['MSEs_fake'] = sum_all_MSEs(load_results(model_name, method, True))
+            all_results[model_name][method]['MSEs'] = choose_MSEs(all_results[model_name][method], MSE_latent)
+            all_results[model_name][method]['MSEs_fake'] = choose_MSEs(load_results(model_name, method, True), MSE_latent)
 
             all_results[model_name][method] = remove_failed_Ks(all_results[model_name], method)
 
@@ -109,14 +114,14 @@ def plots_IS_per_K_all_models(save_pdf=False, scatter=False, x_axis_time=False):
                 # if key in ['elbos', 'p_lls']:
 
                 if x_axis_time:
-                    xs = all_results[model_name][method]['times'][key if k == 0 else 'p_ll'].mean(-1)
+                    xs = all_results[model_name][method]['times'][key if k == 0 else 'p_ll'].mean(-1)[1:]
                 else:
-                    xs = all_results[model_name][method]['Ks']
+                    xs = all_results[model_name][method]['Ks'][1:]
                 if scatter:
-                    ax[k, i].scatter(xs, all_results[model_name][method][key].mean(1), label=method.upper(), marker='x', color=colour)
+                    ax[k, i].scatter(xs, all_results[model_name][method][key].mean(1)[1:], label=method.upper(), marker='x', color=colour)
                 else:
-                    ax[k, i].plot(xs, all_results[model_name][method][key].mean(1), label=method.upper(), color=colour)
-                ax[k, i].errorbar(xs, all_results[model_name][method][key].mean(1), yerr=all_results[model_name][method][key].std(1)/np.sqrt(all_results[model_name][method]['num_runs']), fmt='x', color=colour)
+                    ax[k, i].plot(xs, all_results[model_name][method][key].mean(1)[1:], label=method.upper(), color=colour)
+                ax[k, i].errorbar(xs, all_results[model_name][method][key].mean(1)[1:], yerr=all_results[model_name][method][key].std(1)[1:]/np.sqrt(all_results[model_name][method]['num_runs']), fmt='x', color=colour)
                 
                 # else:
                 #     if scatter:
@@ -146,19 +151,17 @@ def plots_IS_per_K_all_models(save_pdf=False, scatter=False, x_axis_time=False):
     if save_pdf:
         plt.savefig(f"plots/all_IS_per_K{'_TIME' if x_axis_time else ''}.pdf")
 
+    plt.close()
 
-def plot_iterative_vs_IS_all_K_one_model(model_name, iterative_methods = ['vi', 'rws', 'HMC'], save_pdf=False, x_lim_iters=10, log_x=False, model_method_lrs_to_ignore=DEFAULT_MODEL_METHOD_LRS_TO_IGNORE):
+
+def plot_iterative_vs_IS_all_K_one_model(model_name, iterative_methods = ['vi', 'rws', 'HMC'], save_pdf=False, x_lim_iters=10, log_x=False, model_method_lrs_to_ignore=DEFAULT_MODEL_METHOD_LRS_TO_IGNORE, MSE_latent = 'all'):
     all_results = {}
     for method in ['mpis', 'global_is'] + iterative_methods:
         all_results[method] = load_results(model_name, method, False)
-        if model_name == 'chimpanzees' and method in iterative_methods:
-            breakpoint()
-        all_results[method]['MSEs'] = sum_all_MSEs(all_results[method])
+        all_results[method]['MSEs'] = choose_MSEs(all_results[method], MSE_latent)
 
         fake_results = load_results(model_name, method, True)
-        if model_name == 'chimpanzees' and method in iterative_methods:
-            breakpoint()
-        all_results[method]['MSEs_fake'] = sum_all_MSEs(fake_results)
+        all_results[method]['MSEs_fake'] = choose_MSEs(fake_results, MSE_latent)
         all_results[method]['times']['moments_fake'] = fake_results['times']['moments']
 
         if method in ['mpis', 'global_is']:
@@ -194,26 +197,28 @@ def plot_iterative_vs_IS_all_K_one_model(model_name, iterative_methods = ['vi', 
 
     fig.suptitle("Iterative vs IS for " + model_name.upper())
     ax[0].set_ylabel('ELBO')
-    ax[1].set_ylabel('Predictive Log-Likelihood')
-    ax[2].set_ylabel('Total Variance')
-    ax[3].set_ylabel('MSE')
+    ax[1].set_ylabel('Predictive Log-Likelihood{" of variable " + MSE_latent if MSE_latent != "all" else ""}')
+    ax[2].set_ylabel(f'Total Variance{" of variable " + MSE_latent if MSE_latent != "all" else ""}')
+    ax[3].set_ylabel(f'MSE')
 
     ax[-1].legend()
 
     fig.tight_layout()
 
-    plt.savefig(f"plots/{model_name}_iterative_vs_IS_all_K{'_log_x' if log_x else ''}.png")
+    plt.savefig(f"plots/{model_name}_iterative_vs_IS_all_K{'_log_x' if log_x else ''}{'_MSE_' + MSE_latent if MSE_latent != 'all' else ''}.png")
     if save_pdf:
-        plt.savefig(f"plots/{model_name}_iterative_vs_IS_all_K{'_log_x' if log_x else ''}.pdf")
+        plt.savefig(f"plots/{model_name}_iterative_vs_IS_all_K{'_log_x' if log_x else ''}{'_MSE_' + MSE_latent if MSE_latent != 'all' else ''}.pdf")
 
-def plot_iterative_vs_IS_single_K_one_model(model_name, iterative_methods = ['vi', 'rws', 'HMC'], mpis_K = 10, global_is_K = 1000, save_pdf=False, x_lim_iters=10, log_x=False, model_method_lrs_to_ignore=DEFAULT_MODEL_METHOD_LRS_TO_IGNORE):
+    plt.close()
+
+def plot_iterative_vs_IS_single_K_one_model(model_name, iterative_methods = ['vi', 'rws', 'HMC'], mpis_K = 10, global_is_K = 1000, save_pdf=False, x_lim_iters=10, log_x=False, model_method_lrs_to_ignore=DEFAULT_MODEL_METHOD_LRS_TO_IGNORE, MSE_latent = 'all'):
     all_results = {}
     for method in ['mpis', 'global_is'] + iterative_methods:
         all_results[method] = load_results(model_name, method, False)
-        all_results[method]['MSEs'] = sum_all_MSEs(all_results[method])
+        all_results[method]['MSEs'] = choose_MSEs(all_results[method], MSE_latent)
 
         fake_results = load_results(model_name, method, True)
-        all_results[method]['MSEs_fake'] = sum_all_MSEs(fake_results)
+        all_results[method]['MSEs_fake'] = choose_MSEs(fake_results, MSE_latent)
         all_results[method]['times']['moments_fake'] = fake_results['times']['moments']
 
         if method in ['mpis', 'global_is']:
@@ -253,8 +258,8 @@ def plot_iterative_vs_IS_single_K_one_model(model_name, iterative_methods = ['vi
     fig.suptitle("Iterative vs IS for " + model_name.upper())
     ax[0].set_ylabel('ELBO')
     ax[1].set_ylabel('Predictive Log-Likelihood')
-    ax[2].set_ylabel('Total Variance')
-    ax[3].set_ylabel('MSE')
+    ax[2].set_ylabel(f'Total Variance{" of variable " + MSE_latent if MSE_latent != "all" else ""}')
+    ax[3].set_ylabel(f'MSE{" of variable " + MSE_latent if MSE_latent != "all" else ""}')
 
     ax[2].set_yscale('log')
     ax[3].set_yscale('log')
@@ -263,11 +268,13 @@ def plot_iterative_vs_IS_single_K_one_model(model_name, iterative_methods = ['vi
 
     fig.tight_layout()
 
-    plt.savefig(f"plots/{model_name}_iterative_vs_IS_K{mpis_K}-{global_is_K}{'_log_x' if log_x else ''}.png")
+    plt.savefig(f"plots/{model_name}_iterative_vs_IS_K{mpis_K}-{global_is_K}{'_log_x' if log_x else ''}{'_MSE_' + MSE_latent if MSE_latent != 'all' else ''}.png")
     if save_pdf:
-        plt.savefig(f"plots/{model_name}_iterative_vs_IS_all_K{mpis_K}-{global_is_K}{'_log_x' if log_x else ''}.pdf")
+        plt.savefig(f"plots/{model_name}_iterative_vs_IS_all_K{mpis_K}-{global_is_K}{'_log_x' if log_x else ''}{'_MSE_' + MSE_latent if MSE_latent != 'all' else ''}.pdf")
 
-def plot_iterative_vs_IS_single_K_all_models(iterative_methods = ['vi', 'rws', 'HMC'], mpis_K = 10, global_is_K = 1000, save_pdf=False, x_lim_iters=10, log_x=False, model_method_lrs_to_ignore=DEFAULT_MODEL_METHOD_LRS_TO_IGNORE):
+    plt.close()
+
+def plot_iterative_vs_IS_single_K_all_models(iterative_methods = ['vi', 'rws', 'HMC'], mpis_K = 10, global_is_K = 1000, save_pdf=False, x_lim_iters=10, log_x=False, model_method_lrs_to_ignore=DEFAULT_MODEL_METHOD_LRS_TO_IGNORE, MSE_latent = 'all'):
     all_results = {model_name: {} for model_name in ALL_MODEL_NAMES}
 
     if isinstance(mpis_K, int):
@@ -280,10 +287,10 @@ def plot_iterative_vs_IS_single_K_all_models(iterative_methods = ['vi', 'rws', '
             if method == 'vi' and model_name == 'occupancy':
                 continue
             all_results[model_name][method] = load_results(model_name, method, False)
-            all_results[model_name][method]['MSEs'] = sum_all_MSEs(all_results[model_name][method])
+            all_results[model_name][method]['MSEs'] = choose_MSEs(all_results[model_name][method], MSE_latent)
 
             fake_results = load_results(model_name, method, True)
-            all_results[model_name][method]['MSEs_fake'] = sum_all_MSEs(fake_results)
+            all_results[model_name][method]['MSEs_fake'] = choose_MSEs(fake_results, MSE_latent)
             all_results[model_name][method]['times']['moments_fake'] = fake_results['times']['moments']
 
             if method in ['mpis', 'global_is']:
@@ -339,20 +346,25 @@ def plot_iterative_vs_IS_single_K_all_models(iterative_methods = ['vi', 'rws', '
     plt.savefig(f"plots/all_iterative_vs_IS_single_K{'_log_x' if log_x else ''}.png")
     if save_pdf:
         plt.savefig(f"plots/all_iterative_vs_IS_single_K{'_log_x' if log_x else ''}.pdf")
+    
+    plt.close()
 
 
 if __name__ == '__main__':
     mpis_K      = {'bus_breakdown': 30,    'chimpanzees': 10,     'movielens': 30,     'occupancy': 10}
     global_is_K = {'bus_breakdown': 10000,'chimpanzees': 10000, 'movielens': 10000, 'occupancy': 10000}
+
+    final_latents = {'bus_breakdown': 'alpha', 'chimpanzees': 'alpha_block', 'movielens': 'z', 'occupancy': 'z'}
     
     for model_name in ALL_MODEL_NAMES:
-        plot_IS_per_K_one_model(model_name)
-        if model_name == 'occupancy':
-            plot_iterative_vs_IS_all_K_one_model(model_name, iterative_methods=['rws'])
-            plot_iterative_vs_IS_single_K_one_model(model_name, iterative_methods=['rws'], mpis_K=mpis_K[model_name], global_is_K=global_is_K[model_name])
-        else:
-            plot_iterative_vs_IS_all_K_one_model(model_name, iterative_methods=['vi', 'rws'])
-            plot_iterative_vs_IS_single_K_one_model(model_name, iterative_methods=['vi', 'rws'], mpis_K=mpis_K[model_name], global_is_K=global_is_K[model_name])
+        for MSE_latent in ['all', final_latents[model_name]]:
+            plot_IS_per_K_one_model(model_name, MSE_latent=MSE_latent)
+            if model_name == 'occupancy':
+                plot_iterative_vs_IS_all_K_one_model(model_name, iterative_methods=['rws'], MSE_latent=MSE_latent)
+                plot_iterative_vs_IS_single_K_one_model(model_name, iterative_methods=['rws'], mpis_K=mpis_K[model_name], global_is_K=global_is_K[model_name], MSE_latent=MSE_latent)
+            else:
+                plot_iterative_vs_IS_all_K_one_model(model_name, iterative_methods=['vi', 'rws'], MSE_latent=MSE_latent)
+                plot_iterative_vs_IS_single_K_one_model(model_name, iterative_methods=['vi', 'rws'], mpis_K=mpis_K[model_name], global_is_K=global_is_K[model_name], MSE_latent=MSE_latent)
     
     plots_IS_per_K_all_models()
     plot_iterative_vs_IS_single_K_all_models(iterative_methods=['vi', 'rws'],
