@@ -13,9 +13,7 @@ import alan
 
 from models.epi_params import EpidemiologicalParameters
 from models.preprocessing.preprocess_mask_data import Preprocess_masks
-from models.mask_models_weekly import P_plate, Q_plate, model_data
-
-from alan import BoundPlate, Problem, Split
+from models.mask_models_weekly import model_data
 
 
 argparser = argparse.ArgumentParser()
@@ -107,6 +105,7 @@ log_init_mean, log_init_sd = set_init_infections(data, bd)
 
 bd["wearing_parameterisation"] = W_PAR
 
+device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 
 r_walk_period = 7
@@ -134,39 +133,10 @@ all_covariates = {'ActiveCMs_NPIs':ActiveCMs_NPIs, 'ActiveCMs_wearing':ActiveCMs
 data = {'obs':newcases_weekly[:,:platesizes['nWs']]}
 all_data = {'obs':newcases_weekly}
 
-
-
-P_bound_plate = BoundPlate(P_plate, platesizes, inputs=covariates)
-Q_bound_plate = BoundPlate(Q_plate, platesizes, inputs=covariates)
-
-
-#real data
-
-print(data)
-
-#fake data for testing
-fake_data = {'obs': P_bound_plate.sample()['obs']}
-
-print(fake_data)
-
-prob = Problem(P_bound_plate, Q_bound_plate, fake_data)
-
-
-opt = t.optim.Adam(prob.Q.parameters(), lr=0.01)
-K=10
-
-computation_strategy = Split('nRs', 20)
-for i in range(100):
-    opt.zero_grad()
-
-    sample = prob.sample(K, True)
-    elbo = sample.elbo_vi(computation_strategy=computation_strategy)
-
-    # importance_sample = sample.importance_sample(N=10)
-    # extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
-    # ll = extended_importance_sample.predictive_ll(all_data)
-    # print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
-    print(elbo.item())
-
-    (-elbo).backward()
-    opt.step()
+for k in covariates.keys():
+    t.save(covariates[k].rename(None), f'data/{k}.pt')
+    t.save(all_covariates[k].rename(None), f'data/{k}_all.pt')
+    
+for k in data.keys():
+    t.save(data[k].rename(None), f'data/{k}.pt')
+    t.save(all_data[k].rename(None), f'data/{k}_all.pt')
