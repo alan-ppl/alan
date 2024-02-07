@@ -87,57 +87,72 @@ def run_experiment(cfg):
 
     moments_collection = {}
 
+    seed = 0
+
     for num_run in range(num_runs):
-        if not fake_data:
-            with open(f'HMC/{cfg.model}/data/real_data.pkl', 'rb') as f:
-                platesizes, all_platesizes, data, all_data, covariates, all_covariates, latent_names = pickle.load(f)
-        else:
-            with open(f'HMC/{cfg.model}/data/fake_data.pkl', 'rb') as f:
-                platesizes, all_platesizes, data, all_data, covariates, all_covariates, fake_latents, latent_names = pickle.load(f)
+        num_failed = 0
+        failed = True 
 
-        # # Put extended data, covariates and (if fake_data==True) fake_latents on device
-        # # and convert to numpy for pymc
-        # for data_covs in [data, all_data, covariates, all_covariates]:
-        #     for key in data_covs:
-        #         data_covs[key] = data_covs[key].numpy()
-        # if fake_data:
-        #     for key in fake_latents:
-        #         fake_latents[key] = fake_latents[key].numpy()
+        while failed and num_failed < 10:
+            try:
+                seed += 1
 
-        print(f"num_run: {num_run}")
-        num_run_start_time = safe_time(device)
+                if not fake_data:
+                    with open(f'HMC/{cfg.model}/data/real_data.pkl', 'rb') as f:
+                        platesizes, all_platesizes, data, all_data, covariates, all_covariates, latent_names = pickle.load(f)
+                else:
+                    with open(f'HMC/{cfg.model}/data/fake_data.pkl', 'rb') as f:
+                        platesizes, all_platesizes, data, all_data, covariates, all_covariates, fake_latents, latent_names = pickle.load(f)
 
-        model = pymc_model.get_model(data, covariates)
-        with model:
-            p_ll = pm.Deterministic('p_ll', model.observedlogp)
+                print(f"num_run: {num_run}")
+                num_run_start_time = safe_time(device)
 
-            print("Sampling posterior with JAX")
-            trace = pmjax.sample_blackjax_nuts(draws=num_samples, tune=num_tuning_samples, chains=1, random_seed=num_run, target_accept=target_accept)
-            times['moments'][:, num_run] = np.linspace(0,trace.attrs["sampling_time"],num_samples+num_tuning_samples+1)[num_tuning_samples+1:]
-            
-            # compute moments for each latent
-            for name in latent_names:
-                if num_run == 0:
-                    latent_shape = trace.posterior[name].mean(("chain", "draw")).shape
-                    moments_collection[name] = np.zeros((num_samples, num_runs, *latent_shape))
-                # breakpoint()
-                moments_collection[name][:, num_run, ...] = np.array([trace.posterior[name][:,:j].mean(("chain", "draw")).data for j in range(1, num_samples+1)])
+                model = pymc_model.get_model(data, covariates)
+                with model:
+                    p_ll = pm.Deterministic('p_ll', model.observedlogp)
 
-            # do predictive log likelihood
-            pm.set_data(pymc_model.get_test_data_cov_dict(all_data, all_covariates, platesizes))
+                    print("Sampling posterior with JAX")
+                    trace = pmjax.sample_blackjax_nuts(draws=num_samples, tune=num_tuning_samples, chains=1, random_seed=seed, target_accept=target_accept)
+                    times['moments'][:, num_run] = np.linspace(0,trace.attrs["sampling_time"],num_samples+num_tuning_samples+1)[num_tuning_samples+1:]
+                    
+                    # compute moments for each latent
+                    for name in latent_names:
+                        if num_run == 0:
+                            latent_shape = trace.posterior[name].mean(("chain", "draw")).shape
+                            moments_collection[name] = np.zeros((num_samples, num_runs, *latent_shape))
+                            
+                        moments_collection[name][:, num_run, ...] = np.array([trace.posterior[name][:,:j].mean(("chain", "draw")).data for j in range(1, num_samples+1)])
 
-            print("Sampling predictive log likelihood with JAX")
-            p_ll_start_time = safe_time(device)
-            pp_trace = pm.sample_posterior_predictive(trace, var_names=var_names_to_track, random_seed=num_run, predictions=True, progressbar=True)#, return_inferencedata=True)
-            print(f"p_ll sampling time: {safe_time(device)-p_ll_start_time}s")
-            test_ll = pp_trace.predictions.p_ll.mean('chain').data
-            times['p_ll'][:, num_run] = np.linspace(0,safe_time(device)-p_ll_start_time,num_samples+1)[1:] + times['moments'][:, num_run]
-            
-            p_lls[:, num_run] = test_ll
+                    # do predictive log likelihood
+                    pm.set_data(pymc_model.get_test_data_cov_dict(all_data, all_covariates, platesizes))
 
-        if cfg.write_job_status:
-            with open(job_status_file, "a") as f:
-                f.write(f"Done num_run: {num_run} in {safe_time(device)-num_run_start_time}s.\n")
+                    print("Sampling predictive log likelihood with JAX")
+                    p_ll_start_time = safe_time(device)
+                    pp_trace = pm.sample_posterior_predictive(trace, var_names=var_names_to_track, random_seed=seed, predictions=True, progressbar=True)#, return_inferencedata=True)
+                    print(f"p_ll sampling time: {safe_time(device)-p_ll_start_time}s")
+                    test_ll = pp_trace.predictions.p_ll.mean('chain').data
+                    times['p_ll'][:, num_run] = np.linspace(0,safe_time(device)-p_ll_start_time,num_samples+1)[1:] + times['moments'][:, num_run]
+                    
+                    p_lls[:, num_run] = test_ll
+
+                if cfg.write_job_status:
+                    with open(job_status_file, "a") as f:
+                        f.write(f"Done num_run: {num_run} in {safe_time(device)-num_run_start_time}s.\n")
+
+                failed = False
+
+            except ValueError as e:
+                num_failed += 1
+                
+                print(e)
+                if cfg.write_job_status:
+                    with open(job_status_file, "a") as f:
+                        f.write(f"Error in num_run: {num_run}.\n")
+                continue
+
+        if num_failed >= 10:
+            print(f"Failed to complete num_run: {num_run} after 10 attempts (using seeds {seed-num_failed}-{seed}).")
+            break
 
     for i, name in enumerate(latent_names):
         if fake_data:
@@ -153,7 +168,7 @@ def run_experiment(cfg):
         
         # below we transpose the moments_collection to have the num_runs dimension first (so that we can subtract the ground_truth)
         MSE = ((np.swapaxes(moments_collection[name], 1,0) - ground_truth)**2).mean(0)
-        breakpoint()
+
         if latent_ndim > 0:
             MSE = MSE.sum(tuple([-(i+1) for i in range(latent_ndim)]))
 
