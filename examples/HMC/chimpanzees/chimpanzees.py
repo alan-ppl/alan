@@ -15,6 +15,8 @@ def get_model(data, covariates):
         condition = pm.MutableData('condition', covariates['condition'])
         prosoc_left = pm.MutableData('prosoc_left', covariates['prosoc_left'])
 
+        num_repeats_plate = pm.MutableData('num_repeats_plate', num_repeats)
+
         pre_sigma_block = pm.Cauchy("pre_sigma_block", alpha=0, beta=1)
         pre_sigma_actor = pm.Cauchy("pre_sigma_actor", alpha=0, beta=1)
 
@@ -33,7 +35,22 @@ def get_model(data, covariates):
 
         alpha_block = pm.Normal("alpha_block", mu=0, sigma=sigma_block, shape=(num_actors, num_blocks)),
 
-        obs = pm.Bernoulli("obs", logit_p=alpha + alpha_actor + alpha_block + (beta_P + beta_PC*condition)*prosoc_left, observed=true_obs, shape=(num_actors, num_blocks, num_repeats)),
+        beta_combined = pm.Deterministic('beta_combined', prosoc_left*(beta_P + condition*beta_PC))
+
+        add_alpha = pm.Deterministic('add_alpha3', beta_combined.transpose(1,2,0) + alpha_actor)
+        add_alpha2 = pm.Deterministic('add_alpha2', add_alpha.transpose(1,2,0) + alpha_block)
+        add_alpha3 = pm.Deterministic('add_alpha', add_alpha2.transpose(1,2,0) + alpha)
+
+
+        logits = pm.Deterministic('logits', add_alpha3)
+
+        # logits = pm.Deterministic('logits', (((beta_P + beta_PC*condition)*prosoc_left + alpha).transpose(2,0,1) + alpha_block).transpose(1,2,0) + alpha_actor).transpose(0,1,2)
+
+        # obs = pm.Bernoulli("obs", logit_p=alpha + alpha_actor + alpha_block + (beta_P + beta_PC*condition)*prosoc_left, observed=true_obs, shape=(num_actors, num_blocks, num_repeats)),
+        
+        # breakpoint()
+        
+        obs = pm.Bernoulli("obs", logit_p=logits, shape=(num_actors, num_blocks, num_repeats_plate), observed=true_obs)
             
     return model
 
@@ -45,4 +62,4 @@ def get_test_data_cov_dict(all_data, all_covariates, platesizes):
     for key in test_covariates:
         test_covariates[key] = test_covariates[key][:,:,platesizes['plate_repeats']:]
 
-    return {**test_data, **test_covariates}
+    return {**test_data, **test_covariates, 'num_repeats_plate': num_repeats_extended - num_repeats}

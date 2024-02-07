@@ -1,4 +1,4 @@
-import torch as t
+# import torch as t
 import numpy as np
 import pickle
 import time
@@ -40,11 +40,6 @@ def run_experiment(cfg):
     num_tuning_samples = cfg.num_tuning_samples
     target_accept = cfg.target_accept
 
-    spec = importlib.util.spec_from_file_location(cfg.model, f"{cfg.model}/{cfg.model}.py")
-    alan_model = importlib.util.module_from_spec(spec)
-    sys.modules[cfg.model] = alan_model
-    spec.loader.exec_module(alan_model)
-
     spec = importlib.util.spec_from_file_location(cfg.model, f"HMC/{cfg.model}/{cfg.model}.py")
     pymc_model = importlib.util.module_from_spec(spec)
     sys.modules[cfg.model] = pymc_model
@@ -54,26 +49,26 @@ def run_experiment(cfg):
     for folder in ['results/moments', 'job_status/moments', 'plots/moments']:
         Path(f"{cfg.model}/{folder}").mkdir(parents=True, exist_ok=True)
 
-    t.manual_seed(0)
+    # t.manual_seed(0)
     if not fake_data:
-        platesizes, all_platesizes, data, all_data, covariates, all_covariates = alan_model.load_data_covariates(device, dataset_seed, f'{cfg.model}/data/', False)
+        # platesizes, all_platesizes, data, all_data, covariates, all_covariates = alan_model.load_data_covariates(device, dataset_seed, f'{cfg.model}/data/', False)
+        with open(f'HMC/{cfg.model}/data/real_data.pkl', 'rb') as f:
+            platesizes, all_platesizes, data, all_data, covariates, all_covariates, latent_names = pickle.load(f)
     else:
-        platesizes, all_platesizes, data, all_data, covariates, all_covariates, fake_latents, _ = alan_model.load_data_covariates(device, dataset_seed, f'{cfg.model}/data/', True, return_fake_latents=True)
-
-    temp_P = alan_model.get_P(platesizes, covariates)
-    latent_names = list(temp_P.varname2groupvarname().keys())
-    latent_names.remove('obs')
+        with open(f'HMC/{cfg.model}/data/fake_data.pkl', 'rb') as f:
+            platesizes, all_platesizes, data, all_data, covariates, all_covariates, fake_latents, latent_names = pickle.load(f)
+        # platesizes, all_platesizes, data, all_data, covariates, all_covariates, fake_latents, _ = alan_model.load_data_covariates(device, dataset_seed, f'{cfg.model}/data/', True, return_fake_latents=True)
 
     var_names_to_track = latent_names + ['obs', 'p_ll']
 
-    # Put extended data, covariates and (if fake_data==True) fake_latents on device
-    # and convert to numpy for pymc
-    for data_covs in [data, all_data, covariates, all_covariates]:
-        for key in data_covs:
-            data_covs[key] = data_covs[key].numpy()
-    if fake_data:
-        for key in fake_latents:
-            fake_latents[key] = fake_latents[key].numpy()
+    # # Put extended data, covariates and (if fake_data==True) fake_latents on device
+    # # and convert to numpy for pymc
+    # for data_covs in [data, all_data, covariates, all_covariates]:
+    #     for key in data_covs:
+    #         data_covs[key] = data_covs[key].numpy()
+    # if fake_data:
+    #     for key in fake_latents:
+    #         fake_latents[key] = fake_latents[key].numpy()
 
     p_lls = np.zeros((num_samples, num_runs))
 
@@ -93,20 +88,21 @@ def run_experiment(cfg):
     moments_collection = {}
 
     for num_run in range(num_runs):
-        t.manual_seed(0)
         if not fake_data:
-            platesizes, all_platesizes, data, all_data, covariates, all_covariates = alan_model.load_data_covariates(device, dataset_seed, f'{cfg.model}/data/', False)
+            with open(f'HMC/{cfg.model}/data/real_data.pkl', 'rb') as f:
+                platesizes, all_platesizes, data, all_data, covariates, all_covariates, latent_names = pickle.load(f)
         else:
-            platesizes, all_platesizes, data, all_data, covariates, all_covariates, fake_latents, _ = alan_model.load_data_covariates(device, dataset_seed, f'{cfg.model}/data/', True, return_fake_latents=True)
+            with open(f'HMC/{cfg.model}/data/fake_data.pkl', 'rb') as f:
+                platesizes, all_platesizes, data, all_data, covariates, all_covariates, fake_latents, latent_names = pickle.load(f)
 
-        # Put extended data, covariates and (if fake_data==True) fake_latents on device
-        # and convert to numpy for pymc
-        for data_covs in [data, all_data, covariates, all_covariates]:
-            for key in data_covs:
-                data_covs[key] = data_covs[key].numpy()
-        if fake_data:
-            for key in fake_latents:
-                fake_latents[key] = fake_latents[key].numpy()
+        # # Put extended data, covariates and (if fake_data==True) fake_latents on device
+        # # and convert to numpy for pymc
+        # for data_covs in [data, all_data, covariates, all_covariates]:
+        #     for key in data_covs:
+        #         data_covs[key] = data_covs[key].numpy()
+        # if fake_data:
+        #     for key in fake_latents:
+        #         fake_latents[key] = fake_latents[key].numpy()
 
         print(f"num_run: {num_run}")
         num_run_start_time = safe_time(device)
@@ -124,6 +120,7 @@ def run_experiment(cfg):
                 if num_run == 0:
                     latent_shape = trace.posterior[name].mean(("chain", "draw")).shape
                     moments_collection[name] = np.zeros((num_samples, num_runs, *latent_shape))
+                # breakpoint()
                 moments_collection[name][:, num_run, ...] = np.array([trace.posterior[name][:,:j].mean(("chain", "draw")).data for j in range(1, num_samples+1)])
 
             # do predictive log likelihood
@@ -134,7 +131,6 @@ def run_experiment(cfg):
             pp_trace = pm.sample_posterior_predictive(trace, var_names=var_names_to_track, random_seed=num_run, predictions=True, progressbar=True)#, return_inferencedata=True)
             print(f"p_ll sampling time: {safe_time(device)-p_ll_start_time}s")
             test_ll = pp_trace.predictions.p_ll.mean('chain').data
-            print("extracted test_ll")
             times['p_ll'][:, num_run] = np.linspace(0,safe_time(device)-p_ll_start_time,num_samples+1)[1:] + times['moments'][:, num_run]
             
             p_lls[:, num_run] = test_ll
@@ -146,12 +142,22 @@ def run_experiment(cfg):
     for i, name in enumerate(latent_names):
         if fake_data:
             ground_truth = fake_latents[name]
-            # if (None, *ground_truth.names) != moments_collection[name].names:
-            #     ground_truth = ground_truth.align_as(moments_collection[name]).mean(0)
-        else:
-            ground_truth = moments_collection[name].mean(0)
+            latent_ndim = ground_truth.ndim # no need for -1 since we haven't yet added the iteration dimension
 
-        MSEs[name] = ((moments_collection[name] - ground_truth)**2).mean(0).sum()
+            # if (None, None, *ground_truth.names) != moments_collection[name].names:
+            #     ground_truth = ground_truth.align_as(moments_collection[name]).mean(1)
+            #     latent_ndim = ground_truth.ndim - 1
+        else:
+            ground_truth = moments_collection[name].mean(1)
+            latent_ndim = ground_truth.ndim - 1
+        
+        # below we transpose the moments_collection to have the num_runs dimension first (so that we can subtract the ground_truth)
+        MSE = ((np.swapaxes(moments_collection[name], 1,0) - ground_truth)**2).mean(0)
+        breakpoint()
+        if latent_ndim > 0:
+            MSE = MSE.sum(tuple([-(i+1) for i in range(latent_ndim)]))
+
+        MSEs[name] = MSE
 
         # if we're using real data, we rescale to obtain the unbiased sample variance estimator
         if not fake_data:
