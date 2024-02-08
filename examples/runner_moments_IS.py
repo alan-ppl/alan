@@ -161,6 +161,9 @@ def run_experiment(cfg):
 
             if num_failed >= 10:
                 print(f"Failed to complete num_run: {num_run} after 10 attempts (using seeds {seed-num_failed}-{seed}).")
+                if cfg.write_job_status:
+                        with open(job_status_file, "a") as f:
+                            f.write(f"Failed to complete num_run: {num_run} after 10 attempts (using seeds {seed-num_failed}-{seed}).")
                 break
 
         for i, name in enumerate(latent_names):
