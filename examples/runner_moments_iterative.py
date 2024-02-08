@@ -7,7 +7,6 @@ import importlib.util
 import sys
 from pathlib import Path
 
-K = 1
 
 def safe_time(device):
     if device == 'cuda':
@@ -24,6 +23,9 @@ def run_experiment(cfg):
 
     method = cfg.method
     assert method in ['vi', 'rws']
+
+    K = cfg.K
+    K_str = f"{K}K" if K != 1 else ""
 
     lrs = cfg.lrs
     num_runs = cfg.num_runs
@@ -76,7 +78,7 @@ def run_experiment(cfg):
              "moments": t.zeros((len(lrs), num_iters+1, num_runs)),
              "p_ll":    t.zeros((len(lrs), num_iters+1, num_runs))}
 
-    job_status_file = f"{cfg.model}/job_status/moments/{cfg.method}{'_FAKE_DATA' if fake_data else ''}_status.txt"
+    job_status_file = f"{cfg.model}/job_status/moments/{cfg.method}{K_str}{'_FAKE_DATA' if fake_data else ''}_status.txt"
     if cfg.write_job_status:
         with open(job_status_file, "w") as f:
             f.write(f"Starting job.\n")
@@ -105,7 +107,7 @@ def run_experiment(cfg):
                     opt.zero_grad()
 
                     sample_start_time = safe_time(device)
-                    sample = prob.sample(K, reparam)
+                    sample = prob.sample_nonmp(K, reparam)
                     sample_time = safe_time(device) - sample_start_time
 
                     elbo_start_time = safe_time(device)
@@ -186,7 +188,7 @@ def run_experiment(cfg):
     to_pickle = {'elbos': elbos.cpu(), 'p_lls': p_lls.cpu(), 'MSEs': {k: v.cpu() for k, v in MSEs.items()},
                 'times': times, 'lrs': lrs, 'num_runs': num_runs, 'num_iters': num_iters}
 
-    with open(f'{cfg.model}/results/moments/{cfg.method}{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
+    with open(f'{cfg.model}/results/moments/{cfg.method}{K_str}{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
         pickle.dump(to_pickle, f)
 
 

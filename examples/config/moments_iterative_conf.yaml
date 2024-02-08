@@ -1,9 +1,10 @@
 ---
   model: ???
   method: ???
+  K: 1
   lrs: [0.3,0.1,0.03,0.01]
   num_runs: 100
-  num_iters: 100
+  num_iters: 250
   reparam: True
   N_predll: 100
   dataset_seed: 0
