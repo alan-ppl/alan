@@ -17,6 +17,9 @@ DEFAULT_ALPHA_FUNC = lambda i, num_lrs: 1 if i == 0 or num_lrs <= 1 else max(1 -
 
 DEFAULT_ALPHA_FUNC = lambda lr: {0.3: 1, 0.1: 0.83, 0.03: 0.67, 0.01: 0.5}.get(lr, 0.1)
 
+
+# These learning rates are ignored for each model and method because the corresponding
+# results are not reliable (e.g. the method failed or encountered numerical issues)
 DEFAULT_MODEL_METHOD_LRS_TO_IGNORE = {'bus_breakdown': {'vi': [], 'rws10K': []},
                                       'chimpanzees': {'vi': [], 'rws10K': [0.3]},
                                       'movielens': {'vi': [0.3], 'rws10K': [0.3,0.1], 'vi10K': [0.3]},
@@ -165,6 +168,9 @@ def plots_IS_per_K_all_models(save_pdf=False, scatter=False, x_axis_time=False, 
     ax[0,0].legend()
 
     if x_axis_time:
+        ax[0,0].set_ylim(bottom=-6100)
+        ax[0,1].set_ylim(bottom=-750)
+
         ax[1,0].set_ylim(bottom=-6100)
         ax[1,1].set_ylim(bottom=-150)
 
