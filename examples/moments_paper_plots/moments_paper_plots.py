@@ -15,6 +15,8 @@ DEFAULT_COLOURS = {'mpis':      '#e41a1c',
 
 DEFAULT_ALPHA_FUNC = lambda i, num_lrs: 1 if i == 0 or num_lrs <= 1 else max(1 - 0.5*i/(num_lrs-1), 0.5)
 
+DEFAULT_ALPHA_FUNC = lambda lr: {0.3: 1, 0.1: 0.83, 0.03: 0.67, 0.01: 0.5}.get(lr, 0.1)
+
 DEFAULT_MODEL_METHOD_LRS_TO_IGNORE = {'bus_breakdown': {'vi': [], 'rws10K': []},
                                       'chimpanzees': {'vi': [], 'rws10K': [0.3]},
                                       'movielens': {'vi': [0.3], 'rws10K': [0.3,0.1], 'vi10K': [0.3]},
@@ -162,6 +164,10 @@ def plots_IS_per_K_all_models(save_pdf=False, scatter=False, x_axis_time=False, 
     ax[1,0].set_ylabel('Predictive Log-Likelihood')
     ax[0,0].legend()
 
+    if x_axis_time:
+        ax[1,0].set_ylim(bottom=-6100)
+        ax[1,1].set_ylim(bottom=-150)
+
 
     fig.tight_layout()
 
@@ -210,7 +216,8 @@ def plot_iterative_vs_IS_all_K_one_model(model_name, iterative_methods = ['vi', 
         for lr_idx, lr in enumerate(all_results[method]['lrs']):
             if lr in model_method_lrs_to_ignore[model_name].get(method, []):
                 continue
-            alpha = alpha_function(lr_idx, len(all_results[method]['lrs']) - len(model_method_lrs_to_ignore[model_name].get(method, [])))
+            # alpha = alpha_function(lr_idx, len(all_results[method]['lrs']) - len(model_method_lrs_to_ignore[model_name].get(method, [])))
+            alpha = alpha_function(lr)
 
             ax[0].plot(all_results[method]['times']['elbos'][lr_idx].mean(-1).cumsum(0)[:x_lim_iters], all_results[method]['elbos'][lr_idx].mean(-1)[:x_lim_iters], label=f"{method_name} lr={lr}", color=colour, alpha=alpha)
             ax[1].plot(all_results[method]['times']['p_ll'][lr_idx].mean(-1).cumsum(0)[:x_lim_iters], all_results[method]['p_lls'][lr_idx].mean(-1)[:x_lim_iters], label=f"{method_name} lr={lr}", color=colour, alpha=alpha)
@@ -316,7 +323,8 @@ def plot_iterative_vs_IS_single_K_one_model(model_name, iterative_methods = ['vi
             for lr_idx, lr in enumerate(all_results[method]['lrs']):
                 if lr in model_method_lrs_to_ignore[model_name].get(method, []):
                     continue
-                alpha = alpha_function(lr_idx, len(all_results[method]['lrs']) - len(model_method_lrs_to_ignore[model_name].get(method, [])))
+                # alpha = alpha_function(lr_idx, len(all_results[method]['lrs']) - len(model_method_lrs_to_ignore[model_name].get(method, [])))
+                alpha = alpha_function(lr)
 
                 label = f"{method_name} lr={lr}" if not only_best_lr else f"{method_name}"
 
@@ -447,7 +455,8 @@ def plot_iterative_vs_IS_single_K_one_model_per_row(all_models = ALL_MODEL_NAMES
                 for lr_idx, lr in enumerate(all_results[method]['lrs']):
                     if lr in model_method_lrs_to_ignore[model_name].get(method, []):
                         continue
-                    alpha = alpha_function(lr_idx, len(all_results[method]['lrs']) - len(model_method_lrs_to_ignore[model_name].get(method, [])))
+                    # alpha = alpha_function(lr_idx, len(all_results[method]['lrs']) - len(model_method_lrs_to_ignore[model_name].get(method, [])))
+                    alpha = alpha_function(lr)
 
                     label = f"{method_name} lr={lr}" if not only_best_lr else f"{method_name}"
 
@@ -507,6 +516,148 @@ def plot_iterative_vs_IS_single_K_one_model_per_row(all_models = ALL_MODEL_NAMES
 
     plt.close()
 
+def plot_iterative_vs_IS_single_K_one_model_per_col_no_var_mse(all_models = ALL_MODEL_NAMES, iterative_methods = ['vi', 'rws', 'HMC'], mpis_K = 10, global_is_K = 1000, save_pdf=False, x_lim_iters=10, log_x=False, _model_method_lrs_to_ignore=DEFAULT_MODEL_METHOD_LRS_TO_IGNORE, only_best_lr=False, elbo_validation_iter=DEFAULT_ELBO_VALIDATION_ITER, alpha_function=DEFAULT_ALPHA_FUNC, MSE_latent = 'all', xlims={}, ylims={}, auto_xlim=False, filename=""):
+    fig, ax = plt.subplots(2, len(all_models), figsize=(4*len(all_models), 8))
+
+    
+    for m, model_name in enumerate(all_models):
+    
+        all_results = {}
+
+        # only_best_lr = model_method_lrs_to_ignore == 'all_but_best'
+        # if only_best_lr:
+        #     model_method_lrs_to_ignore = {model_name: {}}
+
+        model_method_lrs_to_ignore = dict_copy(_model_method_lrs_to_ignore)
+            
+        for method in ['mpis', 'global_is'] + iterative_methods:
+            # if not (model_name == 'occupancy' and (method not in ['mpis', 'global_is'] or method[:3] != 'rws')):
+            if model_name == 'occupancy' and (method[:2] == 'vi' or method[:3] == 'HMC'):
+                continue
+            all_results[method] = load_results(model_name, method, False)
+            all_results[method]['MSEs'] = choose_MSEs(all_results[method], MSE_latent)
+
+            fake_results = load_results(model_name, method, True)
+            all_results[method]['MSEs_fake'] = choose_MSEs(fake_results, MSE_latent)
+            all_results[method]['times']['moments_fake'] = fake_results['times']['moments']
+
+            if method in ['mpis', 'global_is']:
+                all_results[method] = remove_failed_Ks(all_results, method)
+
+            if only_best_lr and method in iterative_methods and method != 'HMC':
+                valid_lr_idxs = np.array([i for i, lr in enumerate(all_results[method]['lrs']) if lr not in model_method_lrs_to_ignore[model_name].get(method, [])])
+                best_lr = np.array(all_results[method]['lrs'])[valid_lr_idxs][int(np.argmax(all_results[method]['elbos'].mean(-1)[valid_lr_idxs, elbo_validation_iter].numpy()))]
+                model_method_lrs_to_ignore[model_name][method] = [lr for lr in all_results[method]['lrs'] if lr != best_lr]
+
+        final_xs = {'elbos': [], 'p_lls': [], 'vars': [], 'MSEs': []}
+
+        for i, method in enumerate(['mpis', 'global_is']):
+            colour = DEFAULT_COLOURS[method]
+
+            Ks = all_results[method]['Ks']
+            K_idx = Ks.index(str(mpis_K) if method == 'mpis' else str(global_is_K))
+
+            ax[0,m].scatter(all_results[method]['times']['elbos'].mean(-1)[K_idx], all_results[method]['elbos'].mean(1)[K_idx], label=f"{method.upper()} K={Ks[K_idx]}", marker='*', s=150, color=colour)
+            ax[1,m].scatter(all_results[method]['times']['p_ll'].mean(-1)[K_idx], all_results[method]['p_lls'].mean(1)[K_idx], label=f"{method.upper()} K={Ks[K_idx]}", marker='*', s=150, color=colour)
+            # ax[m,2].scatter(all_results[method]['times']['moments'].mean(-1)[K_idx], all_results[method]['MSEs'].cpu()[K_idx], label=f"{method.upper()} K={Ks[K_idx]}", marker='*', s=150, color=colour)
+            # ax[m,3].scatter(all_results[method]['times']['moments_fake'].mean(-1)[K_idx], all_results[method]['MSEs_fake'].cpu()[K_idx], label=f"{method.upper()} K={Ks[K_idx]}", marker='*', s=150, color=colour)
+
+        for i, method in enumerate(iterative_methods):
+            colour = DEFAULT_COLOURS[method]
+
+            method_name = method.upper()
+            if method_name == 'VI10K':
+                method_name = 'IWAE'
+            if method_name == 'RWS10K':
+                method_name = 'RWS'
+
+            if model_name == 'occupancy' and (method[:2] == 'vi' or method[:3] == 'HMC'):
+                continue
+
+            if method == 'HMC':
+                # NOTE: times are already cumulative for HMC (no need for cumsum(0))
+                ax[1,m].plot(all_results[method]['times']['p_ll'].mean(-1)[:x_lim_iters], all_results[method]['p_lls'].mean(-1)[:x_lim_iters], label=f"{method_name}", color=colour, alpha=alpha)
+                # ax[m,2].plot(all_results[method]['times']['moments'].mean(-1)[:x_lim_iters], all_results[method]['MSEs'][:x_lim_iters], label=f"{method_name}", color=colour, alpha=alpha)
+                # ax[m,3].plot(all_results[method]['times']['moments_fake'].mean(-1)[:x_lim_iters], all_results[method]['MSEs_fake'][:x_lim_iters], label=f"{method_name}", color=colour, alpha=alpha)
+
+                final_xs['p_lls'].append(all_results[method]['times']['p_ll'].mean(-1).cumsum(0)[:x_lim_iters][-1])
+                final_xs['vars'].append(all_results[method]['times']['moments'].mean(-1).cumsum(0)[:x_lim_iters][-1])
+                final_xs['MSEs'].append(all_results[method]['times']['moments_fake'].mean(-1).cumsum(0)[:x_lim_iters][-1])
+
+            else:
+                for lr_idx, lr in enumerate(all_results[method]['lrs']):
+                    # alpha = alpha_function(lr_idx, len(all_results[method]['lrs']) - len(model_method_lrs_to_ignore[model_name].get(method, [])))
+                    alpha = alpha_function(lr)
+
+                    label = f"{method_name} lr={lr}" if not only_best_lr else f"{method_name}"
+
+                    if lr in model_method_lrs_to_ignore[model_name].get(method, []):
+                        ax[0,m].plot([],[], label=label, color=colour, alpha=alpha)
+                        ax[1,m].plot([],[], label=label, color=colour, alpha=alpha)
+                        continue
+                    
+
+                    ax[0,m].plot(all_results[method]['times']['elbos'][lr_idx].mean(-1).cumsum(0)[:x_lim_iters], all_results[method]['elbos'][lr_idx].mean(-1)[:x_lim_iters], label=label, color=colour, alpha=alpha)
+                    ax[1,m].plot(all_results[method]['times']['p_ll'][lr_idx].mean(-1).cumsum(0)[:x_lim_iters], all_results[method]['p_lls'][lr_idx].mean(-1)[:x_lim_iters], label=label, color=colour, alpha=alpha)
+                    # ax[2,m].plot(all_results[method]['times']['moments'][lr_idx].mean(-1).cumsum(0)[:x_lim_iters], all_results[method]['MSEs'][lr_idx].cpu()[:x_lim_iters], label=label, color=colour, alpha=alpha)
+                    # ax[3,m].plot(all_results[method]['times']['moments_fake'][lr_idx].mean(-1).cumsum(0)[:x_lim_iters], all_results[method]['MSEs_fake'][lr_idx].cpu()[:x_lim_iters], label=label, color=colour, alpha=alpha)
+
+                    final_xs['elbos'].append(all_results[method]['times']['elbos'][lr_idx].mean(-1).cumsum(0)[:x_lim_iters][-1])
+                    final_xs['p_lls'].append(all_results[method]['times']['p_ll'][lr_idx].mean(-1).cumsum(0)[:x_lim_iters][-1])
+                    final_xs['vars'].append(all_results[method]['times']['moments'][lr_idx].mean(-1).cumsum(0)[:x_lim_iters][-1])
+                    final_xs['MSEs'].append(all_results[method]['times']['moments_fake'][lr_idx].mean(-1).cumsum(0)[:x_lim_iters][-1])
+
+        for j in range(2):
+            ax[j,m].set_xlabel('Time (s)')
+            # ax[j].tick_params(axis='x', rotation=45)
+
+            if log_x:
+                ax[j,m].set_xscale('log')
+
+        if auto_xlim:
+            ax[0,m].set_xlim(right=min(final_xs['elbos']))
+            ax[1,m].set_xlim(right=min(final_xs['p_lls']))
+            # ax[m,2].set_xlim(right=min(final_xs['vars']))
+            # ax[m,3].set_xlim(right=min(final_xs['MSEs']))
+
+        ax[0, m].set_title(model_name.upper())
+
+
+        # ax[m,2].set_yscale('log')
+        # ax[m,3].set_yscale('log')
+
+        ax[0,m].set_xlim(*xlims.get(model_name, {}).get('elbos', (None, None)))
+        ax[1,m].set_xlim(*xlims.get(model_name, {}).get('p_lls', (None, None)))
+        # ax[m,2].set_xlim(*xlims.get(model_name, {}).get('vars',  (None, None)))
+        # ax[m,3].set_xlim(*xlims.get(model_name, {}).get('MSEs',  (None, None)))
+
+        ax[0,m].set_ylim(*ylims.get(model_name, {}).get('elbos', (None, None)))
+        ax[1,m].set_ylim(*ylims.get(model_name, {}).get('p_lls', (None, None)))
+        # ax[m,2].set_ylim(*ylims.get(model_name, {}).get('vars',  (None, None)))
+        # ax[m,3].set_ylim(*ylims.get(model_name, {}).get('MSEs',  (None, None)))
+
+        if len(iterative_methods) == 1:
+            legend_locs = {'vi': 'upper center', 'vi10K': 'upper center', 'rws10K': 'center left'}
+            ax[1,-1].legend(loc=legend_locs[iterative_methods[0]])
+        else:
+            ax[1,-1].legend()
+
+    # fig.suptitle("Iterative vs IS for " + model_name.upper())
+    ax[0,0].set_ylabel('ELBO')
+    ax[1,0].set_ylabel('Predictive Log-Likelihood')
+    # ax[m,2].set_ylabel(f'Total Variance{" of variable " + MSE_latent if MSE_latent != "all" else ""}')
+    # ax[m,3].set_ylabel(f'MSE{" of variable " + MSE_latent if MSE_latent != "all" else ""}')
+
+    fig.tight_layout()
+
+    if filename == "":
+        filename = f"many_models_iterative_vs_IS_K{mpis_K}-{global_is_K}{'_log_x' if log_x else ''}{'_MSE_' + MSE_latent if MSE_latent != 'all' else ''}"
+
+    plt.savefig(f"plots/{filename}.png")
+    if save_pdf:
+        plt.savefig(f"plots/pdfs/{filename}.pdf")
+
+    plt.close()
 
 
 def plot_iterative_vs_IS_single_K_all_models(iterative_methods = ['vi', 'rws', 'HMC'], mpis_K = 10, global_is_K = 1000, save_pdf=False, x_lim_iters=10, log_x=False, _model_method_lrs_to_ignore=DEFAULT_MODEL_METHOD_LRS_TO_IGNORE, only_best_lr=False, elbo_validation_iter=DEFAULT_ELBO_VALIDATION_ITER, alpha_function=DEFAULT_ALPHA_FUNC, MSE_latent = 'all', all_model_names=ALL_MODEL_NAMES, Ks_to_ignore=[1], xlims={}, ylims={}, auto_xlim=False, filename=""):
@@ -573,7 +724,8 @@ def plot_iterative_vs_IS_single_K_all_models(iterative_methods = ['vi', 'rws', '
                         if lr in model_method_lrs_to_ignore['chimpanzees'].get(method, []):
                             continue
 
-                        alpha = alpha_function(lr_idx, len(all_results['chimpanzees'][method]['lrs']) - len(model_method_lrs_to_ignore['chimpanzees'].get(method, [])))
+                        # alpha = alpha_function(lr_idx, len(all_results['chimpanzees'][method]['lrs']) - len(model_method_lrs_to_ignore['chimpanzees'].get(method, [])))
+                        alpha = alpha_function(lr)
 
                         label = f"{method_name} lr={lr}" if not only_best_lr else f"{method_name}"
 
@@ -593,11 +745,16 @@ def plot_iterative_vs_IS_single_K_all_models(iterative_methods = ['vi', 'rws', '
 
             else:
                 for lr_idx, lr in enumerate(all_results[model_name][method]['lrs']):
-                    if lr in model_method_lrs_to_ignore[model_name].get(method, []):
-                        continue
-                    alpha = alpha_function(lr_idx, len(all_results[model_name][method]['lrs']) - len(model_method_lrs_to_ignore[model_name].get(method, [])))
+                    # alpha = alpha_function(lr_idx, len(all_results[model_name][method]['lrs']) - len(model_method_lrs_to_ignore[model_name].get(method, [])))
+                    alpha = alpha_function(lr)
 
                     label = f"{method_name} lr={lr}" if not only_best_lr else f"{method_name}"
+                    if lr in model_method_lrs_to_ignore[model_name].get(method, []):
+
+                        # ax[0,i].plot([], [], label=label, color=colour, alpha=alpha)
+                        # ax[1,i].plot([], [], label=label, color=colour, alpha=alpha)
+                        continue
+                    
 
                         # ax[0, i].plot(all_results[model_name][method]['times']['elbos'][lr_idx].mean(-1).cumsum(0)[:80], all_results[model_name][method]['elbos'][lr_idx].mean(-1)[:80], label=f"{method_name} lr={lr}", color=colour, alpha=alpha)
                         # ax[1, i].plot(all_results[model_name][method]['times']['p_ll'][lr_idx].mean(-1).cumsum(0)[:80], all_results[model_name][method]['p_lls'][lr_idx].mean(-1)[:80], label=f"{method_name} lr={lr}", color=colour, alpha=alpha)
@@ -667,7 +824,8 @@ if __name__ == '__main__':
 
     final_latents = {'bus_breakdown': 'alpha', 'chimpanzees': 'alpha_block', 'movielens': 'z', 'occupancy': 'z'}
 
-    plot_iterative_vs_IS_single_K_all_models(iterative_methods=['vi', 'vi10K', 'rws10K', 'HMC'],
+    print("Making main summary plot")
+    plot_iterative_vs_IS_single_K_all_models(iterative_methods=['vi', 'vi10K', 'rws10K'],  # not including HMC
                                              mpis_K = mpis_K,
                                              global_is_K = global_is_K,
                                              _model_method_lrs_to_ignore=DEFAULT_MODEL_METHOD_LRS_TO_IGNORE,
@@ -683,14 +841,16 @@ if __name__ == '__main__':
                                             #  all_model_names=['bus_breakdown', 'chimpanzees', 'movielens'])
     
     
-    plot_iterative_vs_IS_single_K_one_model_per_row(all_models=['bus_breakdown', 'chimpanzees', 'movielens', 'occupancy'], iterative_methods=['vi', 'vi10K', 'rws10K', 'HMC'], mpis_K=15, global_is_K=10000, only_best_lr=True, x_lim_iters=1000, log_x=True, MSE_latent='all', xlims=xlims, ylims=ylims, auto_xlim=True, save_pdf=True, filename=f"all_models_summary")
+    # plot_iterative_vs_IS_single_K_one_model_per_row(all_models=['bus_breakdown', 'chimpanzees', 'movielens', 'occupancy'], iterative_methods=['vi', 'vi10K', 'rws10K', 'HMC'], mpis_K=15, global_is_K=10000, only_best_lr=True, x_lim_iters=1000, log_x=True, MSE_latent='all', xlims=xlims, ylims=ylims, auto_xlim=True, save_pdf=True, filename=f"all_models_summary")
+    print("Making summary plot for VI lrs")
+    plot_iterative_vs_IS_single_K_one_model_per_col_no_var_mse(all_models=['bus_breakdown', 'chimpanzees', 'movielens'], iterative_methods=['vi'], mpis_K=15, global_is_K=10000, only_best_lr=False, x_lim_iters=1000, log_x=True, MSE_latent='all', xlims=xlims, ylims=ylims, auto_xlim=True, save_pdf=True, filename=f"VI_summary")
     
-    plot_iterative_vs_IS_single_K_one_model_per_row(all_models=['bus_breakdown', 'chimpanzees', 'movielens'], iterative_methods=['vi'], mpis_K=15, global_is_K=10000, only_best_lr=False, x_lim_iters=1000, log_x=True, MSE_latent='all', xlims=xlims, ylims=ylims, auto_xlim=True, save_pdf=True, filename=f"VI_summary")
-    
-    ylims['chimpanzees']['elbos'] = (-1000, 0)
-    ylims['movielens']['elbos'] = (-10000, 0)
-    plot_iterative_vs_IS_single_K_one_model_per_row(all_models=['bus_breakdown', 'chimpanzees', 'movielens'], iterative_methods=['vi10K'], mpis_K=15, global_is_K=10000, only_best_lr=False, x_lim_iters=1000, log_x=True, MSE_latent='all', xlims=xlims, ylims=ylims, auto_xlim=True, save_pdf=True, filename=f"IWAE_summary")
-    plot_iterative_vs_IS_single_K_one_model_per_row(all_models=['bus_breakdown', 'chimpanzees', 'movielens', 'occupancy'], iterative_methods=['rws10K'], mpis_K=15, global_is_K=10000, only_best_lr=False, x_lim_iters=1000, log_x=True, MSE_latent='all', xlims=xlims, ylims=ylims, auto_xlim=True, save_pdf=True, filename=f"RWS_summary")
+    ylims['chimpanzees']['elbos'] = (-1000, None)
+    ylims['movielens']['elbos'] = (-10000, None)
+    print("Making summary plot for IWAE lrs")
+    plot_iterative_vs_IS_single_K_one_model_per_col_no_var_mse(all_models=['bus_breakdown', 'chimpanzees', 'movielens'], iterative_methods=['vi10K'], mpis_K=15, global_is_K=10000, only_best_lr=False, x_lim_iters=1000, log_x=True, MSE_latent='all', xlims=xlims, ylims=ylims, auto_xlim=True, save_pdf=True, filename=f"IWAE_summary")
+    print("Making summary plot for RWS lrs")
+    plot_iterative_vs_IS_single_K_one_model_per_col_no_var_mse(all_models=['bus_breakdown', 'chimpanzees', 'movielens', 'occupancy'], iterative_methods=['rws10K'], mpis_K=15, global_is_K=10000, only_best_lr=False, x_lim_iters=1000, log_x=True, MSE_latent='all', xlims=xlims, ylims=ylims, auto_xlim=True, save_pdf=True, filename=f"RWS_summary")
 
 
     # for model_name in ALL_MODEL_NAMES:
