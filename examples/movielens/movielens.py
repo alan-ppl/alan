@@ -37,6 +37,7 @@ def load_data_covariates(device, run=0, data_dir='data/', fake_data=False, retur
     return platesizes, all_platesizes, data, all_data, covariates, all_covariates
 
 def get_P(platesizes, covariates):
+    logits = lambda z, x: z @ x
     P = Plate(
         # mu_z_global_mean = Normal(0., 1.),
         # mu_z_global_log_scale = Normal(0., 1.),
@@ -59,7 +60,7 @@ def get_P(platesizes, covariates):
             z = Normal("mu_z", lambda psi_z: psi_z.exp()),
 
             plate_2 = Plate(
-                obs = Bernoulli(logits = lambda z, x: z @ x),
+                obs = Bernoulli(logits = logits),
             )
         ),
     )

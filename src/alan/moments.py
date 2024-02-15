@@ -60,12 +60,22 @@ class CompoundMoment(Moment):
 def var_from_raw_moment(rm:RawMoment):
     assert isinstance(rm, RawMoment)
     rm2 = RawMoment(lambda x: (rm.f(x))**2)
-    return CompoundMoment(lambda Ex, Ex2: Ex2 - Ex*Ex, [rm, rm2])
+    
+    def combineer(Ex, Ex2):
+        min = torch.finfo(Ex2).min
+        return (Ex2 - Ex*Ex).clamp(min=min)
+    
+    return CompoundMoment(combineer, [rm, rm2])
 
 def std_from_raw_moment(rm:RawMoment):
     assert isinstance(rm, RawMoment)
     rm2 = RawMoment(lambda x: (rm.f(x))**2)
-    return CompoundMoment(lambda Ex, Ex2: (Ex2 - Ex*Ex).sqrt(), [rm, rm2])
+    
+    def combineer_sqrt(Ex, Ex2):
+        min = torch.finfo(Ex2).min
+        return (Ex2 - Ex*Ex).clamp(min=min).sqrt()
+    
+    return CompoundMoment(combineer_sqrt, [rm, rm2])
 
 
 mean       = RawMoment(lambda x: x)

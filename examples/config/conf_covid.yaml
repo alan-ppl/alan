@@ -1,0 +1,16 @@
+---
+  model: ???
+  method: ???
+  num_runs: 1
+  num_iters: 2000
+  Ks: [3,10] #,100]
+  reparam: True
+  predll:
+    do_predll: False
+    N_predll: 100
+  lrs: [0.1, 0.01]# 0.001, 0.0001]
+  dataset_seed: 0
+  write_job_status: True
+  split:
+    plate: nRs
+    size: 20

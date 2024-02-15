@@ -12,7 +12,7 @@ def safe_time(device):
         t.cuda.synchronize()
     return time.time()
 
-@hydra.main(version_base=None, config_path='config', config_name='conf')
+@hydra.main(version_base=None, config_path='config', config_name='conf_covid')
 def run_experiment(cfg):
     print(cfg)
 
@@ -136,10 +136,15 @@ def run_experiment(cfg):
                 with open(f"{cfg.model}/job_status/{cfg.method}_status.txt", "a") as f:
                     f.write(f"num_run: {num_run} K: {K} done in {safe_time(device)-K_start_time}s.\n")
 
+
+
+
+    prob.save_state_dict(f"{cfg.model}/results/{cfg.method}{cfg.dataset_seed}.pth")
+    
     to_pickle = {'elbos': elbos.cpu(), 'p_lls': p_lls.cpu(), 'iter_times': iter_times,
                  'Ks': Ks, 'lrs': lrs, 'num_runs': num_runs, 'num_iters': num_iters}
 
-    print()
+    
 
     for K_idx, K in enumerate(Ks):
         for lr_idx, lr in enumerate(lrs):

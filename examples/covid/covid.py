@@ -1,27 +1,27 @@
 import torch as t
 from alan import Normal, NegativeBinomial, Timeseries, Plate, BoundPlate, Problem, Data, QEMParam, OptParam
-
+import math
 nRs = 92
 nWs = 21
 nCMs = 11
 
-def load_data_covariates(device, data_dir='data/', fake_data=False, return_fake_latents=False):
+def load_data_covariates(device, run=0, data_dir='data/', fake_data=False, return_fake_latents=False):
     platesizes = {'nRs':nRs,
                'nWs':int(nWs*0.8)}
 
     all_platesizes = {'nRs':nRs,
                     'nWs':nWs}
 
-    covariates = {'ActiveCMs_NPIs': t.load(f'{data_dir}ActiveCMs_NPIs.pt').rename('nRs', 'nWs', None).to(device), 
-                  'ActiveCMs_wearing': t.load(f'{data_dir}ActiveCMs_wearing.pt').rename('nRs', 'nWs').to(device), 
-                  'ActiveCMs_mobility': t.load(f'{data_dir}ActiveCMs_mobility.pt').rename('nRs', 'nWs').to(device)}
+    covariates = {'ActiveCMs_NPIs': t.load(f'{data_dir}ActiveCMs_NPIs.pt').rename('nRs', 'nWs', None), 
+                  'ActiveCMs_wearing': t.load(f'{data_dir}ActiveCMs_wearing.pt').rename('nRs', 'nWs'), 
+                  'ActiveCMs_mobility': t.load(f'{data_dir}ActiveCMs_mobility.pt').rename('nRs', 'nWs')}
     all_covariates = {'ActiveCMs_NPIs': t.load(f'{data_dir}ActiveCMs_NPIs_all.pt').rename('nRs', 'nWs', None).to(device), 
-                      'ActiveCMs_wearing': t.load(f'{data_dir}ActiveCMs_wearing_all.pt').rename('nRs', 'nWs').to(device), 
-                      'ActiveCMs_mobility': t.load(f'{data_dir}ActiveCMs_mobility_all.pt').rename('nRs', 'nWs').to(device)}
+                      'ActiveCMs_wearing': t.load(f'{data_dir}ActiveCMs_wearing_all.pt').rename('nRs', 'nWs').to(device),
+                      'ActiveCMs_mobility': t.load(f'{data_dir}ActiveCMs_mobility_all.pt').rename('nRs', 'nWs').to(device),}
     
     if not fake_data:
-        data = {'obs': t.load(f'{data_dir}obs.pt').rename('nRs', 'nWs' ).to(device)}
-        all_data = {'obs': t.load(f'{data_dir}obs_all.pt').rename('nRs', 'nWs' ).to(device)}
+        data = {'obs': t.load(f'{data_dir}obs.pt').rename('nRs', 'nWs' ),}
+        all_data = {'obs': t.load(f'{data_dir}obs_all.pt').rename('nRs', 'nWs' ).to(device),}
 
     else:
         P = get_P(all_platesizes, all_covariates)
@@ -48,8 +48,8 @@ def get_P(platesizes, covariates):
     R_prior_mean_scale=0.2
     R_noise_scale=0.4
     
-    Expected_Log_Rs = lambda RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility: RegionR - \
-                        CM_alpha@ActiveCMs_NPIs - Wearing_alpha*ActiveCMs_wearing - Mobility_alpha*ActiveCMs_mobility
+    Expected_Log_Rs = lambda RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility, prev: RegionR - \
+                        CM_alpha@ActiveCMs_NPIs - Wearing_alpha*ActiveCMs_wearing - Mobility_alpha*ActiveCMs_mobility + prev
 
     P = Plate(
         #Effect of NPI
@@ -109,20 +109,19 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
         assert Q_param_type == "qem"
 
         Q = Plate(
-            CM_alpha = Normal(QEMParam(t.zeros((nCMs-2,))), QEMParam(t.zeros((nCMs-2,)))),
-            Wearing_alpha = Normal(QEMParam(t.zeros(())), QEMParam(t.zeros(()))),
-            Mobility_alpha = Normal(QEMParam(t.zeros(())), QEMParam(t.zeros(()))),
-            RegionR = Normal(QEMParam(t.zeros(())), QEMParam(t.zeros(()))),
-            
+            CM_alpha = Normal(QEMParam(t.zeros((nCMs-2,))), QEMParam(t.ones((nCMs-2,)))),
+            Wearing_alpha = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+            Mobility_alpha = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+            RegionR = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
             nRs = Plate(
-                InitialSize_log = Normal(QEMParam(t.zeros(())), QEMParam(t.zeros(()))),
+                InitialSize_log = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                 nWs = Plate(
-                    log_infected = Normal(QEMParam(t.zeros(())), QEMParam(t.zeros(()))),
-                    Psi = Normal(QEMParam(t.zeros(())), QEMParam(t.zeros(()))),
+                    log_infected = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+                    Psi = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                     obs = Data()
                 ),
             ),
-        ),
+        )
         
         Q = BoundPlate(Q, platesizes, inputs = covariates)
     prob = Problem(P, Q, data)
