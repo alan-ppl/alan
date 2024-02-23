@@ -8,9 +8,11 @@
   predll:
     do_predll: True
     N_predll: 100
-  lrs: [0.1, 0.01, 0.001, 0.0001]
+  lrs: [0.3,0.1,0.03,0.01]
   dataset_seed: 0
   write_job_status: True
   split:
     plate: null
     size: null
+  results_subfolder: ''
+  non_mp: False

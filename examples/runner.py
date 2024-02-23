@@ -39,6 +39,12 @@ def run_experiment(cfg):
         assert split_plate is None and split_size is None
         split = None
 
+    results_subfolder = cfg.results_subfolder
+    if results_subfolder != '':
+        results_subfolder = f"/{results_subfolder}"
+
+    non_mp_string = '_nonmp' if cfg.non_mp else ''
+
     spec = importlib.util.spec_from_file_location(cfg.model, f"{cfg.model}/{cfg.model}.py")
     model = importlib.util.module_from_spec(spec)
     sys.modules[cfg.model] = model
@@ -47,6 +53,7 @@ def run_experiment(cfg):
     # Make sure all the required folders exist for this model
     for folder in ['results', 'job_status', 'plots']:
         Path(f"{cfg.model}/{folder}").mkdir(parents=True, exist_ok=True)
+    Path(f"{cfg.model}/results{results_subfolder}").mkdir(parents=True, exist_ok=True)
 
     platesizes, all_platesizes, data, all_data, covariates, all_covariates = model.load_data_covariates(device, cfg.dataset_seed, f'{cfg.model}/data/')
 
@@ -63,7 +70,7 @@ def run_experiment(cfg):
     iter_times = t.zeros((len(Ks), len(lrs), num_iters+1, num_runs))
 
     if cfg.write_job_status:
-        with open(f"{cfg.model}/job_status/{cfg.method}_status.txt", "w") as f:
+        with open(f"{cfg.model}/job_status/{cfg.method}{non_mp_string}_status.txt", "w") as f:
             f.write(f"Starting job.\n")
 
     for num_run in range(num_runs):
@@ -80,60 +87,63 @@ def run_experiment(cfg):
                 elif cfg.method == 'rws':
                     opt = t.optim.Adam(prob.Q.parameters(), lr=lr, maximize=True)
                 
-                # try:
-                for i in range(num_iters+1):
-                    elbo_start_time = safe_time(device)
+                try:
+                    for i in range(num_iters+1):
+                        elbo_start_time = safe_time(device)
 
-                    if cfg.method == 'vi' or cfg.method == 'rws':
-                        opt.zero_grad()
+                        if cfg.method == 'vi' or cfg.method == 'rws':
+                            opt.zero_grad()
 
-                    sample = prob.sample(K, reparam)
+                        if cfg.non_mp: 
+                            sample = prob.sample_nonmp(K, reparam)
+                        else:
+                            sample = prob.sample(K, reparam)
 
-                    if cfg.method == 'vi':
-                        elbo = sample.elbo_vi() if split is None else sample.elbo_vi(computation_strategy = split)
-                    elif cfg.method == 'rws':
-                        elbo = sample.elbo_rws() if split is None else sample.elbo_rws(computation_strategy = split)
-                    elif cfg.method == 'qem':
-                        elbo = sample.elbo_nograd() if split is None else sample.elbo_nograd(computation_strategy = split)
+                        if cfg.method == 'vi':
+                            elbo = sample.elbo_vi() if split is None else sample.elbo_vi(computation_strategy = split)
+                        elif cfg.method == 'rws':
+                            elbo = sample.elbo_rws() if split is None else sample.elbo_rws(computation_strategy = split)
+                        elif cfg.method == 'qem':
+                            elbo = sample.elbo_nograd() if split is None else sample.elbo_nograd(computation_strategy = split)
 
-                    elbo_end_time = safe_time(device)
+                        elbo_end_time = safe_time(device)
 
-                    elbos[K_idx, lr_idx, i, num_run] = elbo.item()
+                        elbos[K_idx, lr_idx, i, num_run] = elbo.item()
 
-                    if do_predll:
-                        importance_sample = sample.importance_sample(N=N_predll) if split is None else sample.importance_sample(N=N_predll, computation_strategy = split)
-                        extended_importance_sample = importance_sample.extend(all_platesizes, all_covariates)
-                        ll = extended_importance_sample.predictive_ll(all_data)
-                        
-                        p_lls[K_idx, lr_idx, i, num_run] = ll['obs'].item()
+                        if do_predll:
+                            importance_sample = sample.importance_sample(N=N_predll) if split is None else sample.importance_sample(N=N_predll, computation_strategy = split)
+                            extended_importance_sample = importance_sample.extend(all_platesizes, all_covariates)
+                            ll = extended_importance_sample.predictive_ll(all_data)
+                            
+                            p_lls[K_idx, lr_idx, i, num_run] = ll['obs'].item()
 
-                        if i % 50 == 0:
-                            print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
+                            if i % 50 == 0:
+                                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
 
-                    if not do_predll and i % 50 == 0:
-                        print(f"Iter {i}. Elbo: {elbo:.3f}")
+                        if not do_predll and i % 50 == 0:
+                            print(f"Iter {i}. Elbo: {elbo:.3f}")
 
-                    update_start_time = safe_time(device)
+                        update_start_time = safe_time(device)
 
-                    if i < num_iters and (cfg.method == 'vi' or cfg.method == 'rws'):
-                        (-elbo).backward()
-                        opt.step()
-                    else:
-                        sample.update_qem_params(lr)
+                        if i < num_iters and (cfg.method == 'vi' or cfg.method == 'rws'):
+                            (-elbo).backward()
+                            opt.step()
+                        else:
+                            sample.update_qem_params(lr)
 
-                    update_end_time = safe_time(device)
+                        update_end_time = safe_time(device)
 
-                    iter_times[K_idx, lr_idx, i, num_run] = elbo_end_time - elbo_start_time + update_end_time - update_start_time
+                        iter_times[K_idx, lr_idx, i, num_run] = elbo_end_time - elbo_start_time + update_end_time - update_start_time
                 
-                # except Exception as e:
-                #     print(f"num_run: {num_run} K: {K} lr: {lr} failed at iteration {i} with exception {e}.")
-                #     if cfg.write_job_status:
-                #         with open(f"{cfg.model}/job_status/{cfg.method}_status.txt", "a") as f:
-                #             f.write(f"num_run: {num_run} K: {K} lr: {lr} failed at iteration {i} with exception {e}.\n")
-                #     continue
+                except Exception as e:
+                    print(f"num_run: {num_run} K: {K} lr: {lr} failed at iteration {i} with exception {e}.")
+                    if cfg.write_job_status:
+                        with open(f"{cfg.model}/job_status/{cfg.method}{non_mp_string}_status.txt", "a") as f:
+                            f.write(f"num_run: {num_run} K: {K} lr: {lr} failed at iteration {i} with exception {e}.\n")
+                    continue
 
             if cfg.write_job_status:
-                with open(f"{cfg.model}/job_status/{cfg.method}_status.txt", "a") as f:
+                with open(f"{cfg.model}/job_status/{cfg.method}{non_mp_string}_status.txt", "a") as f:
                     f.write(f"num_run: {num_run} K: {K} done in {safe_time(device)-K_start_time}s.\n")
 
     to_pickle = {'elbos': elbos.cpu(), 'p_lls': p_lls.cpu(), 'iter_times': iter_times,
@@ -149,7 +159,7 @@ def run_experiment(cfg):
             print()
 
     # breakpoint()
-    with open(f'{cfg.model}/results/{cfg.method}{cfg.dataset_seed}.pkl', 'wb') as f:
+    with open(f'{cfg.model}/results{results_subfolder}/{cfg.method}{non_mp_string}{cfg.dataset_seed}.pkl', 'wb') as f:
         pickle.dump(to_pickle, f)
 
 
