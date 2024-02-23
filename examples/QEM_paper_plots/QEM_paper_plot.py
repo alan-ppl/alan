@@ -59,7 +59,7 @@ def plot_method_K_lines(ax,
             ax.plot(xs[:x_lim_iters], smoothed_metric[:x_lim_iters], label=f'{method.upper()}: lr={lrs[i]}', color=colour, alpha=alpha_val)
 
             if error_bars:
-                ax.fill_between(xs, smoothed_metric - stderrs[i, :], smoothed_metric + stderrs[i, :], color=colour, alpha=0.2*alpha_val)
+                ax.fill_between(xs[:x_lim_iters], (smoothed_metric - stderrs[i, :])[:x_lim_iters], (smoothed_metric + stderrs[i, :])[:x_lim_iters], color=colour, alpha=0.2*alpha_val)
 
     
 def plot_all_2col(model_names  = ALL_MODEL_NAMES,
@@ -147,16 +147,17 @@ def plot_all_2col(model_names  = ALL_MODEL_NAMES,
 
     plt.savefig(f'plots/all_2col{filename_end}.png')
     if save_pdf:
-        plt.savefig(f'plots/all_2col{filename_end}.pdf')
+        plt.savefig(f'plots/pdfs/all_2col{filename_end}.pdf')
 
 def plot_all_2row(model_names  = ALL_MODEL_NAMES,
                   Ks_to_plot   = 'largest',
                   num_lrs      = 1,
                   x_axis_iters = True,
-                  x_lim        = None,
+                  x_lim        = 50,
                   smoothing_window = 1,
                   error_bars   = False,
                   alpha_func   = DEFAULT_ALPHA_FUNC,
+                  ylims        = {'elbo': {}, 'p_ll': {}},
                   save_pdf     = False,
                   filename_end = ""):
     
@@ -198,8 +199,9 @@ def plot_all_2row(model_names  = ALL_MODEL_NAMES,
                     axs[0,col_counter].set_xlim(0, x_lim)
                 # else:
                 #     axs[0,col_counter].set_xscale('log')
-
-                axs[0,col_counter].set_ylim(None, None)
+                    
+                ylim_for_model = ylims['elbo'].get(model_name, (None, None))
+                axs[0,col_counter].set_ylim(*ylim_for_model)
                 
                 plot_method_K_lines(ax = axs[1,col_counter], 
                                     model_results = results[model_name],
@@ -220,7 +222,8 @@ def plot_all_2row(model_names  = ALL_MODEL_NAMES,
                 # else:
                 #     axs[1,col_counter].set_xscale('log')
 
-                axs[1,col_counter].set_ylim(None, None)
+                ylim_for_model = ylims['p_ll'].get(model_name, (None, None))
+                axs[1,col_counter].set_ylim(*ylim_for_model)
 
                 axs[1,col_counter].set_xlabel('Iterations' if x_axis_iters else 'Time (s)')
 
@@ -236,7 +239,7 @@ def plot_all_2row(model_names  = ALL_MODEL_NAMES,
 
     plt.savefig(f'plots/all_2row{filename_end}.png')
     if save_pdf:
-        plt.savefig(f'plots/all_2row{filename_end}.pdf')
+        plt.savefig(f'plots/pdfs/all_2row{filename_end}.pdf')
 
 def plot_avg_iter_time_per_K(model_names  = ALL_MODEL_NAMES,
                              save_pdf     = False,
@@ -272,6 +275,8 @@ def plot_avg_iter_time_per_K(model_names  = ALL_MODEL_NAMES,
     fig.tight_layout()
 
     plt.savefig(f'plots/avg_iter_time_per_K{filename_end}.png')
+    if save_pdf:
+        plt.savefig(f'plots/pdfs/avg_iter_time_per_K{filename_end}.pdf')
 
 if __name__ == "__main__":
     validation_iter_number = 25
@@ -282,69 +287,24 @@ if __name__ == "__main__":
             preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=['qem', 'rws'])
         else:
             preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number)
-    
-    # plot_all_2col(Ks_to_plot='all', num_lrs=10, x_lim = iteration_x_lim, filename_end="_EVERYTHING")
 
-    # plot_all_2col(Ks_to_plot='all', num_lrs=1, x_lim = iteration_x_lim, filename_end="_BEST")
+    best_Ks = {'bus_breakdown': [30], 'chimpanzees': [15], 'movielens': [30], 'occupancy': [10], 'radon': [30]}
 
-    # plot_all_2row(Ks_to_plot='all', num_lrs=10, x_lim = iteration_x_lim, filename_end="_EVERYTHING")
+    ylims = {'elbo': {'bus_breakdown': (-1800,  -1400),
+                      'chimpanzees':   (-270,   -235),
+                      'movielens':     (-1400,  -1000),
+                      'occupancy':     (-49750, -49250),
+                      'radon':         (-494,   -484)},
+             'p_ll': {'bus_breakdown': (-2800,  -1600),
+                      'chimpanzees':   (-45,    -39),
+                      'movielens':     (-1040,  -940),
+                      'occupancy':     (-24800, -24750),
+                      'radon':         (-170,   -120)},}
 
-    # plot_all_2row(Ks_to_plot='all', num_lrs=1, x_lim = iteration_x_lim, filename_end="_BEST")
-
-    # plot_all_2row(Ks_to_plot='all', num_lrs=1, x_lim = iteration_x_lim, filename_end="_BEST_errs", error_bars=True)
-
-    # plot_all_2row(Ks_to_plot='all', num_lrs=2, x_lim = iteration_x_lim, filename_end="_BEST_2lrs")
-
-    # plot_all_2row(Ks_to_plot='all', num_lrs=3, x_lim = iteration_x_lim, filename_end="_BEST_3lrs")
-
-
-    best_Ks = {'bus_breakdown': [30], 'chimpanzees': [5], 'movielens': [30], 'occupancy': [3], 'radon': [3]}
-
-    # plot_all_2col(Ks_to_plot=best_Ks,
-    #                num_lrs=1, x_lim = iteration_x_lim, filename_end="_BEST_SPECIFIC_Ks")
-    
-    # plot_all_2col(Ks_to_plot=best_Ks,
-    #                num_lrs=1, filename_end="_BEST_SPECIFIC_Ks_TIME", x_axis_iters=False)
-    
-    # plot_all_2row(Ks_to_plot=best_Ks,
-    #                num_lrs=1, x_lim = iteration_x_lim, filename_end="_BEST_SPECIFIC_Ks")
-    
     plot_all_2row(Ks_to_plot=best_Ks,
-                   num_lrs=1, filename_end="_BEST_SPECIFIC_Ks_TIME", x_axis_iters=False)
+                   num_lrs=1, filename_end="_BEST_SPECIFIC_Ks_TIME", x_axis_iters=False, error_bars=True, save_pdf=True, ylims=ylims)
+    plot_all_2row(Ks_to_plot=best_Ks,
+                   num_lrs=1, filename_end="_BEST_SPECIFIC_Ks_ITER", x_axis_iters=True, error_bars=True, save_pdf=True, ylims=ylims)
     
-    # # with std_err bars
-    # plot_all_2row(Ks_to_plot=best_Ks,
-    #                num_lrs=1, x_lim = iteration_x_lim, filename_end="_BEST_SPECIFIC_Ks_err",
-    #                error_bars=True)
-    
-    # plot_all_2row(Ks_to_plot=best_Ks,
-    #                num_lrs=1, filename_end="_BEST_SPECIFIC_Ks_TIME_err", x_axis_iters=False,
-    #                error_bars=True)
-            
-    # # now with 2 lrs
-    # plot_all_2row(Ks_to_plot=best_Ks,
-    #                num_lrs=2, x_lim = iteration_x_lim, filename_end="_BEST_SPECIFIC_Ks_2lrs")
-    
-    # plot_all_2row(Ks_to_plot=best_Ks,
-    #                num_lrs=2, filename_end="_BEST_SPECIFIC_Ks_TIME_2lrs", x_axis_iters=False)
-            
-
-    # # now with 3 lrs
-    # plot_all_2row(Ks_to_plot=best_Ks,
-    #                num_lrs=3, x_lim = iteration_x_lim, filename_end="_BEST_SPECIFIC_Ks_3lrs")
-    
-    # plot_all_2row(Ks_to_plot=best_Ks,
-    #                num_lrs=3, filename_end="_BEST_SPECIFIC_Ks_TIME_3lrs", x_axis_iters=False)
-            
-    # # with 2 lrs AND std_err bars
-    # plot_all_2row(Ks_to_plot=best_Ks,
-    #                num_lrs=2, x_lim = iteration_x_lim, filename_end="_BEST_SPECIFIC_Ks_2lrs_err",
-    #                error_bars=True)
-    
-    # plot_all_2row(Ks_to_plot=best_Ks,
-    #                num_lrs=2, filename_end="_BEST_SPECIFIC_Ks_TIME_2lrs_err", x_axis_iters=False,
-    #                error_bars=True)
-
-    
-    # plot_avg_iter_time_per_K()
+    plot_avg_iter_time_per_K(save_pdf=True)
         
