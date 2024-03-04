@@ -185,9 +185,9 @@ def plot(model_name, method_names=['qem', 'rws', 'vi'], window_sizes=[1, 5, 10, 
 
         # Show the plots
         # plt.show()
-        plt.savefig(f'{model_name}/plots/{model_name}_{window_size}{"_K" + str(Ks_to_plot) if Ks_to_plot != "all" else ""}.png')
+        plt.savefig(f'{model_name}/plots/{results_subfolder}{model_name}_{window_size}{"_K" + str(Ks_to_plot) if Ks_to_plot != "all" else ""}.png')
         if save_pdf:
-            plt.savefig(f'{model_name}/plots/{model_name}_{window_size}{"_K" + str(Ks_to_plot) if Ks_to_plot != "all" else ""}.pdf')
+            plt.savefig(f'{model_name}/plots/{results_subfolder}{model_name}_{window_size}{"_K" + str(Ks_to_plot) if Ks_to_plot != "all" else ""}.pdf')
 
         # Clear the plots
         for ax in axs.flatten():
@@ -215,32 +215,10 @@ if __name__ == '__main__':
 
     for K in [3, 10]:
         plot('covid', Ks_to_plot=[K], method_lrs_to_ignore={'qem': [0.001, 0.0001], 'rws': [0.001, 0.0001], 'vi': [0.001, 0.0001]},
-             elbo_ylims=elbo_ylims_per_K['covid'][K])
-
-        # plot('bus_breakdown', results_subfolder='final1-0.0001/', Ks_to_plot=[K],
-        #       method_lrs_to_ignore={'qem': [0.01], 'rws': [0.0001,0.3,0.5,0.75,1], 'vi': [0.0001,0.3,0.5,0.75,1]},)
-        #     #   elbo_ylims=elbo_ylims_per_K['bus_breakdown'][K], pll_ylims=pll_ylims_per_K['bus_breakdown'][K])
-
-    # #     plot('chimpanzees', results_subfolder='K3_10_30/', Ks_to_plot=[K])
-        
-    # #     plot('occupancy', results_subfolder='', Ks_to_plot=[K])
-
-        
-    # for K in [3, 5, 10]:
-    #     plot('occupancy', results_subfolder='lr0.01-1/', Ks_to_plot=[K], method_names=['qem','rws'],)#method_lrs_to_ignore={'rws': [0.5,0.75,1]},)
-    
-    
-    for K in [3, 10, 30]:
-        plot('radon', results_subfolder='', Ks_to_plot=[K], method_names=['qem','rws', 'vi'], 
-             elbo_ylims=elbo_ylims_per_K['radon'][K], pll_ylims=pll_ylims_per_K['radon'][K],
-             save_pdf=True)
-    # #     plot('chimpanzees', results_subfolder='', Ks_to_plot=[K],)
-
-    # chimp_lrs_to_ignore = [0.0001, 0.001, 0.01, 0.5]
-    # chimp_5_15_method_lrs_to_ignore = {'qem': chimp_lrs_to_ignore, 'rws': chimp_lrs_to_ignore, 'vi': chimp_lrs_to_ignore}
-
-    # plot('chimpanzees', results_subfolder='K5_15_lr_0.001-1/', Ks_to_plot=[5], #method_lrs_to_ignore=chimp_5_15_method_lrs_to_ignore,
-    #                     elbo_ylims=elbo_ylims_per_K['chimpanzees'][5], pll_ylims=pll_ylims_per_K['chimpanzees'][5])
-    # plot('chimpanzees', results_subfolder='K5_15_lr_0.001-1/', Ks_to_plot=[15], #method_lrs_to_ignore=chimp_5_15_method_lrs_to_ignore,
-    #                     elbo_ylims=elbo_ylims_per_K['chimpanzees'][15], pll_ylims=pll_ylims_per_K['chimpanzees'][15])
-
+             elbo_ylims=elbo_ylims_per_K['covid'][K], results_subfolder='covid/')
+        plot('covid', Ks_to_plot=[K], method_lrs_to_ignore={'qem': [0.001, 0.0001], 'rws': [0.001, 0.0001], 'vi': [0.001, 0.0001]},
+             pll_ylims=pll_ylims_per_K['covid'][K], results_subfolder='covid_poisson/')
+        plot('covid', Ks_to_plot=[K], method_lrs_to_ignore={'qem': [0.001, 0.0001], 'rws': [0.001, 0.0001], 'vi': [0.001, 0.0001]},
+             pll_ylims=pll_ylims_per_K['covid'][K], results_subfolder='poisson_only_wearing_mobility/')
+        plot('covid', Ks_to_plot=[K], method_lrs_to_ignore={'qem': [0.001, 0.0001], 'rws': [0.001, 0.0001], 'vi': [0.001, 0.0001]},
+             pll_ylims=pll_ylims_per_K['covid'][K], results_subfolder='poisson_only_npis/')

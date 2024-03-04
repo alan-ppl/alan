@@ -94,7 +94,8 @@ class NormalConversion(AbstractConversion):
     @staticmethod
     def mean2conv(mean, mean2):
         loc = mean
-        scale = (mean2 - mean*mean).clamp(min=0.).sqrt()
+        min = t.finfo(mean2.dtype).tiny
+        scale = (mean2 - mean*mean).sqrt().clamp(min=min)
         return {'loc': loc, 'scale': scale}
     @staticmethod
     def test_conv(N):

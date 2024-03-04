@@ -57,24 +57,24 @@ print("Moments from approximate posterior samples:")
 moments = sample.moments((('d', mean), ('d', mean2), ('c', mean2)))
 print(moments)
 
-# below doesn't work because var is not a raw moment
-# print(sample.moments(('d', var)))
+# # below doesn't work because var is not a raw moment
+# # print(sample.moments(('d', var)))
 
-print()
+# print()
 
-#Getting moments from posterior samples:
-print("Moments from importance samples:")
-importance_samples = sample.importance_sample(N=1000)
+# #Getting moments from posterior samples:
+# print("Moments from importance samples:")
+# importance_samples = sample.importance_sample(N=1000)
 
-posterior_moments = importance_samples.moments((('d', mean), ('d', mean2), ('c', mean2)))
-print(posterior_moments)
+# posterior_moments = importance_samples.moments((('d', mean), ('d', mean2), ('c', mean2)))
+# print(posterior_moments)
 
-print()
+# print()
 
-print("Moments directly from dumped importance samples:")
-importance_samples_flat = importance_samples.dump()
+# print("Moments directly from dumped importance samples:")
+# importance_samples_flat = importance_samples.dump()
 
-print(importance_samples_flat['d'].mean('N'))
-print((importance_samples_flat['d']**2).mean('N'))
+# print(importance_samples_flat['d'].mean('N'))
+# print((importance_samples_flat['d']**2).mean('N'))
 
-print((importance_samples_flat['c']**2).mean('N'))
+# print((importance_samples_flat['c']**2).mean('N'))

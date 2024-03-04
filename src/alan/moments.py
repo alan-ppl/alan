@@ -62,7 +62,7 @@ def var_from_raw_moment(rm:RawMoment):
     rm2 = RawMoment(lambda x: (rm.f(x))**2)
     
     def combineer(Ex, Ex2):
-        min = torch.finfo(Ex2).min
+        min = t.finfo(Ex2.dtype).tiny
         return (Ex2 - Ex*Ex).clamp(min=min)
     
     return CompoundMoment(combineer, [rm, rm2])
@@ -72,7 +72,7 @@ def std_from_raw_moment(rm:RawMoment):
     rm2 = RawMoment(lambda x: (rm.f(x))**2)
     
     def combineer_sqrt(Ex, Ex2):
-        min = torch.finfo(Ex2).min
+        min = t.finfo(Ex2.dtype).tiny
         return (Ex2 - Ex*Ex).clamp(min=min).sqrt()
     
     return CompoundMoment(combineer_sqrt, [rm, rm2])

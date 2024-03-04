@@ -1,5 +1,5 @@
 import torch as t
-from alan import Normal, NegativeBinomial, Timeseries, Plate, BoundPlate, Problem, Data, QEMParam, OptParam
+from alan import Normal, Poisson, Timeseries, Plate, BoundPlate, Problem, Data, QEMParam, OptParam
 import math
 nRs = 92
 nWs = 21
@@ -48,8 +48,8 @@ def get_P(platesizes, covariates):
     R_prior_mean_scale=0.2
     R_noise_scale=0.4
     
-    Expected_Log_Rs = lambda RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility, prev: RegionR - \
-                        CM_alpha@ActiveCMs_NPIs - Wearing_alpha*ActiveCMs_wearing - Mobility_alpha*ActiveCMs_mobility + prev
+    Expected_Log_Rs = lambda RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility, prev: RegionR + \
+                        CM_alpha@ActiveCMs_NPIs + Wearing_alpha*ActiveCMs_wearing + Mobility_alpha*ActiveCMs_mobility + prev
 
     P = Plate(
         #Effect of NPI
@@ -67,9 +67,9 @@ def get_P(platesizes, covariates):
             nWs = Plate(
                 log_infected_noise = Normal(0, 1),
                 log_infected = Timeseries('InitialSize_log', Normal(Expected_Log_Rs, lambda log_infected_noise: log_infected_noise.exp())),
-                #total count parameter for negative binomial
+
                 #Observations
-                obs = NegativeBinomial(total_count=1000, probs=lambda log_infected: 1000/(1000 + t.exp(log_infected) + 1e-4) ),
+                obs = Poisson(rate = lambda log_infected: t.exp(log_infected) + 1e-6)
             ),
         ),  
     )
@@ -97,7 +97,6 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                     #log_infected = Timeseries('InitialSize_log', Normal(lambda prev, RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility: prev + RegionR - CM_alpha@ActiveCMs_NPIs - Wearing_alpha*ActiveCMs_wearing - Mobility_alpha*ActiveCMs_mobility, 0.1)),
                     log_infected_noise = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                     log_infected = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-                    # Psi = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                     obs = Data()
                 ),
             ),
@@ -118,7 +117,6 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                 nWs = Plate(
                     log_infected_noise = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                     log_infected = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
-                    # Psi = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                     obs = Data()
                 ),
             ),
@@ -226,7 +224,7 @@ if __name__ == "__main__":
             elbo = sample.elbo_nograd()
             elbos['qem'][num_run, i] = elbo.detach()
             
-            sample.update_qem_params(qem_lr)
+            sample.update_qem_params(lr)
 
 
 

@@ -50,7 +50,7 @@ def logPQ_sample(
     scope = update_scope(scope, sample)
     
     #all_Ks doesn't include Ks from timeseries.
-    lps, all_Ks, _, _ = lp_getter(
+    lps, non_ts_Ks, ts_Ks, _ = lp_getter(
         name=name,
         P=P, 
         Q=Q, 
@@ -72,8 +72,12 @@ def logPQ_sample(
             lps[i] = lps[i].order(dim)[indices[dim]]
 
 
-    if len(all_Ks) > 0:
-        indices = {**indices, **sample_Ks(lps, all_Ks,N_dim, num_samples)}
+    if len(non_ts_Ks) > 0:
+        indices = {**indices, **sample_Ks(lps, non_ts_Ks,N_dim, num_samples)}
+        
+    if len(ts_Ks) > 0:
+        #need a new version of the function here
+        indices = {**indices, **sample_Ks(lps, ts_Ks, N_dim, num_samples)}
         
     for childname, childQ in Q.grouped_prog.items():
         if isinstance(childQ, Plate):

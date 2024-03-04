@@ -93,8 +93,8 @@ def plot(method_names=['qem', 'rws', 'vi'], window_sizes=[50], dataset_seeds=[0]
         for window_size in window_sizes:
             # Plot for elbos
             axs[0,0].set_ylabel('ELBO')
-            axs[1,0].set_xlabel('Iteration')
-            axs[1,1].set_xlabel('Iteration')
+            axs[1,0].set_xlabel('Time (s)')
+            axs[1,1].set_xlabel('Time (s)')
             axs[1,0].set_ylabel('Predictive Log-Likelihood')
             for k, K in enumerate(Ks):
                 K_idx = K_idxs[k]
@@ -107,6 +107,8 @@ def plot(method_names=['qem', 'rws', 'vi'], window_sizes=[50], dataset_seeds=[0]
                         # breakpoint()
                         # mean_values = elbos[method_name][K_idx,j].mean(1)
                         mean_values = np.nanmean(elbos[method_name][K_idx,j], 1)
+                        times = np.nanmean(iter_times[method_name][K_idx,j],1).cumsum()
+
                         # mean_values = elbos[method_name][K_idx,j]
 
 
@@ -123,10 +125,10 @@ def plot(method_names=['qem', 'rws', 'vi'], window_sizes=[50], dataset_seeds=[0]
 
                         alpha_val = 1 - 0.5*j/len(lrs[method_name])
 
-                        axs[0,model_iter].plot(smoothed_mean_values, label=f'{method_name.upper()}: lr={lr}', color=colour, alpha=alpha_val)
+                        axs[0,model_iter].plot(times, smoothed_mean_values, label=f'{method_name.upper()}: lr={lr}', color=colour, alpha=alpha_val)
                         # axs[0,0].fill_between(range(len(smoothed_mean_values)), smoothed_mean_values - std_errs, smoothed_mean_values + std_errs, alpha=0.2*alpha_val, color=colour)
 
-                        axs[1,model_iter].plot(smoothed_mean_values_pll, label=f'{method_name.upper()}: lr={lr}', color=colour, alpha=alpha_val)
+                        axs[1,model_iter].plot(times, smoothed_mean_values_pll, label=f'{method_name.upper()}: lr={lr}', color=colour, alpha=alpha_val)
                         # axs[1,0].fill_between(times, smoothed_mean_values - std_errs, smoothed_mean_values + std_errs, alpha=0.2*alpha_val, color=colour)
 
                         
@@ -137,10 +139,10 @@ def plot(method_names=['qem', 'rws', 'vi'], window_sizes=[50], dataset_seeds=[0]
                         
 
 
-    axs[0,0].set_title('a)', loc='left')
-    axs[0,1].set_title('b)', loc='left')
-    axs[1,0].set_title('c)', loc='left')
-    axs[1,1].set_title('d)', loc='left')
+    axs[0,0].set_title('MovieLens', loc='left')
+    axs[0,1].set_title('Bus Breakdown', loc='left')
+
+ 
 
 
     # Add legend 
