@@ -1,0 +1,5 @@
+lbatch -c 1 -g 1 --gputype A100 --exclude_40G_A100 -t 3 -m 64 -a ********** -n _OMPIS   --queue cnu --cmd 'python runner_moments_IS.py model=occupancy method=mpis split.plate=plate_Ids split.size=1 split.min_K=10000000 reparam=False'
+lbatch -c 1 -g 1 --gputype A100 --exclude_40G_A100 -t 3 -m 64 -a ********** -n _OMPIS_F --queue cnu --cmd 'python runner_moments_IS.py model=occupancy method=mpis split.plate=plate_Ids split.size=1 split.min_K=10000000 reparam=False fake_data=True'
+
+lbatch -c 1 -g 1 --gputype A100 --exclude_40G_A100 -t 3 -m 64 -a ********** -n _OGIS   --queue cnu --cmd 'python runner_moments_IS.py model=occupancy method=global_is split.plate=plate_Ids split.size=1 split.min_K=10000000 reparam=False'
+lbatch -c 1 -g 1 --gputype A100 --exclude_40G_A100 -t 3 -m 64 -a ********** -n _OGIS_F --queue cnu --cmd 'python runner_moments_IS.py model=occupancy method=global_is split.plate=plate_Ids split.size=1 split.min_K=10000000 reparam=False fake_data=True'

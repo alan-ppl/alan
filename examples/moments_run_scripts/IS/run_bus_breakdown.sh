@@ -1,0 +1,5 @@
+lbatch -c 1 -g 1 --gputype A100 --exclude_40G_A100 -t 3 -m 64 -a ********** -n _BMPIS   --queue cnu --cmd 'python runner_moments_IS.py model=bus_breakdown method=mpis split.plate=plate_ID split.size=2 split.min_K=10000000'
+lbatch -c 1 -g 1 --gputype A100 --exclude_40G_A100 -t 3 -m 64 -a ********** -n _BMPIS_F --queue cnu --cmd 'python runner_moments_IS.py model=bus_breakdown method=mpis split.plate=plate_ID split.size=2 split.min_K=10000000 fake_data=True'
+
+lbatch -c 1 -g 1 --gputype A100 --exclude_40G_A100 -t 3 -m 64 -a ********** -n _BGIS   --queue cnu --cmd 'python runner_moments_IS.py model=bus_breakdown method=global_is split.plate=plate_ID split.size=2 split.min_K=10000000'
+lbatch -c 1 -g 1 --gputype A100 --exclude_40G_A100 -t 3 -m 64 -a ********** -n _BGIS_F --queue cnu --cmd 'python runner_moments_IS.py model=bus_breakdown method=global_is split.plate=plate_ID split.size=2 split.min_K=10000000 fake_data=True'

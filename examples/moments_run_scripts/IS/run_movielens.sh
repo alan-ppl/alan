@@ -1,0 +1,5 @@
+lbatch -c 1 -g 1 --gputype A100 --exclude_40G_A100 -t 3 -m 64 -a ********** -n _MMPIS   --queue cnu --cmd 'python runner_moments_IS.py model=movielens method=mpis split.plate=plate_1 split.size=10 split.min_K=10000000'
+lbatch -c 1 -g 1 --gputype A100 --exclude_40G_A100 -t 3 -m 64 -a ********** -n _MMPIS_F --queue cnu --cmd 'python runner_moments_IS.py model=movielens method=mpis split.plate=plate_1 split.size=10 split.min_K=10000000 fake_data=True'
+
+lbatch -c 1 -g 1 --gputype A100 --exclude_40G_A100 -t 3 -m 64 -a ********** -n _MGIS   --queue cnu --cmd 'python runner_moments_IS.py model=movielens method=global_is split.plate=plate_1 split.size=10 split.min_K=10000000'
+lbatch -c 1 -g 1 --gputype A100 --exclude_40G_A100 -t 3 -m 64 -a ********** -n _MGIS_F --queue cnu --cmd 'python runner_moments_IS.py model=movielens method=global_is split.plate=plate_1 split.size=10 split.min_K=10000000 fake_data=True'

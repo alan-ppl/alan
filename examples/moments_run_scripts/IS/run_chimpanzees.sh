@@ -1,0 +1,5 @@
+lbatch -c 1 -g 1 --gputype A100 --exclude_40G_A100 -t 3 -m 64 -a ********** -n _CMPIS   --queue cnu --cmd 'python runner_moments_IS.py model=chimpanzees method=mpis split.plate=plate_repeats split.size=1 split.min_K=10000000'
+lbatch -c 1 -g 1 --gputype A100 --exclude_40G_A100 -t 3 -m 64 -a ********** -n _CMPIS_F --queue cnu --cmd 'python runner_moments_IS.py model=chimpanzees method=mpis split.plate=plate_repeats split.size=1 split.min_K=10000000 fake_data=True'
+
+lbatch -c 1 -g 1 --gputype A100 --exclude_40G_A100 -t 3 -m 64 -a ********** -n _CGIS   --queue cnu --cmd 'python runner_moments_IS.py model=chimpanzees method=global_is split.plate=plate_repeats split.size=1 split.min_K=10000000'
+lbatch -c 1 -g 1 --gputype A100 --exclude_40G_A100 -t 3 -m 64 -a ********** -n _CGIS_F --queue cnu --cmd 'python runner_moments_IS.py model=chimpanzees method=global_is split.plate=plate_repeats split.size=1 split.min_K=10000000 fake_data=True'
