@@ -48,8 +48,8 @@ def get_P(platesizes, covariates):
     R_prior_mean_scale=0.2
     R_noise_scale=0.4
     
-    Expected_Log_Rs = lambda RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility, prev: RegionR + \
-                        CM_alpha@ActiveCMs_NPIs + Wearing_alpha*ActiveCMs_wearing + Mobility_alpha*ActiveCMs_mobility + prev
+    Expected_Log_Rs = lambda RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility, prev: RegionR - \
+                        CM_alpha@ActiveCMs_NPIs - Wearing_alpha*ActiveCMs_wearing - Mobility_alpha*ActiveCMs_mobility + prev
 
     P = Plate(
         #Effect of NPI
@@ -61,11 +61,13 @@ def get_P(platesizes, covariates):
         #R for each region
         RegionR = Normal(R_prior_mean_mean, R_prior_mean_scale + R_noise_scale),
 
+        InitialSize_log_mean = Normal(math.log(1000), 0.5),
+        log_infected_noise = Normal(math.log(0.01), 0.5),
         nRs = Plate(
             #Initial number of infected in each region
-            InitialSize_log = Normal(0, 1),
+            InitialSize_log = Normal(lambda InitialSize_log_mean: InitialSize_log_mean, 0.5),
+            
             nWs = Plate(
-                log_infected_noise = Normal(0, 1),
                 log_infected = Timeseries('InitialSize_log', Normal(Expected_Log_Rs, lambda log_infected_noise: log_infected_noise.exp())),
 
                 #Observations
@@ -90,13 +92,15 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             Mobility_alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
             RegionR = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
             #Expected_Log_Rs = lambda RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility: RegionR - CM_alpha*ActiveCMs_NPIs - Wearing_alpha*ActiveCMs_wearing - Mobility_alpha*ActiveCMs_mobility,
-            
+            InitialSize_log_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+            log_infected_noise = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
             nRs = Plate(
                 InitialSize_log = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                 nWs = Plate(
                     #log_infected = Timeseries('InitialSize_log', Normal(lambda prev, RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility: prev + RegionR - CM_alpha@ActiveCMs_NPIs - Wearing_alpha*ActiveCMs_wearing - Mobility_alpha*ActiveCMs_mobility, 0.1)),
-                    log_infected_noise = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                    
                     log_infected = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                    # Psi = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                     obs = Data()
                 ),
             ),
@@ -112,11 +116,15 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             Wearing_alpha = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
             Mobility_alpha = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
             RegionR = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+            
+            InitialSize_log_mean = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+            log_infected_noise = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
             nRs = Plate(
                 InitialSize_log = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                 nWs = Plate(
-                    log_infected_noise = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                     log_infected = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+                    
+                    # Psi = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                     obs = Data()
                 ),
             ),
@@ -224,7 +232,7 @@ if __name__ == "__main__":
             elbo = sample.elbo_nograd()
             elbos['qem'][num_run, i] = elbo.detach()
             
-            sample.update_qem_params(lr)
+            sample.update_qem_params(qem_lr)
 
 
 

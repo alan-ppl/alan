@@ -1,5 +1,5 @@
 import torch as t
-from alan import Split
+from alan import Split, mean, mean2
 import pickle
 import time
 import hydra
@@ -66,6 +66,13 @@ def run_experiment(cfg):
     elbos = t.zeros((len(Ks), len(lrs), num_iters+1, num_runs)).to(device)
     p_lls = t.zeros((len(Ks), len(lrs), num_iters+1, num_runs)).to(device)
 
+
+    temp_P = model.get_P(platesizes, covariates)
+    latent_names = list(temp_P.varname2groupvarname().keys())
+    latent_names.remove('obs')
+
+    moment_list = list(zip(latent_names, [mean, mean2]*len(latent_names)))
+    
     # the below times should NOT include predictive ll computation time, as this is optional
     iter_times = t.zeros((len(Ks), len(lrs), num_iters+1, num_runs))
 
@@ -135,6 +142,27 @@ def run_experiment(cfg):
 
                         iter_times[K_idx, lr_idx, i, num_run] = elbo_end_time - elbo_start_time + update_end_time - update_start_time
                 
+                        t.save(prob.state_dict(), f"{cfg.model}/results/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}.pth")
+                        
+                        moments = {name:[] for name in latent_names}
+                        for _ in range(100):
+                            sample = prob.sample(K, reparam=False)
+                            
+                            
+                            m = sample.moments(moment_list)
+                            for j, k in enumerate(latent_names):
+                                moments[k].append(m[j].rename(None))
+                                
+                            #convert moments to numpy
+                        
+                        for k,v in moments.items():
+                            moments[k] = t.stack(v).detach().mean(0).cpu().numpy()
+                        
+                        #save moments to file
+                        with open(f"{cfg.model}/results/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_moments.pkl", "wb") as f:
+                            pickle.dump(moments, f)
+                            
+                        
                 except Exception as e:
                     print(f"num_run: {num_run} K: {K} lr: {lr} failed at iteration {i} with exception {e}.")
                     if cfg.write_job_status:

@@ -73,7 +73,7 @@ def std_from_raw_moment(rm:RawMoment):
     
     def combineer_sqrt(Ex, Ex2):
         min = t.finfo(Ex2.dtype).tiny
-        return (Ex2 - Ex*Ex).clamp(min=min).sqrt()
+        return (Ex2 - Ex*Ex).sqrt().clamp(min=min)
     
     return CompoundMoment(combineer_sqrt, [rm, rm2])
 

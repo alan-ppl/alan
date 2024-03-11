@@ -132,13 +132,13 @@ def run_experiment(cfg):
                         t.save(prob.state_dict(), f"covid/results/{cfg.model}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}.pth")
                         
                         moment_fns = [mean, mean2]
-                        if cfg.model in ['covid', 'covid_poisson']:
+                        if cfg.model in ['covid', 'covid_poisson', 'covid_cn', 'covid_poisson_cn']:
                             names = ['CM_mean', 'CM_ex2', 'Wearing_mean', 'Wearing_ex2', 'Mobility_mean', 'Mobility_ex2']
                             latents = ['CM_alpha', 'Wearing_alpha', 'Mobility_alpha']
-                        elif cfg.model == 'poisson_only_wearing_mobility':
+                        elif cfg.model in ['poisson_only_wearing_mobility', 'poisson_only_wearing_mobility_cn']:
                             names = ['Mobility_mean', 'Mobility_ex2', 'Wearing_mean', 'Wearing_ex2']
                             latents = ['Wearing_alpha', 'Mobility_alpha']
-                        elif cfg.model == 'poisson_only_npis':
+                        elif cfg.model in ['poisson_only_npis', 'poisson_only_npis_cn']:
                             names = ['CM_mean', 'CM_ex2']
                             latents = ['CM_alpha']
 
@@ -156,7 +156,7 @@ def run_experiment(cfg):
                             #convert moments to numpy
                         
                         for k,v in moments.items():
-                            moments[k] = t.stack(v).detach().cpu().numpy()
+                            moments[k] = t.stack(v).detach().mean(0).cpu().numpy()
                             
                                 
                         #save moments to file
@@ -171,9 +171,9 @@ def run_experiment(cfg):
 
                         log_infected = moments['log_infected'].rename(None)
 
-                        if cfg.model == 'covid':
+                        if cfg.model in ['covid', 'covid_cn']:
                             predicted_obs = {'obs':NegativeBinomial(total_count = 1000, probs=1000/(1000 + t.exp(log_infected) + 1e-4)).sample(t.Size([100]))}
-                        if cfg.model in ['covid_poisson', 'poisson_only_wearing_mobility', 'poisson_only_npis']:
+                        if cfg.model in ['covid_poisson', 'poisson_only_wearing_mobility', 'poisson_only_npis', 'covid_poisson_cn', 'poisson_only_wearing_mobility_cn', 'poisson_only_npis_cn']:
                             predicted_obs = {'obs':Poisson(rate = t.exp(log_infected) + 1e-6).sample(t.Size([100]))}
                             
                             

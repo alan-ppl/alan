@@ -5,7 +5,7 @@ import re
 import glob
 import os
 
-weather = pd.read_csv('2020Release_Nor/weather.csv')
+weather = pd.read_csv('2022Release_Nor/weather.csv')
 
 weather = weather.loc[~weather['StartTemp'].astype(str).str.contains('NULL')]
 weather = weather.loc[~weather['StartTemp'].isna()]
@@ -16,7 +16,7 @@ years = weather['Year'].sort_values().unique()
 
 # weather.set_index(['Year', 'RouteDataID'], inplace=True)
 
-all_files = glob.glob('2020Release_Nor/States/*.csv')
+all_files = glob.glob('2022Release_Nor/States/*.csv')
 
 dfs = []
 
@@ -31,10 +31,6 @@ while i < 3:
     print(i)
     t.manual_seed(k)
     k += 1
-
-
-
-
 
 
     try:
