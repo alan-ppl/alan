@@ -3,16 +3,14 @@ from alan import Normal, Plate, BoundPlate, Problem, Timeseries, Data, Group, QE
 from functorch.dim import Dim 
 import sys
 import matplotlib.pyplot as plt
-from alan.logpq import logPQ_plate, lp_getter
-from alan.utils import sum_non_dim
-from alan.Plate import tensordict2tree, update_scope
+from alan.logpq import lp_getter
+from alan.Plate import update_scope
 
 DATA_SEED = 100
 USE_MISSPECIFIED_PRIOR = False
 USE_MISSPECIFIED_Q = False
 
-QEM0 = None
-SMC0 = None
+PRINT_QEM_MEANS = False
 
 def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, use_misspecified_q = USE_MISSPECIFIED_Q, plot_folder=''):
 
@@ -22,7 +20,7 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
     K_particles = K
     lr = 0.1
 
-    num_iters = 500
+    num_iters = 250
 
     def get_P(wrong_init=False):
         P = Plate( 
@@ -110,16 +108,14 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
     update_param_dict(indep_params, problem.Q.qem_params(), 0)
 
     for i in range(num_iters):
-        print(i)
+        print(f"{i} QEM")
         t.manual_seed(i)
         sample = problem.sample(K=K)
         indep_elbos[i] = sample.elbo_nograd().item()
 
-        if i == 0:
-            QEM0 = sample.detached_sample
-
-        # print(f"{i} QEM ts_init: {problem.Q._qem_means.ts_init_mean} {problem.Q._qem_means.ts_init_mean2}")
-        # print(f"{i} QEM ts_log_var: {problem.Q._qem_means.ts_log_var_mean} {problem.Q._qem_means.ts_log_var_mean2}")
+        if PRINT_QEM_MEANS:
+            print(f"{i} QEM ts_init: {problem.Q._qem_means.ts_init_mean} {problem.Q._qem_means.ts_init_mean2}")
+            print(f"{i} QEM ts_log_var: {problem.Q._qem_means.ts_log_var_mean} {problem.Q._qem_means.ts_log_var_mean2}")
 
         sample.update_qem_params(lr)
         update_param_dict(indep_params, problem.Q.qem_params(), i)
@@ -140,40 +136,39 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
 
     SMC_successful_iters = num_iters
 
-    particle_vars = t.zeros(K, K, T, num_iters)
-
     try:
         for i in range(num_iters):
-            print(i)
+            print(f"{i} SMC")
             t.manual_seed(i)
             sample = problem.sample(K=K)
             smc_elbos[i] = sample.elbo_nograd().item()
 
-            if i == 0:
-                SMC0 = sample.detached_sample
+            if PRINT_QEM_MEANS:
+                print(f"{i} SMC ts_init: {problem.Q._qem_means.ts_init_mean} {problem.Q._qem_means.ts_init_mean2}")
+                print(f"{i} SMC ts_log_var: {problem.Q._qem_means.ts_log_var_mean} {problem.Q._qem_means.ts_log_var_mean2}")
 
-            # get importance weights (p/q) for the hyperprior samples (ts_init and ts_log_var)
+            # get importance weights (p/q) for the K dims of hyperprior samples (ts_init and ts_log_var) and the their use in the timeseries
             lpq_scope = {}
             lpq_scope = update_scope(lpq_scope, sample.detached_sample)
             lpq_scope = update_scope(lpq_scope, sample.problem.inputs_params())
-
-            lpq, _, _, _ = logPQ_plate(
-                name='T',
-                P=sample.P.plate.grouped_prog['T'], 
-                Q=sample.Q.plate.grouped_prog['T'], 
-                sample=sample.detached_sample['T'],
-                inputs_params=sample.problem.inputs_params()['T'],
-                data=sample.problem.data['T'],
-                extra_log_factors={},
+       
+            lpq, _, _, _ = lp_getter(
+                name=None,
+                P=sample.P.plate, 
+                Q=sample.Q.plate, 
+                sample=sample.detached_sample,
+                inputs_params=sample.problem.inputs_params(),
+                data=sample.problem.data,
+                extra_log_factors={'T': {}},
                 scope=lpq_scope, 
-                active_platedims=[sample.all_platedims['T']],
+                active_platedims=[],
                 all_platedims=sample.all_platedims,
                 groupvarname2Kdim=sample.groupvarname2Kdim,
                 varname2groupvarname=sample.problem.Q.varname2groupvarname(),
                 sampler=sample.sampler,
                 computation_strategy=checkpoint,
                 )
-            
+                        
             # samples of parameters in P that the timeseries depends on
             ts_init = sample.detached_sample['ts_init']
             ts_log_var = sample.detached_sample['ts_log_var']
@@ -225,10 +220,6 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
                 ts_mean[timestep]  = ((particles.order(T_dim)[timestep]    * weights).sum(K_dim)) / (weights.sum(K_dim)) # shape [K, K]
                 ts_mean2[timestep] = ((particles.order(T_dim)[timestep]**2 * weights).sum(K_dim)) / (weights.sum(K_dim)) # shape [K, K]
 
-                # particle_vars[:, :, timestep, i] = ((particles.order(T_dim)[timestep] - ts_mean[timestep])**2 * weights).mean(K_dim).order(init_dim, log_var_dim) # shape [K, K]
-                particle_vars[:, :, timestep, i] = ((ts_mean2[timestep] - ts_mean[timestep]**2)).order(init_dim, log_var_dim) # shape [K, K]
-                # particle_vars[:, :, timestep, i] = ((particles.order(T_dim)[timestep]*weights - particles.order(T_dim)[timestep].mean(K_dim))**2).mean(K_dim).order(init_dim, log_var_dim) # shape [K, K]
-
                 # resample the particles (TODO: ONLY RESAMPLE IF ESS IS LOW e.g. < K_particles*0.6ish)
                 resampled_indices = t.multinomial(weights.order(K_dim), K_particles, replacement=True)  # shape [K_particles, K, K]
                 
@@ -236,68 +227,42 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
 
                 # log_weights = log_weights.order(K_dim).gather(0, resampled_indices)[K_dim]  # shape [K_particles, K, K]
 
+            # calculate the ESS
             ess[..., i] = 1/(((log_weights.exp()/log_weights.exp().sum(K_dim))**2).sum(K_dim)).order(init_dim, log_var_dim)
 
-            marginal_lpq = (marginal_ll + lpq)
-            marginal_lpq = (marginal_lpq - marginal_lpq.amax(ts_param_dims)).exp()
-            marginal_lpq /= marginal_lpq.sum(ts_param_dims)
-
-            # print(f"{i} SMC ts_init: {problem.Q._qem_means.ts_init_mean} {problem.Q._qem_means.ts_init_mean2}")
-            # print(f"{i} SMC ts_log_var: {problem.Q._qem_means.ts_log_var_mean} {problem.Q._qem_means.ts_log_var_mean2}")
-
             # now we need to use the marginal_lpq to calculate moments of each parameter
+            smc_qem_weights = {'ts_init':    marginal_ll + lpq[0],
+                               'ts_log_var': marginal_ll + lpq[1],
+                               'ts':         marginal_ll + lpq[2]}
 
-            # NOTE: we get the same results if we use alan's Marginals class:
-            #
-            #   marginal_weights = {frozenset(['ts_init']): marginal_ll.sum(log_var_dim),
-            #                       frozenset(['ts_log_var']): marginal_ll.sum(init_dim),
-            #                      }
-            #   marginals = Marginals({'ts_init': ts_init, 'ts_log_var': ts_log_var}, marginal_weights, problem.all_platedims, problem.Q.varname2groupvarname())
-            #   marginals.moments([('ts_init', mean), ('ts_init', mean2), ('ts_log_var', mean), ('ts_log_var', mean2)])
-            #
-            # but we're doing it manually below
+            # normalise the weights
+            for key, val in smc_qem_weights.items():
+                smc_qem_weights[key] = (val - val.amax(ts_param_dims)).exp()
+                smc_qem_weights[key] /= smc_qem_weights[key].sum(ts_param_dims)
 
-            # breakpoint()
-
-            # first, ts_init
-            new_moment1 = (ts_init    * marginal_lpq.sum(log_var_dim)).sum(init_dim) #/ marginal_ll.sum(ts_param_dims)
-            new_moment2 = (ts_init**2 * marginal_lpq.sum(log_var_dim)).sum(init_dim) #/ marginal_ll.sum(ts_param_dims)
-
-            # print(f"{i} SMC ts_init: {new_moment1} {new_moment2}")
+            # first, update ts_init
+            new_moment1 = (ts_init    * smc_qem_weights['ts_init']).sum(ts_param_dims) 
+            new_moment2 = (ts_init**2 * smc_qem_weights['ts_init']).sum(ts_param_dims) 
 
             problem.Q._qem_means.ts_init_mean.mul_(1-lr).add_(new_moment1, alpha=lr)
             problem.Q._qem_means.ts_init_mean2.mul_(1-lr).add_(new_moment2, alpha=lr)
 
             # then, ts_log_var
-            new_moment1 = (ts_log_var    * marginal_lpq.sum(init_dim)).sum(log_var_dim) #/ marginal_ll.sum(ts_param_dims)
-            new_moment2 = (ts_log_var**2 * marginal_lpq.sum(init_dim)).sum(log_var_dim) #/ marginal_ll.sum(ts_param_dims)
-
-            # print(f"{i} SMC ts_log_var: {new_moment1} {new_moment2}")
+            new_moment1 = (ts_log_var    * smc_qem_weights['ts_log_var']).sum(ts_param_dims) 
+            new_moment2 = (ts_log_var**2 * smc_qem_weights['ts_log_var']).sum(ts_param_dims) 
 
             problem.Q._qem_means.ts_log_var_mean.mul_(1-lr).add_(new_moment1, alpha=lr)
             problem.Q._qem_means.ts_log_var_mean2.mul_(1-lr).add_(new_moment2, alpha=lr)
             
             # finally, the ts latents
-            ts_mean = (ts_mean * marginal_lpq).sum(ts_param_dims) #/ marginal_ll.sum(ts_param_dims)
-            ts_mean2 = (ts_mean2 * marginal_lpq).sum(ts_param_dims) #/ marginal_ll.sum(ts_param_dims)
-
-            # ts_mean2 = (ts_mean**2 * marginal_ll).sum(ts_param_dims) / marginal_ll.sum(ts_param_dims)
+            ts_mean = (ts_mean * smc_qem_weights['ts']).sum(ts_param_dims) 
+            ts_mean2 = (ts_mean2 * smc_qem_weights['ts']).sum(ts_param_dims) 
 
             problem.Q._qem_means.ts_mean.mul_(1-lr).add_(ts_mean, alpha=lr)
             problem.Q._qem_means.ts_mean2.mul_(1-lr).add_(ts_mean2, alpha=lr)
 
-
-            particle_vars = particle_vars[init_dim, log_var_dim]
-            particle_vars[:, i] *= marginal_ll
-            particle_vars = particle_vars.order(init_dim, log_var_dim)
-
-            # breakpoint()
             # update the conventional parameters
             problem.Q._update_qem_convparams()
-
-            # manually set the timeseries QEM scales to the particle variance
-            # breakpoint()
-            # problem.Q._qem_params.ts_scale = particle_vars.sum((0,1))[:,i].sqrt()
 
             # save the parameters for this iteration
             update_param_dict(smc_params, problem.Q.qem_params(), i)
@@ -347,9 +312,6 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
                 axs[col].plot(smc_vals, label='smc', color='green')
                 axs[col].fill_between(t.arange(num_iters), smc_vals - smc_errs, smc_vals + smc_errs, alpha=0.2, color='green')
 
-                # axs[col].plot(smc_vals - particle_vars.sum((0,1))[j].sqrt(), linestyle='--', color='lime', label='mean var(particles)')
-                # axs[col].plot(smc_vals + particle_vars.sum((0,1))[j].sqrt(), linestyle='--', color='lime')
-                
                 axs[col].set_title(key + ' at timestep ' + str(j+1))
                 # axs[col].legend()
                 col += 1
