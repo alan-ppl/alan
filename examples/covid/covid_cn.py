@@ -53,16 +53,18 @@ def get_P(platesizes, covariates):
 
     P = Plate(
         #Effect of NPI
-        CM_alpha = Normal(0, cm_prior_scale, sample_shape=[nCMs-2]),
-        #Effect of mask wearing
-        Wearing_alpha = Normal(wearing_mean, wearing_sigma),
-        #Effect of mobility restrictions
-        Mobility_alpha = Normal(mobility_mean, mobility_sigma),
-        #R for each region
-        RegionR = Normal(R_prior_mean_mean, R_prior_mean_scale + R_noise_scale),
+        npis = Group(
+            CM_alpha = Normal(0, cm_prior_scale, sample_shape=[nCMs-2]),
+            #Effect of mask wearing
+            Wearing_alpha = Normal(wearing_mean, wearing_sigma),
+            #Effect of mobility restrictions
+            Mobility_alpha = Normal(mobility_mean, mobility_sigma),
+            #R for each region
+            RegionR = Normal(R_prior_mean_mean, R_prior_mean_scale + R_noise_scale),
 
-        InitialSize_log_mean = Normal(math.log(1000), 0.5),
-        log_infected_noise_mean = Normal(math.log(0.01), 0.25),
+            InitialSize_log_mean = Normal(math.log(1000), 0.5),
+            log_infected_noise_mean = Normal(math.log(0.01), 0.25),
+        ),
         nRs = Plate(
             #Initial number of infected in each region
             a = Group(

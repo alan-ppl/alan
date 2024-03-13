@@ -121,7 +121,7 @@ def run_experiment(cfg):
                             latent_shape = trace.posterior[name].mean(("chain", "draw")).shape
                             moments_collection[name] = np.zeros((num_samples, num_runs, *latent_shape))
                             
-                        moments_collection[name][:, num_run, ...] = np.array([trace.posterior[name][:,:j].mean(("chain", "draw")).data for j in range(1, num_samples+1)])
+                        moments_collection[name][:, num_run, ...] = np.array([trace.posterior[name][:,:j].mean(("chain", "draw")).data for j in range(1, num_samples+1)]).mean(0)
 
                     # do predictive log likelihood
                     pm.set_data(pymc_model.get_test_data_cov_dict(all_data, all_covariates, platesizes))
@@ -177,6 +177,9 @@ def run_experiment(cfg):
         # if we're using real data, we rescale to obtain the unbiased sample variance estimator
         if not fake_data:
             MSEs[name] *= num_runs/(num_runs-1)
+        
+        
+        moments_collection[name] = moments_collection[name].mean(1)
 
     to_pickle = {'p_lls': p_lls, 'MSEs': MSEs,
                 'times': times, 'num_runs': num_runs, 
@@ -185,6 +188,9 @@ def run_experiment(cfg):
     with open(f'{cfg.model}/results/moments/HMC{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
         pickle.dump(to_pickle, f)
 
+    with open(f'{cfg.model}/results/moments/HMC_moments{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
+        pickle.dump(moments_collection, f)
+        
     print()
 
 if __name__ == "__main__":

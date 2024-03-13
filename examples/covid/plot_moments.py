@@ -5,15 +5,15 @@ import numpy as np
 
 from pathlib import Path
 
-models = ['covid', 'covid_poisson', 'poisson_only_wearing_mobility', 'poisson_only_npis']
+models = ['covid_poisson_cn', 'poisson_only_wearing_mobility', 'poisson_only_npis']
 
 for mod in models:
     #Get moments from file
-    with open(f'results/{mod}/qem_moments_10_0.1.pkl', 'rb') as f:
+    with open(f'results/{mod}/qem_moments_3_0.01.pkl', 'rb') as f:
         moments = pickle.load(f)
         
     #Get predictive samples from file
-    with open(f'results/{mod}/qem_predictive_samples_10_0.1.pkl', 'rb') as f:
+    with open(f'results/{mod}/qem_predictive_samples_3_0.01.pkl', 'rb') as f:
         predicted_obs = pickle.load(f)
         
     #Get standard deviation from moments
@@ -69,7 +69,7 @@ for mod in models:
     
     #make same plot using parameters from the last iteration
     #Get model parameters from file
-    params = t.load(f'results/{mod}/qem_0_10_0.1.pth', map_location='cpu')
+    params = t.load(f'results/{mod}/qem_0_3_0.01.pth', map_location='cpu')
     
     CM_mean = params['Q._qem_means.CM_alpha_mean'].numpy()
     CM_std = np.sqrt(params['Q._qem_means.CM_alpha_mean2'].numpy() - CM_mean**2)

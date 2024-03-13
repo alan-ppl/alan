@@ -1,5 +1,5 @@
 import torch as t
-from alan import Normal, Poisson, Timeseries, Plate, BoundPlate, Problem, Data, QEMParam, OptParam
+from alan import Normal, Poisson, Timeseries, Plate, BoundPlate, Problem, Data, QEMParam, OptParam, Group
 import math
 nRs = 92
 nWs = 21
@@ -52,6 +52,7 @@ def get_P(platesizes, covariates):
                         Wearing_alpha*ActiveCMs_wearing + Mobility_alpha*ActiveCMs_mobility + prev
 
     P = Plate(
+        npis = Group(
         #Effect of NPI
         #CM_alpha = Normal(0, cm_prior_scale, sample_shape=[nCMs-2]),
         #Effect of mask wearing
@@ -60,11 +61,13 @@ def get_P(platesizes, covariates):
         Mobility_alpha = Normal(mobility_mean, mobility_sigma),
         #R for each region
         RegionR = Normal(R_prior_mean_mean, R_prior_mean_scale + R_noise_scale),
-
+        ),
         nRs = Plate(
             #Initial number of infected in each region
+            inits = Group(
             InitialSize_log = Normal(0, 1),
             log_infected_noise = Normal(0, 1),
+            ),
             nWs = Plate(
                 log_infected = Timeseries('InitialSize_log', Normal(Expected_Log_Rs, lambda log_infected_noise: log_infected_noise.exp())),
 
