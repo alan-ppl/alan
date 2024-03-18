@@ -5,7 +5,7 @@ import numpy as np
 
 from pathlib import Path
 
-models = ['covid_poisson_cn', 'poisson_only_wearing_mobility', 'poisson_only_npis']
+models = ['covid_poisson_cn']# 'poisson_only_wearing_mobility', 'poisson_only_npis']
 
 for mod in models:
     #Get moments from file
@@ -17,7 +17,7 @@ for mod in models:
         predicted_obs = pickle.load(f)
         
     #Get standard deviation from moments
-
+    print(moments)
     std = np.sqrt(moments['CM_ex2'].mean(0) - moments['CM_mean'].mean(0)**2)
 
     std_w = np.sqrt(moments['Wearing_ex2'].mean(0) - moments['Wearing_mean'].mean(0)**2)

@@ -71,6 +71,7 @@ def run_experiment(cfg):
             f.write(f"Starting job.\n")
 
     for num_run in range(num_runs):
+        moments = []
         for K_idx, K in enumerate(Ks):
             K_start_time = safe_time(device)
             for lr_idx, lr in enumerate(lrs):
@@ -141,8 +142,12 @@ def run_experiment(cfg):
                         elif cfg.model in ['poisson_only_npis', 'poisson_only_npis_cn']:
                             names = ['CM_mean', 'CM_ex2']
                             latents = ['CM_alpha']
-
-                        moments = {name:[] for name in names}
+                            
+                            
+                        if len(moments) == 10:
+                            del moments[-10]
+                            
+                        moments.append({name:[] for name in names})
                         for _ in range(100):
                             sample = prob.sample(K, reparam)
                             
@@ -150,13 +155,13 @@ def run_experiment(cfg):
                             desired_moments = tuple(product(latents, moment_fns))
                             
                             m = sample.moments(desired_moments)
-                            for j, k in enumerate(moments.keys()):
-                                moments[k].append(m[j].rename(None))
+                            for j, k in enumerate(moments[-1].keys()):
+                                moments[-1][k].append(m[j].rename(None))
                                 
                             #convert moments to numpy
                         
-                        for k,v in moments.items():
-                            moments[k] = t.stack(v).detach().mean(0).cpu().numpy()
+                        for k,v in moments[-1].items():
+                            moments[-1][k] = t.stack(v).detach().mean(0).cpu().numpy()
                             
                                 
                         #save moments to file
@@ -167,9 +172,12 @@ def run_experiment(cfg):
                         names = ['log_infected', 'log_infected_ex2']
                         desired_moments = (('log_infected', mean), ('log_infected', mean2))
 
-                        moments = dict(zip(names, sample.moments(desired_moments)))
+                        saving_moments = dict(zip(names, sample.moments(desired_moments)))
 
-                        log_infected = moments['log_infected'].rename(None)
+                        log_infected = saving_moments['log_infected'].rename(None)
+                        
+                        with open(f'covid/results/{cfg.model}/{cfg.method}_log_infected_{K}_{lr}.pkl', 'wb') as f:
+                            pickle.dump(log_infected.detach().cpu().numpy(), f)
 
                         if cfg.model in ['covid', 'covid_cn']:
                             predicted_obs = {'obs':NegativeBinomial(total_count = 1000, probs=1000/(1000 + t.exp(log_infected) + 1e-4)).sample(t.Size([100]))}

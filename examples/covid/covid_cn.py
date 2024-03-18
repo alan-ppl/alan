@@ -97,10 +97,8 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             InitialSize_log_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
             log_infected_noise_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
             nRs = Plate(
-                a = Group(
                     InitialSize_log = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                     log_infected_noise = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-                ),
                 nWs = Plate(
                     log_infected = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                     obs = Data()
@@ -122,10 +120,8 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             InitialSize_log_mean = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
             log_infected_noise_mean = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
             nRs = Plate(
-                a = Group(
                     InitialSize_log = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                     log_infected_noise = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
-                ),
                 nWs = Plate(
                     log_infected = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                     obs = Data()

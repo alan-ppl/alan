@@ -80,7 +80,9 @@ def run_experiment(cfg):
         with open(f"{cfg.model}/job_status/{cfg.method}{non_mp_string}_status.txt", "w") as f:
             f.write(f"Starting job.\n")
 
+    
     for num_run in range(num_runs):
+        moments = []
         for K_idx, K in enumerate(Ks):
             K_start_time = safe_time(device)
             for lr_idx, lr in enumerate(lrs):
@@ -144,19 +146,23 @@ def run_experiment(cfg):
                 
                         t.save(prob.state_dict(), f"{cfg.model}/results/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}.pth")
                         
-                        moments = {name:[] for name in latent_names}
+                        
+                        if len(moments) == 10:
+                            del moments[-10]
+                            
+                        moments.append({name:[] for name in latent_names})
                         for _ in range(100):
                             sample = prob.sample(K, reparam=False)
                             
                             
                             m = sample.moments(moment_list)
                             for j, k in enumerate(latent_names):
-                                moments[k].append(m[j].rename(None))
+                                moments[-1][k].append(m[j].rename(None))
                                 
                             #convert moments to numpy
                         
-                        for k,v in moments.items():
-                            moments[k] = t.stack(v).detach().mean(0).cpu().numpy()
+                        for k,v in moments[-1].items():
+                            moments[-1][k] = t.stack(v).detach().mean(0).cpu().numpy()
                         
                         #save moments to file
                         with open(f"{cfg.model}/results/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_moments.pkl", "wb") as f:
