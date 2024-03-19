@@ -85,12 +85,11 @@ def run_experiment(cfg):
         with open(job_status_file, "w") as f:
             f.write(f"Starting job.\n")
 
-    moments_collection = []
+    moments_collection = {}
 
     seed = 0
 
     for num_run in range(num_runs):
-        moments_collection.append({})
         num_failed = 0
         failed = True 
 
@@ -179,8 +178,7 @@ def run_experiment(cfg):
         if not fake_data:
             MSEs[name] *= num_runs/(num_runs-1)
         
-        
-        moments_collection[num_run][name] = moments_collection[name].mean(1)
+
 
     to_pickle = {'p_lls': p_lls, 'MSEs': MSEs,
                 'times': times, 'num_runs': num_runs, 

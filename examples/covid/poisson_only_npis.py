@@ -64,9 +64,8 @@ def get_P(platesizes, covariates):
         nRs = Plate(
             #Initial number of infected in each region
             InitialSize_log = Normal(0, 1),
+            log_infected_noise = Normal(0, 1),
             nWs = Plate(
-            
-                log_infected_noise = Normal(0, 1),
                 log_infected = Timeseries('InitialSize_log', Normal(Expected_Log_Rs, lambda log_infected_noise: log_infected_noise.exp())),
 
                 #Observations
@@ -94,9 +93,10 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             
             nRs = Plate(
                 InitialSize_log = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                log_infected_noise = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                 nWs = Plate(
                     #log_infected = Timeseries('InitialSize_log', Normal(lambda prev, RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility: prev + RegionR - CM_alpha@ActiveCMs_NPIs - Wearing_alpha*ActiveCMs_wearing - Mobility_alpha*ActiveCMs_mobility, 0.1)),
-                    log_infected_noise = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                    
                     log_infected = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                     obs = Data()
                 ),
@@ -115,8 +115,9 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             RegionR = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
             nRs = Plate(
                 InitialSize_log = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+                log_infected_noise = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                 nWs = Plate(
-                    log_infected_noise = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+                    
                     log_infected = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                     obs = Data()
                 ),

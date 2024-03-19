@@ -32,7 +32,6 @@ def Kdim2varname2tensors(scope: dict[str, Tensor], active_platedims: list[Dim]):
     """
     #dict[Dim, dict[str, Tensor]]
     Kdim2varname2tensor = {}
-    print("running")
     for varname, tensor in scope.items():
         dims = generic_dims(tensor)
         Kdims = list(set(dims).difference(active_platedims))
@@ -42,9 +41,7 @@ def Kdim2varname2tensors(scope: dict[str, Tensor], active_platedims: list[Dim]):
         else:
             Kdim = Kdims[0]
 
-        print(Kdim2varname2tensor.keys())
         if Kdim not in Kdim2varname2tensor:
-            print('hello')
             Kdim2varname2tensor[Kdim] = {}
 
         
