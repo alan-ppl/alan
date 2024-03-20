@@ -117,7 +117,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                     County_mean = Normal(QEMParam(0.), QEMParam(1.)),
                     County_log_sigma = Normal(QEMParam(0.), QEMParam(1.)),
                     Beta_u = Normal(QEMParam(0.), QEMParam(1.)),
-                    Beta_basement = Normal(QEMParam(0.), QEMParam(1.)),
+                    Beta_basement = Normal(QEMParam(0.), QEMParam(10.)),
                     Zips = Plate(
                         obs = Data(),
                     ),
