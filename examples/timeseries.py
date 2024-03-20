@@ -2,25 +2,25 @@ import torch as t
 from alan import Normal, Plate, BoundPlate, Problem, Timeseries, Data, Group
 
 P = Plate( 
-    ts1_init = Normal(0., 1.),
-    ts2_init = Normal(0., 1.),
-    T = Plate(
-        ts1 = Timeseries('ts1_init', Normal(lambda prev: 0.9*prev, 0.1)),
-        ts2 = Timeseries('ts2_init', Normal(lambda ts1, prev: 0.9*ts1 + prev, 0.1)),
-        a = Normal('ts2', 1.)
-    ),
-)
-
-Q = Plate( 
-    ts_init = Group(
+    gp1 = Group(
         ts1_init = Normal(0., 1.),
         ts2_init = Normal(0., 1.),
     ),
     T = Plate(
-        ts = Group(
+        gp2 = Group(
+            ts1 = Timeseries('ts1_init', Normal(lambda prev: 0.9*prev, 0.1)),
+            ts2 = Timeseries('ts2_init', Normal(lambda ts1, prev: 0.9*ts1 + prev, 0.1)),
+            a = Normal('ts2', 1.)
+        ),
+    ),
+)
+
+Q = Plate( 
+        ts1_init = Normal(0., 1.),
+        ts2_init = Normal(0., 1.),
+    T = Plate(
             ts1 = Normal(0., 1.),
             ts2 = Normal(0., 1.),
-        ),
         a = Data(),
     ),
 )

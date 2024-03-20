@@ -44,10 +44,12 @@ def Kdim2varname2tensors(scope: dict[str, Tensor], active_platedims: list[Dim]):
         if Kdim not in Kdim2varname2tensor:
             Kdim2varname2tensor[Kdim] = {}
 
+        
         if (Kdim is not None) and (1 < len(Kdim2varname2tensor[Kdim])):
             #If two tensors have the same K-dimension and thus are part of the
             #same group, then they should have exactly the same K/plate dims
-            dims_prev = generic_dims(next(iter(Kdim2varname2tensor.values())))
+            
+            dims_prev = generic_dims(next(iter(Kdim2varname2tensor[Kdim].values())))
             assert set(generic_dims(tensor)) == set(dims_prev)
 
         Kdim2varname2tensor[Kdim][varname] = tensor
