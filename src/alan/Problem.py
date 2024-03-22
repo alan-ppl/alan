@@ -6,7 +6,7 @@ from .Plate import Plate, tensordict2tree, flatten_tree
 from .BoundPlate import BoundPlate, named2torchdim_flat2tree
 from .Sampler import Sampler, IndependentSampler, PermutationSampler
 from .utils import *
-from .checking import check_PQ_plate, check_inputs_params, mismatch_names
+from .checking import check_PQ_plate, check_inputs_params, mismatch_names, check_PQ_grouping
 from .logpq import logPQ_plate
 from .Stores import BufferStore
 
@@ -52,6 +52,7 @@ class Problem(nn.Module):
         #Check the structure of P matches that of Q.
         check_PQ_plate(None, P.plate, Q.plate, self.data)
         check_inputs_params(P, Q)
+        check_PQ_grouping(P.plate, Q.plate)
 
     @property
     def data(self):
