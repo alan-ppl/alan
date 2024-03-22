@@ -56,10 +56,11 @@ def mismatch_PG_varnames(P:list[str], Q:list[str], area:str):
 def check_PQ_plate(platename: Optional[str], P: Plate, Q: Plate, data: dict):
     """
     Checks that 
-    * P and Q have the same Plate/Group structure
+    * P and Q have the same Plate structure
     * Distributions in P and Q have the same support
     Doesn't check:
     * Uniqueness of names
+    * Grouping
     """
 
     #Check for mismatches in the varnames between.
@@ -95,12 +96,6 @@ def check_PQ_plate(platename: Optional[str], P: Plate, Q: Plate, data: dict):
             dist_Q = timeseries_dist_Q.trans if isinstance(timeseries_dist_Q, Timeseries) else timeseries_dist_Q
             check_support(name, timeseries_P.trans, dist_Q)
 
-        elif isinstance(dgpt_P, Group):
-            groupP = dgpt_P
-            groupQ = Q.flat_prog[name]
-            if not isinstance(groupQ, Group):
-                raise Exception(f"{name} in P is a Group, so {name} in Q should also be a Group, but actually its a {type(groupQ)}.")
-
         elif isinstance(dgpt_P, Plate):
             plateP = dgpt_P
             plateQ = Q.flat_prog[name]
@@ -109,7 +104,18 @@ def check_PQ_plate(platename: Optional[str], P: Plate, Q: Plate, data: dict):
 
             #Recurse
             check_PQ_plate(name, plateP, plateQ, data[name])
-        elif isisntance(dgpt_P, Data):
+        elif isinstance(dgpt_P, Data):
             raise Exception(f"{name} in P is Data.  But we can't have Data in P.")
         else:
             raise Exception(f"{name} is an unrecognised type (should be Plate, Group, Dist or Data (but can only be data in Q))")
+
+def check_PQ_grouping(P: Plate, Q: Plate):
+    """
+    * Outputs a warning if both P and Q, or only P has grouping
+    """
+
+    for name in P.groups.keys():
+        if name not in Q.groups.keys():
+            raise Exception(f"Group {name} is present in P but not Q. Grouping should occur in Q alone.")
+        else:
+            raise Warning(f"Group {name} is present in P.  Grouping in P has no effect.")
