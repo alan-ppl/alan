@@ -3,8 +3,9 @@
   method: ???
   num_runs: 1
   num_iters: 2000
-  Ks: [3,10] #,100]
+  Ks: [3,10, 30] #,100]
   reparam: True
+  num_moments_to_save: 200
   predll:
     do_predll: False
     N_predll: 100

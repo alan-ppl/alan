@@ -5,26 +5,25 @@ import numpy as np
 
 from pathlib import Path
 
-models = ['covid_poisson_cn']# 'poisson_only_wearing_mobility', 'poisson_only_npis']
+models = ['covid']# 'poisson_only_wearing_mobility', 'poisson_only_npis']
 
 for mod in models:
     #Get moments from file
-    with open(f'results/{mod}/qem_moments_3_0.01.pkl', 'rb') as f:
+    with open(f'results/{mod}/qem_moments_30_0.01.pkl', 'rb') as f:
         moments = pickle.load(f)
         
     #Get predictive samples from file
-    with open(f'results/{mod}/qem_predictive_samples_3_0.01.pkl', 'rb') as f:
+    with open(f'results/{mod}/qem_predictive_samples_30_0.01.pkl', 'rb') as f:
         predicted_obs = pickle.load(f)
         
     #Get standard deviation from moments
-    print(moments)
-    std = np.sqrt(moments['CM_ex2'].mean(0) - moments['CM_mean'].mean(0)**2)
+    moments = moments[0]
+    std = np.sqrt(moments['CM_ex2'] - moments['CM_mean']**2)
 
-    std_w = np.sqrt(moments['Wearing_ex2'].mean(0) - moments['Wearing_mean'].mean(0)**2)
+    std_w = np.sqrt(moments['Wearing_ex2'] - moments['Wearing_mean']**2)
 
-    std_m = np.sqrt(moments['Mobility_ex2'].mean(0) - moments['Mobility_mean'].mean(0)**2)
+    std_m = np.sqrt(moments['Mobility_ex2'] - moments['Mobility_mean']**2)
 
-    print(moments)
 
     #NPIS
     NPIS = ['C1', 'C1_full', 'C2', 'C2_full', 'C4_3plus', 'C6', 'C7', 'C4_2plus', 'C4_full']
@@ -32,7 +31,7 @@ for mod in models:
     #plot bar chart of moments, plotting CMs separately
     fig, ax = plt.subplots(2, 3, figsize=(15, 10))
     #Divide by number of samples (100)
-    ax[0,0].bar(np.arange(9), moments['CM_mean'].mean(0), yerr=std)
+    ax[0,0].bar(np.arange(9), moments['CM_mean'], yerr=std)
     ax[0,0].set_title('CMs')
     ax[0,0].set_ylabel('Mean (Moment)')
     #hide xticks
@@ -42,7 +41,7 @@ for mod in models:
 
 
     #plot bar chart of moments, plotting Wearing and Mobility separately
-    ax[0,1].bar(np.arange(2), [moments['Wearing_mean'].mean(0), moments['Mobility_mean'].mean(0)], yerr=[std_w, std_m])
+    ax[0,1].bar(np.arange(2), [moments['Wearing_mean'], moments['Mobility_mean']], yerr=[std_w, std_m])
     ax[0,1].set_title('Wearing and Mobility')
     ax[0,1].set_xticks([])
     

@@ -147,8 +147,8 @@ def run_experiment(cfg):
                         t.save(prob.state_dict(), f"{cfg.model}/results/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}.pth")
                         
                         
-                        if len(moments) == 10:
-                            del moments[-10]
+                        if len(moments) == cfg.num_moments_to_save:
+                            del moments[-cfg.num_moments_to_save]
                             
                         moments.append({name:[] for name in latent_names})
                         for _ in range(100):

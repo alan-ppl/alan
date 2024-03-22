@@ -144,8 +144,8 @@ def run_experiment(cfg):
                             latents = ['CM_alpha']
                             
                             
-                        if len(moments) == 10:
-                            del moments[-10]
+                        if len(moments) == cfg.num_moments_to_save:
+                            del moments[-cfg.num_moments_to_save]
                             
                         moments.append({name:[] for name in names})
                         for _ in range(100):
