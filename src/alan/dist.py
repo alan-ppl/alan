@@ -128,7 +128,7 @@ class Dist(torch.nn.Module):
         self.register_buffer("_device_tensor", t.zeros(()))
 
         self.sample_shape = sample_shape
-
+        self.using_sample_shape = sample_shape != t.Size([])
         #Dict mapping distargname (e.g. loc and scale in a Normal) to:
         #OptParam
         #QEMParam
@@ -142,6 +142,11 @@ class Dist(torch.nn.Module):
         #  If any parameter is QEM, then all parameters must be QEM
         #  All QEM parameters must have the same ignore_platedims
         self.qem_dist = 0 < sum(isinstance(x, QEMParam) for x in distargname2func_val_param.values())
+        self.opt_dist = 0 < sum(isinstance(x, OptParam) for x in distargname2func_val_param.values())
+        
+        if (self.qem_dist and self.using_sample_shape) or (self.opt_dist and self.using_sample_shape):
+            raise Exception("You can't use sample_shape with QEM or Opt parameters")
+        
         if self.qem_dist:
             func_val_params = list(distargname2func_val_param.values())
             for func_val_param in func_val_params:
