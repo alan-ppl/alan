@@ -1,5 +1,5 @@
 import torch as t
-from alan import Normal, Poisson, Timeseries, Plate, BoundPlate, Problem, Data, QEMParam, OptParam, Group
+from alan import Normal, NegativeBinomial, Timeseries, Plate, BoundPlate, Problem, Data, QEMParam, OptParam, Group
 import math
 nRs = 92
 nWs = 21
@@ -49,30 +49,28 @@ def get_P(platesizes, covariates):
     R_noise_scale=0.4
     
     Expected_Log_Rs = lambda RegionR, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility, prev: RegionR + \
-                        Wearing_alpha*ActiveCMs_wearing + Mobility_alpha*ActiveCMs_mobility + prev
+                        + Wearing_alpha*ActiveCMs_wearing + Mobility_alpha*ActiveCMs_mobility + prev
 
     P = Plate(
-        npis = Group(
         #Effect of NPI
-        #CM_alpha = Normal(0, cm_prior_scale, sample_shape=[nCMs-2]),
+        # CM_alpha = Normal(0, cm_prior_scale, sample_shape=[nCMs-2]),
         #Effect of mask wearing
         Wearing_alpha = Normal(wearing_mean, wearing_sigma),
         #Effect of mobility restrictions
         Mobility_alpha = Normal(mobility_mean, mobility_sigma),
         #R for each region
         RegionR = Normal(R_prior_mean_mean, R_prior_mean_scale + R_noise_scale),
-        ),
+
+        InitialSize_log_mean = Normal(math.log(1000), 0.5),
+        log_infected_noise_mean = Normal(math.log(0.01), 0.25),
         nRs = Plate(
             #Initial number of infected in each region
-            inits = Group(
-            InitialSize_log = Normal(0, 1),
-            log_infected_noise = Normal(0, 1),
-            ),
+            InitialSize_log = Normal(lambda InitialSize_log_mean: InitialSize_log_mean, 0.5),
+            log_infected_noise = Normal(lambda log_infected_noise_mean: log_infected_noise_mean, 0.25),
+            psi = Normal(math.log(1000), 1),
             nWs = Plate(
                 log_infected = Timeseries('InitialSize_log', Normal(Expected_Log_Rs, lambda log_infected_noise: log_infected_noise.exp())),
-
-                #Observations
-                obs = Poisson(rate = lambda log_infected: t.exp(log_infected) + 1e-6)
+                obs = NegativeBinomial(total_count=lambda psi: t.exp(psi), probs=lambda log_infected, psi: 1/((t.exp(psi)/ t.exp(log_infected)) + 1 + 1e-7) ),
             ),
         ),  
     )
@@ -88,18 +86,21 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
     if Q_param_type == "opt":
 
         Q = Plate(
-            #CM_alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp), sample_shape=[nCMs-2]),
-            Wearing_alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-            Mobility_alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-            RegionR = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-            #Expected_Log_Rs = lambda RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility: RegionR - CM_alpha*ActiveCMs_NPIs - Wearing_alpha*ActiveCMs_wearing - Mobility_alpha*ActiveCMs_mobility,
-            
+            npis = Group(
+                # CM_alpha = Normal(OptParam(t.ones((nCMs-2,))), OptParam(t.ones((nCMs-2,)), transformation=t.exp)),
+                Wearing_alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                Mobility_alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                RegionR = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                InitialSize_log_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                log_infected_noise_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+            ),
             nRs = Plate(
-                InitialSize_log = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-                log_infected_noise = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                    a = Group(
+                        InitialSize_log = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                        log_infected_noise = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                        psi = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                    ),
                 nWs = Plate(
-                    #log_infected = Timeseries('InitialSize_log', Normal(lambda prev, RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility: prev + RegionR - CM_alpha@ActiveCMs_NPIs - Wearing_alpha*ActiveCMs_wearing - Mobility_alpha*ActiveCMs_mobility, 0.1)),
-                    
                     log_infected = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                     obs = Data()
                 ),
@@ -112,15 +113,21 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
         assert Q_param_type == "qem"
 
         Q = Plate(
-            #CM_alpha = Normal(QEMParam(t.zeros((nCMs-2,))), QEMParam(t.ones((nCMs-2,)))),
-            Wearing_alpha = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
-            Mobility_alpha = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
-            RegionR = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+            npis = Group(
+                # CM_alpha = Normal(QEMParam(t.zeros((nCMs-2,))), QEMParam(t.ones((nCMs-2,)))),
+                Wearing_alpha = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+                Mobility_alpha = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+                RegionR = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+                InitialSize_log_mean = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+                log_infected_noise_mean = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+            ),
             nRs = Plate(
-                InitialSize_log = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
-                log_infected_noise = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+                a = Group(
+                        InitialSize_log = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+                        log_infected_noise = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+                        psi = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+                ),
                 nWs = Plate(
-                    
                     log_infected = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                     obs = Data()
                 ),
@@ -143,7 +150,7 @@ if __name__ == "__main__":
     NUM_RUNS = 1
     NUM_ITERS = 100
     vi_lr = 0.1
-    rws_lr = 0.1
+    rws_lr = 0.03
     qem_lr = 0.1
 
     device = t.device('cuda' if t.cuda.is_available() else 'cpu')
@@ -229,7 +236,7 @@ if __name__ == "__main__":
             elbo = sample.elbo_nograd()
             elbos['qem'][num_run, i] = elbo.detach()
             
-            sample.update_qem_params(lr)
+            sample.update_qem_params(qem_lr)
 
 
 

@@ -63,6 +63,13 @@ def run_experiment(cfg):
     elbos = t.zeros((len(Ks), len(lrs), num_iters+1, num_runs)).to(device)
     p_lls = t.zeros((len(Ks), len(lrs), num_iters+1, num_runs)).to(device)
 
+
+    temp_P = model.get_P(platesizes, covariates)
+    latent_names = list(temp_P.varname2groupvarname().keys())
+    latent_names.remove('obs')
+
+    moment_list = list(zip(latent_names, [mean, mean2]*len(latent_names)))
+
     # the below times should NOT include predictive ll computation time, as this is optional
     iter_times = t.zeros((len(Ks), len(lrs), num_iters+1, num_runs))
 
@@ -132,57 +139,49 @@ def run_experiment(cfg):
                         
                         t.save(prob.state_dict(), f"covid/results/{cfg.model}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}.pth")
                         
-                        moment_fns = [mean, mean2]
-                        if cfg.model in ['covid', 'covid_poisson', 'covid_cn', 'covid_poisson_cn']:
-                            names = ['CM_mean', 'CM_ex2', 'Wearing_mean', 'Wearing_ex2', 'Mobility_mean', 'Mobility_ex2']
-                            latents = ['CM_alpha', 'Wearing_alpha', 'Mobility_alpha']
-                        elif cfg.model in ['poisson_only_wearing_mobility', 'poisson_only_wearing_mobility_cn']:
-                            names = ['Mobility_mean', 'Mobility_ex2', 'Wearing_mean', 'Wearing_ex2']
-                            latents = ['Wearing_alpha', 'Mobility_alpha']
-                        elif cfg.model in ['poisson_only_npis', 'poisson_only_npis_cn']:
-                            names = ['CM_mean', 'CM_ex2']
-                            latents = ['CM_alpha']
-                            
-                            
                         if len(moments) == cfg.num_moments_to_save:
                             del moments[-cfg.num_moments_to_save]
                             
-                        moments.append({name:[] for name in names})
+                        moments.append({name:[] for name in latent_names})
                         for _ in range(100):
-                            sample = prob.sample(K, reparam)
+                            sample = prob.sample(K, reparam=False)
                             
-                            #Moments of the weights
-                            desired_moments = tuple(product(latents, moment_fns))
                             
-                            m = sample.moments(desired_moments)
-                            for j, k in enumerate(moments[-1].keys()):
+                            m = sample.moments(moment_list)
+                            for j, k in enumerate(latent_names):
                                 moments[-1][k].append(m[j].rename(None))
                                 
                             #convert moments to numpy
                         
                         for k,v in moments[-1].items():
                             moments[-1][k] = t.stack(v).detach().mean(0).cpu().numpy()
-                            
-                                
+                        
                         #save moments to file
-                        with open(f'covid/results/{cfg.model}/{cfg.method}_moments_{K}_{lr}.pkl', 'wb') as f:
+                        with open(f"{cfg.model}/results/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_moments.pkl", "wb") as f:
                             pickle.dump(moments, f)
                             
                         # predictive samples
-                        names = ['log_infected', 'log_infected_ex2']
-                        desired_moments = (('log_infected', mean), ('log_infected', mean2))
+                        names = ['log_infected', 'log_infected_ex2', 'psi', 'psi_ex2']
+                        desired_moments = (('log_infected', mean), ('log_infected', mean2), ('psi', mean), ('psi', mean2))
 
                         saving_moments = dict(zip(names, sample.moments(desired_moments)))
 
                         log_infected = saving_moments['log_infected'].rename(None)
+                        psi = saving_moments['psi'].rename(None)
                         
                         with open(f'covid/results/{cfg.model}/{cfg.method}_log_infected_{K}_{lr}.pkl', 'wb') as f:
                             pickle.dump(log_infected.detach().cpu().numpy(), f)
+                            
+                        with open(f'covid/results/{cfg.model}/{cfg.method}_psi_{K}_{lr}.pkl', 'wb') as f:
+                            pickle.dump(psi.detach().cpu().numpy(), f)
 
-                        if cfg.model in ['covid', 'covid_cn']:
-                            predicted_obs = {'obs':NegativeBinomial(total_count = 1000, probs=1000/(1000 + t.exp(log_infected) + 1e-4)).sample(t.Size([100]))}
-                        if cfg.model in ['covid_poisson', 'poisson_only_wearing_mobility', 'poisson_only_npis', 'covid_poisson_cn', 'poisson_only_wearing_mobility_cn', 'poisson_only_npis_cn']:
-                            predicted_obs = {'obs':Poisson(rate = t.exp(log_infected) + 1e-6).sample(t.Size([100]))}
+
+                        predicted_obs = {'obs':NegativeBinomial(total_count = t.exp(psi).unsqueeze(1), probs=1/((t.exp(psi).unsqueeze(1)/ t.exp(log_infected)) + 1 + 1e-7)).sample(t.Size([100]))}
+
+                        # if cfg.model in ['covid', 'covid_cn']:
+                        #     predicted_obs = {'obs':NegativeBinomial(total_count = 1000, probs=1000/(1000 + t.exp(log_infected) + 1e-4)).sample(t.Size([100]))}
+                        # if cfg.model in ['covid_poisson', 'poisson_only_wearing_mobility', 'poisson_only_npis', 'covid_poisson_cn', 'poisson_only_wearing_mobility_cn', 'poisson_only_npis_cn']:
+                        #     predicted_obs = {'obs':Poisson(rate = t.exp(log_infected) + 1e-6).sample(t.Size([100]))}
                             
                             
                         #convert to numpy

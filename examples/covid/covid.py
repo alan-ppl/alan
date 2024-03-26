@@ -48,8 +48,8 @@ def get_P(platesizes, covariates):
     R_prior_mean_scale=0.2
     R_noise_scale=0.4
     
-    Expected_Log_Rs = lambda RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility, prev: RegionR - \
-                        CM_alpha@ActiveCMs_NPIs - Wearing_alpha*ActiveCMs_wearing - Mobility_alpha*ActiveCMs_mobility + prev
+    Expected_Log_Rs = lambda RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility, prev: RegionR + \
+                        CM_alpha@ActiveCMs_NPIs + Wearing_alpha*ActiveCMs_wearing + Mobility_alpha*ActiveCMs_mobility + prev
 
     P = Plate(
         #Effect of NPI

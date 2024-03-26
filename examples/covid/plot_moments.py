@@ -9,11 +9,11 @@ models = ['covid']# 'poisson_only_wearing_mobility', 'poisson_only_npis']
 
 for mod in models:
     #Get moments from file
-    with open(f'results/{mod}/qem_moments_30_0.01.pkl', 'rb') as f:
+    with open(f'results/{mod}/qem_moments_30_0.1.pkl', 'rb') as f:
         moments = pickle.load(f)
         
     #Get predictive samples from file
-    with open(f'results/{mod}/qem_predictive_samples_30_0.01.pkl', 'rb') as f:
+    with open(f'results/{mod}/qem_predictive_samples_30_0.1.pkl', 'rb') as f:
         predicted_obs = pickle.load(f)
         
     #Get standard deviation from moments
@@ -55,7 +55,8 @@ for mod in models:
     #5 colors
     colors = ['b', 'g', 'r', 'c', 'm']
 
-
+    print(predicted_obs['obs'].shape)
+    print(obs.shape)
     ax[0,2].plot(predicted_obs['obs'].mean(0)[:1,:].T, color='k', label='Predicted data')
     ax[0,2].plot(obs[:1,:].T, linestyle='--', color='k', label='Real data')
     ax[0,2].set_title('Predicted vs Real data (Training)')
@@ -68,7 +69,7 @@ for mod in models:
     
     #make same plot using parameters from the last iteration
     #Get model parameters from file
-    params = t.load(f'results/{mod}/qem_0_3_0.01.pth', map_location='cpu')
+    params = t.load(f'results/{mod}/qem_0_30_0.1.pth', map_location='cpu')
     
     CM_mean = params['Q._qem_means.CM_alpha_mean'].numpy()
     CM_std = np.sqrt(params['Q._qem_means.CM_alpha_mean2'].numpy() - CM_mean**2)
