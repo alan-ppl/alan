@@ -7,6 +7,8 @@ import importlib.util
 import sys
 from pathlib import Path
 
+from itertools import product
+
 def safe_time(device):
     if device == 'cuda':
         t.cuda.synchronize()
@@ -71,8 +73,7 @@ def run_experiment(cfg):
     latent_names = list(temp_P.varname2groupvarname().keys())
     latent_names.remove('obs')
 
-    moment_list = list(zip(latent_names, [mean, mean2]*len(latent_names)))
-    
+    moment_list = list(product(latent_names, [mean, mean2]))
     # the below times should NOT include predictive ll computation time, as this is optional
     iter_times = t.zeros((len(Ks), len(lrs), num_iters+1, num_runs))
 
@@ -82,7 +83,8 @@ def run_experiment(cfg):
 
     
     for num_run in range(num_runs):
-        moments = []
+        means = []
+        means2 = []
         for K_idx, K in enumerate(Ks):
             K_start_time = safe_time(device)
             for lr_idx, lr in enumerate(lrs):
@@ -147,24 +149,33 @@ def run_experiment(cfg):
                         t.save(prob.state_dict(), f"{cfg.model}/results/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}.pth")
                         
                         
-                        if len(moments) == cfg.num_moments_to_save:
-                            del moments[-cfg.num_moments_to_save]
+                        if len(means) == cfg.num_moments_to_save:
+                            del means[-cfg.num_moments_to_save]
+                            del means2[-cfg.num_moments_to_save]
                             
-                        moments.append({name:[] for name in latent_names})
+                        means.append({name:[] for name in latent_names})
+                        means2.append({name:[] for name in latent_names})
                         for _ in range(100):
                             sample = prob.sample(K, reparam=False)
                             
                             
                             m = sample.moments(moment_list)
+                            temp_means = [m[i] for i in range(0,len(latent_names)*2,2)]
+                            temp_means2 = [m[i] for i in range(1,len(latent_names)*2,2)]
                             for j, k in enumerate(latent_names):
-                                moments[-1][k].append(m[j].rename(None))
+                                means[-1][k].append(temp_means[j].rename(None))
+                                means2[-1][k].append(temp_means2[j].rename(None))
                                 
                             #convert moments to numpy
                         
-                        for k,v in moments[-1].items():
-                            moments[-1][k] = t.stack(v).detach().mean(0).cpu().numpy()
+                        for k,v in means[-1].items():
+                            means[-1][k] = t.stack(v).detach().mean(0).cpu().numpy()
+                            
+                        for k,v in means2[-1].items():
+                            means2[-1][k] = t.stack(v).detach().mean(0).cpu().numpy()
                         
                         #save moments to file
+                        moments = {'means': means, 'means2': means2}
                         with open(f"{cfg.model}/results/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_moments.pkl", "wb") as f:
                             pickle.dump(moments, f)
                             

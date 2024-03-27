@@ -38,10 +38,7 @@ def run_experiment(cfg):
 
     num_samples = cfg.num_samples
     
-    if cfg.no_tuning_samples_run:
-        num_tuning_samples = 0
-    else:
-        num_tuning_samples = cfg.num_tuning_samples
+    num_tuning_samples = cfg.num_tuning_samples
         
     target_accept = cfg.target_accept
 
@@ -189,18 +186,12 @@ def run_experiment(cfg):
                 'times': times, 'num_runs': num_runs, 
                 'num_samples': num_samples, 'num_tuning_samples': num_tuning_samples, 'target_accept': target_accept}
 
-    if cfg.no_tuning_samples_run:
-        with open(f'{cfg.model}/results/moments/HMC{dataset_seed}{"_FAKE_DATA" if fake_data else ""}_no_tuning_samples.pkl', 'wb') as f:
-            pickle.dump(to_pickle, f)
-        
-        with open(f'{cfg.model}/results/moments/HMC_moments{dataset_seed}{"_FAKE_DATA" if fake_data else ""}_no_tuning_samples.pkl', 'wb') as f:
-            pickle.dump(moments_collection, f)
-    else:
-        with open(f'{cfg.model}/results/moments/HMC{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
-            pickle.dump(to_pickle, f)
 
-        with open(f'{cfg.model}/results/moments/HMC_moments{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
-            pickle.dump(moments_collection, f)
+    with open(f'{cfg.model}/results/moments/HMC{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
+        pickle.dump(to_pickle, f)
+
+    with open(f'{cfg.model}/results/moments/HMC_moments{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
+        pickle.dump(moments_collection, f)
         
     print()
 
