@@ -48,14 +48,14 @@ def get_P(platesizes, covariates):
     R_prior_mean_scale=0.2
     R_noise_scale=0.4
     
-    Expected_Log_Rs = lambda RegionR, CM_alpha, ActiveCMs_NPIs, prev: RegionR + \
-                        CM_alpha@ActiveCMs_NPIs  + prev
+    Expected_Log_Rs = lambda RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, prev: RegionR + \
+                        CM_alpha@ActiveCMs_NPIs + Wearing_alpha*ActiveCMs_wearing + prev
 
     P = Plate(
         #Effect of NPI
         CM_alpha = Normal(0, cm_prior_scale, sample_shape=[nCMs-2]),
         #Effect of mask wearing
-        # Wearing_alpha = Normal(wearing_mean, wearing_sigma),
+        Wearing_alpha = Normal(wearing_mean, wearing_sigma),
         # #Effect of mobility restrictions
         # Mobility_alpha = Normal(mobility_mean, mobility_sigma),
         #R for each region
@@ -88,7 +88,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
         Q = Plate(
             npis = Group(
                 CM_alpha = Normal(OptParam(t.ones((nCMs-2,))), OptParam(t.ones((nCMs-2,)), transformation=t.exp)),
-                # Wearing_alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                Wearing_alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                 # Mobility_alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                 RegionR = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                 InitialSize_log_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
@@ -115,7 +115,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
         Q = Plate(
             npis = Group(
                 CM_alpha = Normal(QEMParam(t.zeros((nCMs-2,))), QEMParam(t.ones((nCMs-2,)))),
-                # Wearing_alpha = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+                Wearing_alpha = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                 # Mobility_alpha = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                 RegionR = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                 InitialSize_log_mean = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
