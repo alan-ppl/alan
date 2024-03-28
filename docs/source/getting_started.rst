@@ -18,5 +18,3 @@ Learn the basic concepts of Alan
    :caption: Examples:
 
    introduction_to_alan
-   examples
-   tutorials

@@ -68,7 +68,7 @@ def run_experiment(cfg):
     latent_names = list(temp_P.varname2groupvarname().keys())
     latent_names.remove('obs')
 
-    moment_list = list(zip(latent_names, [mean, mean2]*len(latent_names)))
+    moment_list = list(product(latent_names, [mean, mean2]))
 
     # the below times should NOT include predictive ll computation time, as this is optional
     iter_times = t.zeros((len(Ks), len(lrs), num_iters+1, num_runs))
