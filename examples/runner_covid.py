@@ -168,7 +168,7 @@ def run_experiment(cfg):
 
                         moments = {'means': means, 'means2': means2}
                         #save moments to file
-                        with open(f"covid/results/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_moments.pkl", "wb") as f:
+                        with open(f"covid/results/{cfg.model}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_moments.pkl", "wb") as f:
                             pickle.dump(moments, f)
                             
                         # predictive samples

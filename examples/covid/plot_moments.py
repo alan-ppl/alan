@@ -9,7 +9,7 @@ models = ['covid']# 'poisson_only_wearing_mobility', 'poisson_only_npis']
 
 for mod in models:
     #Get moments from file
-    with open(f'results/{mod}/qem_moments_30_0.1.pkl', 'rb') as f:
+    with open(f'results/{mod}/qem_moments_0_30_0.1.pkl', 'rb') as f:
         moments = pickle.load(f)
         
     #Get predictive samples from file
