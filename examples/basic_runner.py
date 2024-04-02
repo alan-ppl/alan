@@ -8,10 +8,11 @@ def safe_time(device):
         t.cuda.synchronize()
     return time.time()
 
-Q_PARAM_TYPES = {'vi': 'opt', 'rws': 'opt', 'qem': 'qem'}
+Q_PARAM_TYPES = {'vi': 'opt', 'rws': 'opt', 'qem': 'qem',
+                 'global_vi': 'opt', 'global_rws': 'opt'}
 
 def run(model_name, 
-        methods = ['vi', 'rws', 'qem'],
+        methods = ['vi', 'rws', 'qem', 'global_vi', 'global_rws'],
         K = 3, 
         num_runs = 1, 
         num_iters = 100, 
@@ -66,19 +67,23 @@ def run(model_name,
             for key in all_covariates.keys():
                 all_covariates[key] = all_covariates[key].to(device)
 
-            if method == 'vi':
+            if method in ['vi', 'global_vi']:
                 opt = t.optim.Adam(prob.Q.parameters(), lr=lrs[method])
-            elif method == 'rws':
+            elif method in ['rws', 'global_rws']:
                 opt = t.optim.Adam(prob.Q.parameters(), lr=lrs[method], maximize=True)
             
             for i in range(num_iters):
-                if method in ['vi', 'rws']:
+                if method != 'qem':
                     opt.zero_grad()
+                
+                if 'global' in method:
+                    sample = prob.sample_nonmp(K, reparam)
+                else:
+                    sample = prob.sample(K, reparam)
 
-                sample = prob.sample(K, reparam)
-                if method == 'vi':
+                if method in ['vi', 'global_vi']:
                     elbo = sample.elbo_vi() if split is None else sample.elbo_vi(computation_strategy = split)
-                elif method == 'rws':
+                elif method in ['rws', 'global_rws']:
                     elbo = sample.elbo_rws() if split is None else sample.elbo_rws(computation_strategy = split)
                 elif method == 'qem':
                     elbo = sample.elbo_nograd() if split is None else sample.elbo_nograd(computation_strategy = split)
@@ -94,7 +99,7 @@ def run(model_name,
                 else:
                     print(f"Iter {i}. Elbo: {elbo:.3f}")
 
-                if method in ['vi', 'rws']:
+                if method != 'qem':
                     (-elbo).backward()
                     opt.step()
                 else:
