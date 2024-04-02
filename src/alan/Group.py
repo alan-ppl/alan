@@ -48,7 +48,7 @@ class Group():
         #Groups can only contain Dist, not Plates/Timeseries/Data/other Groups.
         for varname, dist in kwargs.items():
             if not isinstance(dist, (_Dist)):
-                raise Exception("{varname} in a Group should be a Dist or Timeseries, but is actually {type(dist)}")
+                raise Exception(f"{varname} in a Group should be a Dist or Timeseries, but is actually {type(dist)}")
 
         if len(kwargs) < 2:
             raise Exception("Groups only make sense if they have two or more random variables, but this group only has {len(kwargs)} random variables")
