@@ -123,8 +123,7 @@ def run_experiment(cfg):
                             latent_shape = trace.posterior[name].mean(("chain", "draw")).shape
                             moments_collection[name] = np.zeros((num_samples, num_runs, *latent_shape))
                         
-                        print(np.array([trace.posterior[name][:,:j].mean(("chain", "draw")).data for j in range(1, num_samples+1)]).mean(0))
-                        moments_collection[name][:, num_run, ...] = np.array([trace.posterior[name][:,:j].mean(("chain", "draw")).data for j in range(1, num_samples+1)]).mean(0)
+                        moments_collection[name][:, num_run, ...] = np.array([trace.posterior[name][:,:j].mean(("chain", "draw")).data for j in range(1, num_samples+1)])
 
                     # do predictive log likelihood
                     pm.set_data(pymc_model.get_test_data_cov_dict(all_data, all_covariates, platesizes))

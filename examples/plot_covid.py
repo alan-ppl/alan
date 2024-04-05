@@ -213,17 +213,12 @@ if __name__ == '__main__':
                         'chimpanzees':   {5: (-50, -40),    15: (-50, -40)}}
 
 
-    for K in [3, 10,30]:
-        # plot('covid', Ks_to_plot=[K], method_lrs_to_ignore={'qem': [0.001, 0.0001], 'rws': [0.001, 0.0001], 'vi': [0.001, 0.0001]},
-        #      elbo_ylims=elbo_ylims_per_K['covid'][K], results_subfolder='covid/')
+    for K in [30]:
+        plot('covid', Ks_to_plot=[K], method_lrs_to_ignore={'qem': [0.001, 0.0001], 'rws': [0.001, 0.0001], 'vi': [0.001, 0.0001]},
+             elbo_ylims=elbo_ylims_per_K['covid'][K], results_subfolder='covid/')
+        plot('covid', Ks_to_plot=[K], method_lrs_to_ignore={'qem': [0.001, 0.0001], 'rws': [0.001, 0.0001], 'vi': [0.001, 0.0001]},
+             elbo_ylims=elbo_ylims_per_K['covid'][K], results_subfolder='covid_only_npis_wearing/')
         plot('covid', Ks_to_plot=[K], method_lrs_to_ignore={'qem': [0.001, 0.0001], 'rws': [0.001, 0.0001], 'vi': [0.001, 0.0001]},
              elbo_ylims=elbo_ylims_per_K['covid'][K], results_subfolder='covid_only_wearing_mobility/')
-        # plot('covid', Ks_to_plot=[K], method_lrs_to_ignore={'qem': [0.001, 0.0001], 'rws': [0.001, 0.0001], 'vi': [0.001, 0.0001]},
-        #      elbo_ylims=elbo_ylims_per_K['covid'][K], results_subfolder='covid_cn/')
-        # plot('covid', Ks_to_plot=[K], method_lrs_to_ignore={'qem': [0.001, 0.0001], 'rws': [0.001, 0.0001], 'vi': [0.001, 0.0001]},
-        #      elbo_ylims=elbo_ylims_per_K['covid'][K], results_subfolder='poisson_only_wearing_mobility_cn/')
-        # plot('covid', Ks_to_plot=[K], method_lrs_to_ignore={'qem': [0.001, 0.0001], 'rws': [0.001, 0.0001], 'vi': [0.001, 0.0001]},
-        #      elbo_ylims=elbo_ylims_per_K['covid'][K], results_subfolder='poisson_only_npis/')
-        # plot('covid', Ks_to_plot=[K], method_lrs_to_ignore={'qem': [0.001, 0.0001], 'rws': [0.001, 0.0001], 'vi': [0.001, 0.0001]},
-        #      elbo_ylims=elbo_ylims_per_K['covid'][K], results_subfolder='poisson_only_wearing_mobility_cn/')
+
 
