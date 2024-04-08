@@ -1,7 +1,7 @@
 import pickle
 import numpy as np
 
-def get_best_results(model_name, validation_iter_number=800, method_names=['qem', 'rws', 'vi'], dataset_seeds=[0]):
+def get_best_results(model_name, validation_iter_number=200, method_names=['qem', 'rws', 'vi', 'global_vi', 'global_rws'], global_K = 10, dataset_seeds=[0]):
     print(f"Getting best results for {model_name}.")
 
     results = {method_name: {} for method_name in method_names}
@@ -21,13 +21,27 @@ def get_best_results(model_name, validation_iter_number=800, method_names=['qem'
 
         # Load the results
         for dataset_seed in dataset_seeds:
-            with open(f'{model_name}_results/{method_name}{dataset_seed}.pkl', 'rb') as f:
-                results[method_name][dataset_seed] = pickle.load(f)
+            if 'global' not in method_name:
+                with open(f'{model_name}_results/{method_name}{dataset_seed}.pkl', 'rb') as f:
+                    results[method_name][dataset_seed] = pickle.load(f)
 
-                # Extract the elbos, p_lls and iter_times
-                elbos[method_name].append(results[method_name][dataset_seed]['elbos'])
-                p_lls[method_name].append(results[method_name][dataset_seed]['p_lls'])
-                iter_times[method_name].append(results[method_name][dataset_seed]['iter_times'])
+                    # Extract the elbos, p_lls and iter_times
+                    elbos[method_name].append(results[method_name][dataset_seed]['elbos'])
+                    p_lls[method_name].append(results[method_name][dataset_seed]['p_lls'])
+                    iter_times[method_name].append(results[method_name][dataset_seed]['iter_times'])
+            else:
+                with open(f'../{model_name}/results/moments/{method_name[7:]}{global_K}K{dataset_seed}.pkl', 'rb') as f:
+                    results[method_name][dataset_seed] = pickle.load(f)
+
+                    # add in a Ks key
+                    results[method_name][dataset_seed]['Ks'] = [global_K]
+
+                    # Extract the elbos, p_lls and iter_times and pad them by prepending a singleton dimension (for K)
+                    elbos[method_name].append(np.expand_dims(results[method_name][dataset_seed]['elbos'], 0))
+
+                    elbos[method_name].append(results[method_name][dataset_seed]['elbos'].expand((1, *results[method_name][dataset_seed]['elbos'].shape)))
+                    p_lls[method_name].append(results[method_name][dataset_seed]['p_lls'].expand((1, *results[method_name][dataset_seed]['p_lls'].shape)))
+                    iter_times[method_name].append(results[method_name][dataset_seed]['times']['elbos'].expand((1, *results[method_name][dataset_seed]['times']['elbos'].shape)))
 
         # Check that the learning rates, Ks, num_iters and num_runs are the same for this method throughout all seeds
         for key in ['lrs', 'Ks', 'num_iters', 'num_runs']:
@@ -103,9 +117,9 @@ def get_best_results(model_name, validation_iter_number=800, method_names=['qem'
 if __name__ == "__main__":
 
 
-    get_best_results('bus_breakdown_reparam')
-    get_best_results('movielens_reparam')
-    # get_best_results('chimpanzees')
+    get_best_results('bus_breakdown')
+    get_best_results('movielens')
+    get_best_results('chimpanzees')
 
-    # get_best_results('occupancy', method_names=['qem', 'rws'])
+    get_best_results('occupancy', method_names=['qem', 'rws', 'global_rws'])
     # get_best_results('radon')
