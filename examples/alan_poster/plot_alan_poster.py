@@ -52,7 +52,7 @@ def plot_some_model_metric_Ks(models_metrics_Ks_methods : list, window_size=25, 
     all_Ks = [K for _, _, K, _ in models_metrics_Ks_methods]
     all_method_names = [methods for _, _, _, methods, in models_metrics_Ks_methods]
 
-    fig, ax = plt.subplots(2 if x_time else 1, len(models_metrics_Ks_methods), figsize=(4*len(models_metrics_Ks_methods), 8 if x_time else 4))
+    fig, ax = plt.subplots(2 if x_time else 1, len(models_metrics_Ks_methods), figsize=(4*len(models_metrics_Ks_methods), 6 if x_time else 3))
     
     for m, model_name in enumerate(all_models):
         metric = all_metrics[m]
@@ -159,8 +159,8 @@ def plot_some_model_metric_Ks(models_metrics_Ks_methods : list, window_size=25, 
             ax[1,m].set_ylim(*ylims_)
 
             if log_y:
-                ax[0,m].set_yscale('log')
-                ax[1,m].set_yscale('log')
+                ax[0,m].set_yscale('symlog')
+                ax[1,m].set_yscale('symlog')
 
             ax[1,m].legend()
 
@@ -185,7 +185,7 @@ def plot_some_model_metric_Ks(models_metrics_Ks_methods : list, window_size=25, 
             ax[m].set_ylim(*ylims_)
 
             if log_y:
-                ax[m].set_yscale('log')
+                ax[m].set_yscale('symlog')
 
             ax[m].legend()
 
@@ -210,9 +210,9 @@ if __name__ == '__main__':
                         'occupancy':     {3: (-70000, None), 5: (-55000, None), 10: (-50000, None)},
                         'radon':         {3: (-800, -450), 10: (-580, -480), 30: (-500, -480)},
                         'chimpanzees':   {5: (-500, -240),  15: (-500, -240)},
-                        'covid':         {3: (-5000000, 1000), 10: (-200000, 0), 30: (None, None)}}
+                        'covid':         {3: (-5000000, 100000), 10: (-200000, 0), 30: (None, None)}}
 
-    pll_ylims_per_K  = {'movielens':     {3: (-1150, -940), 10: (-1100, -940), 30: (None, -940)}, #30: (-1060, -940)},
+    pll_ylims_per_K  = {'movielens':     {3: (-1150, -940), 10: (-1100, -940), 30: (-1060, -940)}, #30: (-1060, -940)},
                         'bus_breakdown': {3: (-7000, None), 10: (-3500, None), 30: (-2800, -1750)},
                         'occupancy':     {3: (-35000, None), 5: (-28000, None), 10: (-24900, None)},
                         'radon':         {3: (-300, None), 10: (-155, -130), 30: (-150, -130)},
@@ -230,8 +230,9 @@ if __name__ == '__main__':
                                     results_subfolder='alan_poster/', 
                                     x_lim_iters=1000,
                                     x_time = x_time,
-                                    log_x_time=False, 
+                                    log_x_time=log_y, 
                                     ylims=ylims,
+                                    log_y=False,
                                     auto_xlim=False, 
                                     only_best_lr=True, 
                                     elbo_validation_iter=100, 
