@@ -12,7 +12,18 @@ USE_MISSPECIFIED_Q = False
 
 PRINT_QEM_MEANS = False
 
-def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, use_misspecified_q = USE_MISSPECIFIED_Q, plot_folder=''):
+USE_SMOOTHING = True # currently via FFBS variant (slow!)
+
+def get_gaussians_from_moments_dict(mean, mean2):
+    assert mean.keys() == mean2.keys()
+
+    dists = {}
+    for key in mean.keys():
+        dists[key] = t.distributions.Normal(mean[key], (mean2[key] - mean[key]**2).sqrt())
+
+    return dists
+
+def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, use_misspecified_q = USE_MISSPECIFIED_Q, use_smoothing = USE_SMOOTHING, plot_folder=''):
 
     T = 5
 
@@ -20,7 +31,7 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
     K_particles = K
     lr = 0.1
 
-    num_iters = 250
+    num_iters = 100
 
     def get_P(wrong_init=False):
         P = Plate( 
@@ -136,6 +147,19 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
 
     SMC_successful_iters = num_iters
 
+    # define the approximate posterior distributions
+    init_Q = t.distributions.Normal(0., 1.)
+    log_var_Q = t.distributions.Normal(0., 1.)
+    # ts_Q = t.distributions.Normal(t.zeros(T), t.ones(T))
+
+    # define the prior distributions
+    init_P = t.distributions.Normal(0., 1.)
+    log_var_P = t.distributions.Normal(0., 1.)
+
+    # for each of the above three distributions, we need to keep track of the first and second moments
+    means = {'ts_init': 0., 'ts_log_var': 0., 'ts': t.zeros(T)}
+    means2 = {'ts_init': 1., 'ts_log_var': 1., 'ts': t.ones(T)}
+
     try:
         for i in range(num_iters):
             print(f"{i} SMC")
@@ -147,27 +171,10 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
                 print(f"{i} SMC ts_init: {problem.Q._qem_means.ts_init_mean} {problem.Q._qem_means.ts_init_mean2}")
                 print(f"{i} SMC ts_log_var: {problem.Q._qem_means.ts_log_var_mean} {problem.Q._qem_means.ts_log_var_mean2}")
 
-            # get importance weights (p/q) for the K dims of hyperprior samples (ts_init and ts_log_var) and the their use in the timeseries
+            # get importance weights (p/q) for the K dims of hyperprior samples (ts_init and ts_log_var) and their use in the timeseries
             lpq_scope = {}
             lpq_scope = update_scope(lpq_scope, sample.detached_sample)
             lpq_scope = update_scope(lpq_scope, sample.problem.inputs_params())
-       
-            lpq, _, _, _ = lp_getter(
-                name=None,
-                P=sample.P.plate, 
-                Q=sample.Q.plate, 
-                sample=sample.detached_sample,
-                inputs_params=sample.problem.inputs_params(),
-                data=sample.problem.data,
-                extra_log_factors={'T': {}},
-                scope=lpq_scope, 
-                active_platedims=[],
-                all_platedims=sample.all_platedims,
-                groupvarname2Kdim=sample.groupvarname2Kdim,
-                varname2groupvarname=sample.problem.Q.varname2groupvarname(),
-                sampler=sample.sampler,
-                computation_strategy=checkpoint,
-                )
                         
             # samples of parameters in P that the timeseries depends on
             ts_init = sample.detached_sample['ts_init']
@@ -186,9 +193,32 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
             log_var_dim = ts_log_var.dims[0]
             ts_param_dims = [init_dim, log_var_dim]
 
+            lpq = [
+                init_P.log_prob(ts_init.order(init_dim)) - init_Q.log_prob(ts_init.order(init_dim)) - t.tensor(K).log(),
+                log_var_P.log_prob(ts_log_var.order(log_var_dim)) - log_var_Q.log_prob(ts_log_var.order(log_var_dim)) - t.tensor(K).log(),
+            ]
+                
+                
+            # transition.log_prob(ts, lpq_scope, T_dim, ts.dims[0])[0].order(init_dim, log_var_dim).logsumexp((-1,-2)).order(*ts.dims) - 2*t.tensor(K).log() - ts_Q.log_prob(ts.order(*ts.dims))
+
+            # temp = (transition.log_prob(ts, lpq_scope, T_dim, ts.dims[0])[0] - ts_Q.log_prob(ts.order(*ts.dims))[ts.dims])
+            # temp = temp.order(T_dim, init_dim, ts.dims[0])
+            # temp = chain_logmmexp(temp)
+            # temp = t.logsumexp(temp, -1)
+            # temp = temp[init_dim, None].squeeze(-1)
+
+            lpq[0] = lpq[0][init_dim]
+            lpq[1] = lpq[1][log_var_dim]
+            # lpq[2] = lpq[2][K_dim, T_dim]
+
+
             # set up the particle filter
             particles = t.zeros(K_particles, T, K, K)[K_dim, T_dim, init_dim, log_var_dim]
             marginal_ll = t.zeros((K, K))[ts_param_dims]
+
+            if use_smoothing:
+                no_resample_log_weights = t.zeros(K_particles, K, K, T)[K_dim, init_dim, log_var_dim]
+                no_resample_particles = t.zeros(K_particles, K, K, T)[K_dim, init_dim, log_var_dim]
 
             ts_mean = t.zeros(K, K, T)[init_dim, log_var_dim]
             ts_mean2 = t.zeros(K, K, T)[init_dim, log_var_dim]
@@ -207,8 +237,14 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
                 particles[timestep] = xs
                 particles = particles[T_dim]
 
+                if use_smoothing:
+                    no_resample_particles[timestep] = xs
+
                 # calculate the likelihood of the data given the particles
                 log_weights, _ = emission.finalize('a').log_prob(data['a'][timestep], {'ts': particles.order(T_dim)[timestep]}, T_dim, K_dim)
+                
+                if use_smoothing:
+                    no_resample_log_weights[timestep] = log_weights
 
                 # add to the the marginal log likelihood
                 marginal_ll += t.logsumexp(log_weights.order(K_dim), 0) - t.tensor(K_particles).log() # shape [K, K]
@@ -225,7 +261,46 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
                 
                 particles = particles.order(K_dim).gather(0, resampled_indices)[K_dim]  # shape [T, K_particles, K, K]
 
-                # log_weights = log_weights.order(K_dim).gather(0, resampled_indices)[K_dim]  # shape [K_particles, K, K]
+            if use_smoothing:
+                # calculate the smoothing weights
+                smoothing_weights = t.zeros(K_particles, K, K, T)[K_dim, init_dim, log_var_dim]
+
+                K_dim2 = Dim('K2', K_particles)
+                pairwise_smoothing_log_weights = t.zeros(K_particles, K_particles, K, K, T-1)[K_dim, K_dim2, init_dim, log_var_dim]
+
+                no_resample_log_weights = (no_resample_log_weights.exp() / no_resample_log_weights.exp().sum(K_dim)).log()
+
+                Xs = no_resample_particles
+                Ws = no_resample_log_weights.exp()
+                pWs = pairwise_smoothing_log_weights.exp()
+
+                for timestep in range(T-1, -1, -1):
+                    # print("smoothing timestep", timestep)
+                    if timestep == T-1:
+                        smoothing_weights[timestep] = Ws[timestep]
+                    else:
+                        smoothing_weights[timestep] = pWs[timestep].sum(K_dim2)
+
+                    if timestep > 0:
+                        for k in range(K_particles):
+                            transition_probs = t.zeros(K, K, K_particles)[init_dim, log_var_dim]
+                            for l in range(K_particles):                            
+                                prev = Xs[timestep-1].order(K_dim)[l].order(*ts_param_dims)
+                                dist = t.distributions.Normal(prev, ts_log_var.order(log_var_dim).expand(K_particles).exp())
+                                now = Xs[timestep].order(K_dim)[k].order(*ts_param_dims)
+                                transition_probs[l] = dist.log_prob(now)[ts_param_dims]  # K x K x K_particles
+                                
+                                # transition_probs[l] = t.distributions.Normal(Xs[timestep-1].order(K_dim)[l].order(ts_param_dims), ts_log_var.exp()).log_prob(Xs[timestep].order(K_dim)[k].order(ts_param_dims))[ts_param_dims]
+
+                            S_kt = (Ws[timestep-1] * transition_probs[K_dim]).sum(K_dim)  # K x K
+                            
+                            pWs = pWs.order(K_dim, K_dim2)
+                            pWs[l, k, timestep-1] = smoothing_weights[timestep].order(K_dim)[k] * Ws[timestep-1].order(K_dim)[k] * transition_probs[k] / S_kt
+                            pWs = pWs[K_dim2, K_dim]
+
+                smooth_ts_mean = (no_resample_particles * smoothing_weights).sum(K_dim) / (smoothing_weights.sum(K_dim))
+                smooth_ts_mean2 = (no_resample_particles**2 * smoothing_weights).sum(K_dim) / (smoothing_weights.sum(K_dim))
+                              
 
             # calculate the ESS
             ess[..., i] = 1/(((log_weights.exp()/log_weights.exp().sum(K_dim))**2).sum(K_dim)).order(init_dim, log_var_dim)
@@ -233,7 +308,8 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
             # now we need to use the marginal_lpq to calculate moments of each parameter
             smc_qem_weights = {'ts_init':    marginal_ll + lpq[0],
                                'ts_log_var': marginal_ll + lpq[1],
-                               'ts':         marginal_ll + lpq[2]}
+                               'ts':         marginal_ll}
+                            #    'ts':         marginal_ll + lpq_alan[2]}
 
             # normalise the weights
             for key, val in smc_qem_weights.items():
@@ -247,22 +323,40 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
             problem.Q._qem_means.ts_init_mean.mul_(1-lr).add_(new_moment1, alpha=lr)
             problem.Q._qem_means.ts_init_mean2.mul_(1-lr).add_(new_moment2, alpha=lr)
 
+            means['ts_init'] = means['ts_init'] * (1-lr) + new_moment1 * lr
+            means2['ts_init'] = means2['ts_init'] * (1-lr) + new_moment2 * lr
+
             # then, ts_log_var
             new_moment1 = (ts_log_var    * smc_qem_weights['ts_log_var']).sum(ts_param_dims) 
             new_moment2 = (ts_log_var**2 * smc_qem_weights['ts_log_var']).sum(ts_param_dims) 
 
             problem.Q._qem_means.ts_log_var_mean.mul_(1-lr).add_(new_moment1, alpha=lr)
             problem.Q._qem_means.ts_log_var_mean2.mul_(1-lr).add_(new_moment2, alpha=lr)
+
+            means['ts_log_var'] = means['ts_log_var'] * (1-lr) + new_moment1 * lr
+            means2['ts_log_var'] = means2['ts_log_var'] * (1-lr) + new_moment2 * lr
             
             # finally, the ts latents
+            if use_smoothing:
+                ts_mean = smooth_ts_mean 
+                ts_mean2 = smooth_ts_mean2
+
             ts_mean = (ts_mean * smc_qem_weights['ts']).sum(ts_param_dims) 
             ts_mean2 = (ts_mean2 * smc_qem_weights['ts']).sum(ts_param_dims) 
 
             problem.Q._qem_means.ts_mean.mul_(1-lr).add_(ts_mean, alpha=lr)
             problem.Q._qem_means.ts_mean2.mul_(1-lr).add_(ts_mean2, alpha=lr)
 
+            means['ts'] = means['ts'] * (1-lr) + ts_mean * lr
+            means2['ts'] = means2['ts'] * (1-lr) + ts_mean2 * lr
+
             # update the conventional parameters
             problem.Q._update_qem_convparams()
+
+            updated_dists = get_gaussians_from_moments_dict(means, means2)
+            init_Q = updated_dists['ts_init']
+            log_var_Q = updated_dists['ts_log_var']
+            ts_Q = updated_dists['ts']
 
             # save the parameters for this iteration
             update_param_dict(smc_params, problem.Q.qem_params(), i)
@@ -282,7 +376,7 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
     plt.xlabel('Iteration')
     plt.xlim(0, SMC_successful_iters-1)
     plt.legend()
-    plt.savefig(f'{plot_folder}elbos{"_wrong_prior" if USE_MISSPECIFIED_PRIOR else ""}.png')
+    plt.savefig(f'{plot_folder}elbos{"_smooth" if use_smoothing else ""}{"_wrong_prior" if USE_MISSPECIFIED_PRIOR else ""}.png')
     plt.close()
 
     # PLOT 2: QEM PARAM VALUES
@@ -341,7 +435,7 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
     axs[-1].legend()
 
     fig.tight_layout()
-    fig.savefig(f'{plot_folder}errors{"_wrong_prior" if USE_MISSPECIFIED_PRIOR else ""}.png')
+    fig.savefig(f'{plot_folder}errors{"_smooth" if use_smoothing else ""}{"_wrong_prior" if USE_MISSPECIFIED_PRIOR else ""}.png')
     plt.close()
 
 
