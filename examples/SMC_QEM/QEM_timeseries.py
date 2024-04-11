@@ -13,13 +13,17 @@ PRINT_QEM_MEANS = False
 
 USE_SMOOTHING = False # currently via FFBS variant (slow!)
 
-def get_gaussians_from_moments_dict(mean, mean2):
+def get_gaussians_from_moments_dict(mean, mean2, min_var=None):
     assert mean.keys() == mean2.keys()
 
     dists = {}
     for key in mean.keys():
-        dists[key] = t.distributions.Normal(mean[key], (mean2[key] - mean[key]**2).sqrt())
-
+        var = (mean2[key] - mean[key]**2).sqrt()
+        if min_var is not None:
+            var = t.maximum(var, min_var)
+            var[var.isnan()] = min_var
+        dists[key] = t.distributions.Normal(mean[key], var)
+        
     return dists
 
 def get_P(wrong_init=False):
@@ -296,7 +300,7 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
     K_particles = K
     lr = 0.1
 
-    num_iters = 100
+    num_iters = 50
 
     # Figure out the true posterior
     problem, true_latents, data = generate_problem(T=T, data_seed=data_seed, use_misspecified_prior=use_misspecified_prior, use_misspecified_q=use_misspecified_q)
@@ -389,6 +393,211 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
             smc_elbos_no_smoothing = smc_elbos
             smc_params_no_smoothing = smc_params
             
+    # Extended State Space Inference (use noisy versions of ts_init and ts_log_var in our particle filter, with noise decreasing per timestep, to hopefully infer the true latent states)
+    problem, true_latents, data = generate_problem(T=T, data_seed=data_seed, use_misspecified_prior=use_misspecified_prior, use_misspecified_q=use_misspecified_q)
+
+    ess_elbos = t.zeros(num_iters)
+    ess_params = {key : t.zeros((num_iters, *val.shape)) for key, val in problem.Q.qem_params().items()}
+    update_param_dict(ess_params, problem.Q.qem_params(), 0)
+    
+    # K_particles = 500
+
+    ess = t.zeros(K, K, num_iters)
+
+    # define the transition and emission distributions
+    transition = lambda prev, ts_log_var: t.distributions.Normal(0.9*prev, ts_log_var.exp())
+    emission = lambda ts: t.distributions.Normal(ts, 1.)
+    
+    def log_prob_timeseries(ts, ts_init, ts_log_var, data, param_transition_sd, prev_init, prev_log_var):
+        log_prob = t.zeros(*ts.shape)
+
+        log_prob[:, 0] = t.distributions.Normal(ts_init[:, 0], 1.).log_prob(ts[:, 0]) + t.distributions.Normal(ts[:, 0], 1.).log_prob(data[0])
+        for i in range(1, log_prob.shape[1]):
+            log_prob[:, i] = t.distributions.Normal(0.9*ts[:, i-1], ts_log_var[:, i].exp()).log_prob(ts[:, i]) + t.distributions.Normal(ts[:, i], 1.).log_prob(data[i])
+        
+        return log_prob.sum(-1) + t.distributions.Normal(prev_init, param_transition_sd).log_prob(ts_init[:,-1]) + t.distributions.Normal(prev_log_var, param_transition_sd).log_prob(ts_log_var[:,-1])
+    
+    init_Q = t.distributions.Normal(0., 1.)
+    log_var_Q = t.distributions.Normal(0., 1.)
+    
+    param_transition = lambda prev, sd: t.distributions.Normal(prev, sd)
+    
+    for i in range(num_iters):
+        print(f"{i} ESS")
+
+        particles = t.zeros(K_particles, T)  
+        
+        ts_init_particles = t.zeros(K_particles, T) 
+        ts_log_var_particles = t.zeros(K_particles, T) 
+        
+        ts_mean = t.zeros(T)
+        ts_mean2 = t.zeros(T)
+        
+        # implement the ESS algorithm
+        for timestep in range(T):
+            # sample ts_init and ts_log_var from the transition
+            param_transition_sd = 1.#/(i+1)
+            
+            prev_init = ts_init_particles[:, timestep-1] if timestep > 0 else t.ones(K_particles) * init_Q.sample()
+            prev_log_var = ts_log_var_particles[:, timestep-1] if timestep > 0 else t.ones(K_particles) * log_var_Q.sample()
+                        
+            ts_init_particles[:, timestep] = param_transition(prev_init, param_transition_sd).sample()
+            ts_log_var_particles[:, timestep] = param_transition(prev_log_var, param_transition_sd).sample()
+            
+            # sample K_particles xs from the transition
+            prev = particles[:, timestep-1] if timestep > 0 else ts_init_particles[:, 0]
+            particles[:, timestep] = transition(prev, ts_log_var_particles[:, timestep]).sample()
+                        
+            # calculate the likelihood of the data given the particles
+            log_weights = log_prob_timeseries(particles[:,:timestep+1], ts_init_particles[:, :timestep+1], ts_log_var_particles[:, :timestep+1], data['a'][:timestep+1], param_transition_sd, prev_init, prev_log_var)
+            log_weights[log_weights.isnan()] = -t.inf
+
+            # add to the the marginal log likelihood
+            # marginal_ll += t.logsumexp(log_weights, 0) - t.tensor(K_particles).log() # shape [K, K]
+
+            # shift up log_weights and exponentiate
+            weights = (log_weights - log_weights.amax(0)).exp() # shape [K_particles, K, K]
+            
+            # resample the particles (TODO: ONLY RESAMPLE IF ESS IS LOW e.g. < K_particles*0.6ish)
+            resampled_indices = t.multinomial(weights, K_particles, replacement=True)  # shape [K_particles, K, K]
+                        
+            # particles = particles.gather(0, resampled_indices.expand(T))  # shape [T, K_particles, K, K]
+            particles = particles[resampled_indices]
+            
+            # use the resampled particles to update the ts_init and ts_log_var particles
+            ts_init_particles = ts_init_particles[resampled_indices]
+            ts_log_var_particles = ts_log_var_particles[resampled_indices]
+            
+            
+            weights /= weights.sum(0)
+                        
+            # calculate first and second moments of the particles for this timestep
+            ts_mean[timestep] = (particles[:,timestep] * weights).sum(0)
+            ts_mean2[timestep] = (particles[:,timestep]**2 * weights).sum(0)
+            
+            
+        # calculate the weighted mean of ts_init_particles and ts_log_var_particles for the last timestep
+        ts_init_mean = (ts_init_particles[:,-1] * weights).sum(0)
+        ts_init_mean2 = (ts_init_particles[:,-1]**2 * weights).sum(0)
+        
+        ts_log_var_mean = (ts_log_var_particles[:,-1] * weights).sum(0)
+        ts_log_var_mean2 = (ts_log_var_particles[:,-1]**2 * weights).sum(0)
+        
+        # update the Q distributions
+        dists = get_gaussians_from_moments_dict({'ts_init': ts_init_mean, 'ts_log_var': ts_log_var_mean, 'ts': ts_mean},
+                                                {'ts_init': ts_init_mean2, 'ts_log_var': ts_log_var_mean2, 'ts': ts_mean2}, min_var=t.tensor(1e-6))
+        init_Q = dists['ts_init']
+        log_var_Q = dists['ts_log_var']
+        ts_Q = dists['ts']
+        
+        # save the parameters for this iteration
+        update_param_dict(ess_params, {'ts_init_loc': init_Q.loc, 'ts_init_scale': init_Q.scale,
+                                       'ts_log_var_loc': log_var_Q.loc, 'ts_log_var_scale': log_var_Q.scale,
+                                       'ts_loc': ts_Q.loc, 'ts_scale': ts_Q.scale}, i)
+        
+    # PMCMC INFERENCE (where we perform MH MCMC on the parameters using the particle filter to calculate the likelihood)
+    problem, true_latents, data = generate_problem(T=T, data_seed=data_seed, use_misspecified_prior=use_misspecified_prior, use_misspecified_q=use_misspecified_q)
+
+    pmcmc_elbos = t.zeros(num_iters)
+    pmcmc_params = {key : t.zeros((num_iters, *val.shape)) for key, val in problem.Q.qem_params().items()}
+    update_param_dict(pmcmc_params, problem.Q.qem_params(), 0)
+    
+    K_particles = 500
+    
+    # define the transition and emission distributions
+    transition = lambda prev, ts_log_var: t.distributions.Normal(0.9*prev, ts_log_var.exp())
+    emission = lambda ts: t.distributions.Normal(ts, 1.)
+    
+    init_Q = t.distributions.Normal(0., 1.)
+    log_var_Q = t.distributions.Normal(0., 1.)
+    
+    param_transition = lambda prev, sd: t.distributions.Normal(prev, sd)
+    
+    ts_inits = t.zeros(num_iters)
+    ts_log_vars = t.zeros(num_iters)
+    
+    ts_inits[0] = param_transition(0,1).sample()
+    ts_log_vars[0] = param_transition(0,1).sample()
+    
+    marginal_ll = t.zeros(num_iters)
+
+    for i in range(num_iters):
+        print(f"{i} PMCMC")
+        particles = t.zeros(K_particles, T)  
+        
+        ts_mean = t.zeros(T)
+        ts_mean2 = t.zeros(T)
+        
+        ts_init_proposal = param_transition(ts_inits[i-1], 1).sample()
+        ts_log_var_proposal = param_transition(ts_log_vars[i-1], 1).sample()
+        
+        # implement the particle filter
+        for timestep in range(T):
+            # sample K_particles xs from the transition
+            prev = particles[:, timestep-1] if timestep > 0 else ts_init_proposal.expand(K_particles)
+            particles[:, timestep] = transition(prev, ts_log_var_proposal).sample()
+                        
+            # calculate the likelihood of the data given the particles
+            log_weights = emission(particles[:, timestep]).log_prob(data['a'][timestep])
+
+            # add to the the marginal log likelihood
+            marginal_ll[i] += t.logsumexp(log_weights, 0) - t.tensor(K_particles).log() # shape [K, K]
+
+            # shift up log_weights and exponentiate
+            weights = (log_weights - log_weights.amax(0)).exp() # shape [K_particles, K, K]
+            
+            # resample the particles (TODO: ONLY RESAMPLE IF ESS IS LOW e.g. < K_particles*0.6ish)
+            resampled_indices = t.multinomial(weights, K_particles, replacement=True)  # shape [K_particles, K, K]
+                        
+            # particles = particles.gather(0, resampled_indices.expand(T))  # shape [T, K_particles, K, K]
+            particles = particles[resampled_indices]
+            
+            weights /= weights.sum(0)
+                        
+            # calculate first and second moments of the particles for this timestep
+            ts_mean[timestep] = (particles[:,timestep] * weights).sum(0)
+            ts_mean2[timestep] = (particles[:,timestep]**2 * weights).sum(0)
+            
+            
+        # update the Q distribution for ts
+        dists = get_gaussians_from_moments_dict({'ts': ts_mean}, {'ts': ts_mean2}, min_var=t.tensor(1e-6))
+        ts_Q = dists['ts']
+        
+        # do a metroplis-hastings step for ts_init and ts_log_var
+        if i > 0:
+            alpha = marginal_ll[i] - marginal_ll[i-1] 
+            
+            alpha += t.distributions.Normal(0, 1).log_prob(ts_init_proposal) - t.distributions.Normal(0, 1).log_prob(ts_inits[i-1])
+            alpha += param_transition(ts_init_proposal, 1).log_prob(ts_inits[i-1]) - param_transition(ts_inits[i-1], 1).log_prob(ts_init_proposal)
+            
+            alpha += t.distributions.Normal(0, 1).log_prob(ts_log_var_proposal) - t.distributions.Normal(0, 1).log_prob(ts_log_vars[i-1])
+            alpha += param_transition(ts_log_var_proposal, 1).log_prob(ts_log_vars[i-1]) - param_transition(ts_log_vars[i-1], 1).log_prob(ts_log_var_proposal)
+            
+            alpha = min(alpha, t.tensor(0.))
+            print(alpha)
+            if t.rand(1) < alpha.exp():
+                print("accepted")
+                ts_inits[i] = ts_init_proposal
+                ts_log_vars[i] = ts_log_var_proposal
+            else:
+                ts_inits[i] = ts_inits[i-1]
+                ts_log_vars[i] = ts_log_vars[i-1]
+        
+        
+        # save the parameters for this iteration
+        update_param_dict(pmcmc_params, {'ts_init_loc': ts_inits[i], 'ts_init_scale': t.zeros(()),
+                                       'ts_log_var_loc': ts_log_vars[i], 'ts_log_var_scale': t.zeros(()),
+                                       'ts_loc': ts_Q.loc, 'ts_scale': ts_Q.scale}, i)
+        
+
+        
+    # calculate the weighted mean of ts_init_particles and ts_log_var_particles for the last timestep
+    # ts_init_mean = (ts_init_particles[:,-1] * weights).sum(0)
+    # ts_init_mean2 = (ts_init_particles[:,-1]**2 * weights).sum(0)
+    
+    # ts_log_var_mean = (ts_log_var_particles[:,-1] * weights).sum(0)
+    # ts_log_var_mean2 = (ts_log_var_particles[:,-1]**2 * weights).sum(0)
+
 
     # PLOT RESULTS
     # PLOT 1: ELBOs
@@ -414,6 +623,12 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
         
         _smc_vals_smoothed = smc_params_smoothing[key+'_loc'].rename(None)
         _smc_errs_smoothed = smc_params_smoothing[key+'_scale'].rename(None)
+        
+        _ess_vals = ess_params[key+'_loc'].rename(None)
+        _ess_errs = ess_params[key+'_scale'].rename(None)
+        
+        _pmcmc_vals = pmcmc_params[key+'_loc'].rename(None)
+        _pmcmc_errs = pmcmc_params[key+'_scale'].rename(None)
         if key == 'ts':
             for j in range(T):
                 indep_vals = _indep_vals[:, j]
@@ -424,6 +639,12 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
                 
                 smc_vals_smoothed = _smc_vals_smoothed[:, j]
                 smc_errs_smoothed = _smc_errs_smoothed[:, j]
+                
+                ess_vals = _ess_vals[:, j]
+                ess_errs = _ess_errs[:, j]
+                
+                pmcmc_vals = _pmcmc_vals[:, j]
+                pmcmc_errs = _pmcmc_errs[:, j]
 
                 axs[col].plot([true_latents[key][j].rename(None)]*num_iters, label='true', linestyle='--', color='black')
 
@@ -437,6 +658,12 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
                 
                 axs[col].plot(smc_vals_smoothed, label='smc smoothed', color='orange')
                 axs[col].fill_between(t.arange(num_iters), smc_vals_smoothed - smc_errs_smoothed, smc_vals_smoothed + smc_errs_smoothed, alpha=0.2, color='orange')
+                
+                axs[col].plot(ess_vals, label='ess', color='purple')
+                axs[col].fill_between(t.arange(num_iters), ess_vals - ess_errs, ess_vals + ess_errs, alpha=0.2, color='purple')
+                
+                axs[col].plot(pmcmc_vals, label='pmcmc', color='brown')
+                axs[col].fill_between(t.arange(num_iters), pmcmc_vals - pmcmc_errs, pmcmc_vals + pmcmc_errs, alpha=0.2, color='brown')
 
                 axs[col].set_title(key + ' at timestep ' + str(j+1))
                 # axs[col].legend()
@@ -450,6 +677,12 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
             
             smc_vals_smoothed = _smc_vals_smoothed
             smc_errs_smoothed = _smc_errs_smoothed
+            
+            ess_vals = _ess_vals
+            ess_errs = _ess_errs
+            
+            pmcmc_vals = _pmcmc_vals
+            pmcmc_errs = _pmcmc_errs
 
             axs[col].plot([true_latents[key].rename(None)]*num_iters, label='true', linestyle='--', color='black')
 
@@ -461,6 +694,12 @@ def run(data_seed = DATA_SEED, use_misspecified_prior = USE_MISSPECIFIED_PRIOR, 
             
             axs[col].plot(smc_vals, label='smc smoothed', color='orange')
             axs[col].fill_between(t.arange(num_iters), smc_vals_smoothed - smc_errs_smoothed, smc_vals_smoothed + smc_errs_smoothed, alpha=0.2, color='orange')
+            
+            axs[col].plot(ess_vals, label='ess', color='purple')
+            axs[col].fill_between(t.arange(num_iters), ess_vals - ess_errs, ess_vals + ess_errs, alpha=0.2, color='purple')
+            
+            axs[col].plot(pmcmc_vals, label='pmcmc', color='brown')
+            axs[col].fill_between(t.arange(num_iters), pmcmc_vals - pmcmc_errs, pmcmc_vals + pmcmc_errs, alpha=0.2, color='brown')
             
             axs[col].set_title(key)
             # axs[col].legend()
