@@ -5,7 +5,13 @@ import numpy as np
 
 from pathlib import Path
 
+
+
+with open('results/covid_only_npis_wearing/rws_0_30_0.1_moments.pkl', 'rb') as f:
+    psi = pickle.load(f)
+
 models = ['covid', 'covid_only_wearing_mobility', 'covid_only_npis_wearing']
+model = ['covid_only_npis_wearing']
 
 for mod in models:
     #Get moments from file

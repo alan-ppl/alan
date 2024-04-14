@@ -170,7 +170,15 @@ def run_experiment(cfg):
                         #save moments to file
                         with open(f"covid/results/{cfg.model}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_moments.pkl", "wb") as f:
                             pickle.dump(moments, f)
-                            
+
+
+                        # save moments if elbo>0 (for our models this means somethings up)
+                        if elbo > 0:
+                            with open(f"covid/results/{cfg.model}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_moments_elbogreaterthanzero.pkl", "wb") as f:
+                                pickle.dump(moments, f)
+                        
+                        
+                        
                         # predictive samples
                         names = ['log_infected', 'log_infected_ex2', 'psi', 'psi_ex2']
                         desired_moments = (('log_infected', mean), ('log_infected', mean2), ('psi', mean), ('psi', mean2))
@@ -180,11 +188,11 @@ def run_experiment(cfg):
                         log_infected = saving_moments['log_infected'].rename(None)
                         psi = saving_moments['psi'].rename(None)
                         
-                        with open(f'covid/results/{cfg.model}/{cfg.method}_log_infected_{K}_{lr}.pkl', 'wb') as f:
-                            pickle.dump(log_infected.detach().cpu().numpy(), f)
+                        # with open(f'covid/results/{cfg.model}/{cfg.method}_log_infected_{K}_{lr}.pkl', 'wb') as f:
+                        #     pickle.dump(log_infected.detach().cpu().numpy(), f)
                             
-                        with open(f'covid/results/{cfg.model}/{cfg.method}_psi_{K}_{lr}.pkl', 'wb') as f:
-                            pickle.dump(psi.detach().cpu().numpy(), f)
+                        # with open(f'covid/results/{cfg.model}/{cfg.method}_psi_{K}_{lr}.pkl', 'wb') as f:
+                        #     pickle.dump(psi.detach().cpu().numpy(), f)
 
 
                         predicted_obs = {'obs':NegativeBinomial(total_count = t.exp(psi).unsqueeze(1), probs=1/((t.exp(psi).unsqueeze(1)/ t.exp(log_infected)) + 1 + 1e-7)).sample(t.Size([100]))}
