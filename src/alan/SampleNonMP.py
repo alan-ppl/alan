@@ -57,7 +57,7 @@ class SampleNonMP:
     def _elbo(self, sample):
         return self.logpq(sample).order(self.Kdim).logsumexp(0) - math.log(self.Kdim.size)
 
-    def elbo_vi(self, computation_strategy=checkpoint):
+    def elbo_vi(self):
         if not self.reparam==True:
             raise Exception("To compute the ELBO with the right gradients for VI you must construct a reparameterised sample using `problem.sample(K, reparam=True)`")
         return self._elbo(self.reparam_sample)
@@ -89,7 +89,7 @@ class SampleNonMP:
 
         return ImportanceSample(self.problem, importance_samples, N_dim)
 
-    def _moments_uniform_input(self, moms):
+    def _moments_uniform_input(self, moms, computation_strategy=None):
         """
         Must use computation_strategy=NoCheckpoint, as there seems to be a subtle issue in the interaction between
         checkpointing and TorchDims (not sure why it doesn't emerge elsewhere...)

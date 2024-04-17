@@ -1,5 +1,6 @@
 ---
   model: ???
+  model_name: ''
   method: ???
   num_runs: 5
   num_iters: 1000
