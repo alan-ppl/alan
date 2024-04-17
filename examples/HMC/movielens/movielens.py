@@ -16,7 +16,9 @@ def get_model(data, covariates):
         psi_z = pm.Normal('psi_z', mu=0, sigma=1, shape=d_z)
 
         # z = pm.MvNormal('z', mu=mu_z, cov=np.eye(d_z)*psi_z.exp(), shape=(M, d_z))
-        z = pm.Normal('z', mu=mu_z, sigma=psi_z.exp(), shape=(M, d_z))
+        z_non_cent = pm.Normal('z_non_cent', mu=0, sigma=1, shape=(M, d_z))
+        
+        z = pm.Deterministic('z', mu_z + z_non_cent * psi_z.exp())
 
         x = pm.MutableData('x', covariates['x'])
 
@@ -37,3 +39,15 @@ def get_test_data_cov_dict(all_data, all_covariates, platesizes):
     test_covariates['x'] = test_covariates['x'][:,platesizes['plate_2']:]
 
     return {**test_data, **test_covariates}
+
+if __name__ == '__main__':
+    #Test model without jax
+    import pickle
+    
+    with open(f'data/real_data.pkl', 'rb') as f:
+        platesizes, all_platesizes, data, all_data, covariates, all_covariates, latent_names = pickle.load(f)
+    
+    model = get_model(data, covariates)
+    with model:
+        trace = pm.sample(10, tune=10, chains=1)
+        print(trace)

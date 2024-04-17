@@ -146,7 +146,7 @@ def run_experiment(cfg):
 
                         iter_times[K_idx, lr_idx, i, num_run] = elbo_end_time - elbo_start_time + update_end_time - update_start_time
                 
-                        t.save(prob.state_dict(), f"{cfg.model}/results/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}.pth")
+                        t.save(prob.state_dict(), f"{cfg.model}/results/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_{non_mp_string}.pth")
                         
                         
                         if len(means) == cfg.num_moments_to_save:
@@ -176,7 +176,7 @@ def run_experiment(cfg):
                         
                         #save moments to file
                         moments = {'means': means, 'means2': means2}
-                        with open(f"{cfg.model}/results/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_moments.pkl", "wb") as f:
+                        with open(f"{cfg.model}/results/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_moments_{non_mp_string}.pkl", "wb") as f:
                             pickle.dump(moments, f)
                             
                         

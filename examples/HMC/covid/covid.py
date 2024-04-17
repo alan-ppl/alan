@@ -41,7 +41,7 @@ def get_model(data, covariates):
         Mobility_alpha = pm.Normal("Mobility_alpha", mu=mobility_mean, sigma=mobility_sigma)
         RegionR = pm.Normal("RegionR", mu=R_prior_mean_mean, sigma=R_prior_mean_scale + R_noise_scale)
         InitialSize_log_mean = pm.Normal('InitialSize_log_mean', mu=math.log(1000), sigma=0.5)
-        log_infected_noise_mean = pm.Normal('log_infected_noise_mean', mu=math.log(0.01), sigma=0.25)
+        log_infected_noise_mean = pm.Normal('log_infected_noise_mean', mu=0, sigma=0.25)
 
         #Region level
         InitialSize_log = pm.Normal('InitialSize_log', mu=InitialSize_log_mean, sigma=0.5, shape=nRs)
@@ -49,20 +49,20 @@ def get_model(data, covariates):
         psi = pm.Normal('psi', mu=math.log(1000), sigma=1, shape=nRs)
 
         #Days 
-        log_infected_noise = pm.Normal("log_infected_noise", mu = log_infected_noise_mean, sigma=0.25 / 10, shape=(nRs, data['obs'].shape[1]))
+        log_infected_noise = pm.Normal("log_infected_noise", mu = 0, sigma=0.25 / 10, shape=(nRs, data['obs'].shape[1]))
         # log_infecteds = [InitialSize_log]
         # for i in range(data['obs'].shape[1]):
         #     log_infected = pm.Normal(f'log_infected_{i}', mu=log_infecteds[i] + Expected_Log_Rs(RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility, i), sigma=pm.math.exp(log_infected_noise))
         #     log_infecteds.append(log_infected)
         expanded_r_walk_noise = pt.tile(
-                10.0 * pt.extra_ops.cumsum(log_infected_noise, axis=-1),
+                10 * pt.extra_ops.cumsum(log_infected_noise, axis=-1),
                 1,
             )[:nRs, :data['obs'].shape[1]]
         
 
         growth = pm.Deterministic("growth", RegionR + 
                                   ActiveCMs_NPIs@CM_alpha + Wearing_alpha*ActiveCMs_wearing + 
-                                  Mobility_alpha*ActiveCMs_mobility + expanded_r_walk_noise)
+                                  Mobility_alpha*ActiveCMs_mobility)# + expanded_r_walk_noise)
         
         log_infected = pm.Deterministic(
                 "log_infected",
@@ -70,6 +70,7 @@ def get_model(data, covariates):
                 + growth.cumsum(axis=1),
             )
         
+
         obs = pm.NegativeBinomial('obs', alpha=pt.exp(pt.reshape(psi, (nRs, 1))), mu=pt.exp(log_infected), observed=true_obs)
         
         # obs = pm.Bernoulli("obs", logit_p=logits, shape=(num_actors, num_blocks, num_repeats_plate), observed=true_obs)
@@ -78,15 +79,15 @@ def get_model(data, covariates):
 
 def get_test_data_cov_dict(all_data, all_covariates, platesizes):
     test_data = all_data
-    test_data = {'true_obs': all_data['obs'][:,platesizes['plate_nDs']:]}
+    test_data = {'true_obs': all_data['obs'][:,platesizes['nDs']:]}
 
     test_covariates = all_covariates
 
-    test_covariates['ActiveCMs_NPIs'] = test_covariates['ActiveCMs_NPIs'][:,platesizes['plate_nDs']:, :]
-    test_covariates['ActiveCMs_wearing'] = test_covariates['ActiveCMs_wearing'][:,platesizes['plate_nDs']:]
-    test_covariates['ActiveCMs_mobility'] = test_covariates['ActiveCMs_mobility'][:,platesizes['plate_nDs']:]
+    test_covariates['ActiveCMs_NPIs'] = test_covariates['ActiveCMs_NPIs'][:,platesizes['nDs']:, :]
+    test_covariates['ActiveCMs_wearing'] = test_covariates['ActiveCMs_wearing'][:,platesizes['nDs']:]
+    test_covariates['ActiveCMs_mobility'] = test_covariates['ActiveCMs_mobility'][:,platesizes['nDs']:]
 
-    return {**test_data, **test_covariates, 'num_repeats_plate': num_repeats_extended - num_repeats}
+    return {**test_data, **test_covariates}
 
 if __name__ == '__main__':
     #Test model without jax

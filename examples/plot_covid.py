@@ -209,7 +209,7 @@ if __name__ == '__main__':
                         'occupancy':     {3: (-70000, None), 5: (-55000, None), 10: (-50000, None)},
                         'radon':         {3: (-800, -450), 10: (-580, -480), 30: (-500, -480)},
                         'chimpanzees':   {5: (-500, -240),  15: (-500, -240)},
-                        'covid':         {3: (-1000000, 20000), 10: (-200000, 20000), 30: (-50000, 20000)}}
+                        'covid':         {3: (-1000000, 20000), 10: (-200000, 20000), 30: (-100000, 20000)}}
 
     pll_ylims_per_K  = {'movielens':     {3: (-1150, -940), 10: (-1100, -940), 30: (-1060, -940)},
                         'bus_breakdown': {3: (-7000, None), 10: (-3500, None), 30: (-2800, -1750)},
@@ -224,7 +224,7 @@ if __name__ == '__main__':
              elbo_ylims=elbo_ylims_per_K['covid'][K], results_subfolder='covid_only_npis_wearing/')
         plot('covid', Ks_to_plot=[K], method_lrs_to_ignore={'qem': [0.001, 0.0001], 'rws': [0.001, 0.0001], 'vi': [0.001, 0.0001]},
              elbo_ylims=elbo_ylims_per_K['covid'][K], results_subfolder='covid_only_wearing_mobility/')
-        # plot('covid', Ks_to_plot=[K], method_lrs_to_ignore={'qem': [0.001, 0.0001], 'rws': [0.001, 0.0001], 'vi': [0.001, 0.0001]},
-        #      elbo_ylims=elbo_ylims_per_K['covid'][K], results_subfolder='covid/')
+        plot('covid', Ks_to_plot=[K], method_lrs_to_ignore={'qem': [0.001, 0.0001], 'rws': [0.001, 0.0001], 'vi': [0.001, 0.0001]},
+             elbo_ylims=elbo_ylims_per_K['covid'][K], results_subfolder='covid/')
 
 
