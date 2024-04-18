@@ -93,22 +93,25 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
 
     if Q_param_type == "opt":
         Q = Plate(
-            bird_mean_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp),),
-            bird_mean_log_var = Normal(OptParam(0.), OptParam(0., transformation=t.exp),),
+            global_latents = Group(
+                bird_mean_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp),),
+                bird_mean_log_var = Normal(OptParam(0.), OptParam(0., transformation=t.exp),),
 
-            alpha_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp),),
-            alpha_log_var = Normal(OptParam(0.), OptParam(0., transformation=t.exp),),
+                alpha_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp),),
+                alpha_log_var = Normal(OptParam(0.), OptParam(0., transformation=t.exp),),
 
-            beta_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp),),
-            beta_log_var = Normal(OptParam(0.), OptParam(0., transformation=t.exp),),
+                beta_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp),),
+                beta_log_var = Normal(OptParam(0.), OptParam(0., transformation=t.exp),),
+            ),
 
             plate_Birds = Plate(
-                bird_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp),), # how common is this bird?
+                bird_latents = Group(
+                    bird_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp),), # how common is this bird?
 
-                alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp),), # how easy is this bird to see?
+                    alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp),), # how easy is this bird to see?
 
-                beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp),), # how much does weather affect this bird?
-
+                    beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp),), # how much does weather affect this bird?
+                ),
                 plate_Years = Plate(
                     bird_year_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp),), # how common is this bird this year?
 
@@ -129,22 +132,24 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
         assert Q_param_type == 'qem'
 
         Q = Plate(
-            bird_mean_mean = Normal(QEMParam(0.), QEMParam(1.),),
-            bird_mean_log_var = Normal(QEMParam(0.), QEMParam(1.),),
+            global_latents = Group(
+                bird_mean_mean = Normal(QEMParam(0.), QEMParam(1.),),
+                bird_mean_log_var = Normal(QEMParam(0.), QEMParam(1.),),
 
-            alpha_mean = Normal(QEMParam(0.), QEMParam(1.),),
-            alpha_log_var = Normal(QEMParam(0.), QEMParam(1.),),
+                alpha_mean = Normal(QEMParam(0.), QEMParam(1.),),
+                alpha_log_var = Normal(QEMParam(0.), QEMParam(1.),),
 
-            beta_mean = Normal(QEMParam(0.), QEMParam(1.),),
-            beta_log_var = Normal(QEMParam(0.), QEMParam(1.),),
-
+                beta_mean = Normal(QEMParam(0.), QEMParam(1.),),
+                beta_log_var = Normal(QEMParam(0.), QEMParam(1.),),
+            ),
             plate_Birds = Plate(
-                bird_mean = Normal(QEMParam(0.), QEMParam(1.),), # how common is this bird?
+                bird_latents = Group(
+                    bird_mean = Normal(QEMParam(0.), QEMParam(1.),), # how common is this bird?
 
-                alpha = Normal(QEMParam(0.), QEMParam(1.),), # how easy is this bird to see?
+                    alpha = Normal(QEMParam(0.), QEMParam(1.),), # how easy is this bird to see?
 
-                beta = Normal(QEMParam(0.), QEMParam(1.),), # how much does weather affect this bird?
-
+                    beta = Normal(QEMParam(0.), QEMParam(1.),), # how much does weather affect this bird?
+                ),
                 plate_Years = Plate(
                     bird_year_mean = Normal(QEMParam(0.), QEMParam(1.),), # how common is this bird this year?
 
@@ -188,5 +193,5 @@ if __name__ == "__main__":
                      lrs = {'rws': 0.1, 'qem': 0.1},
                      reparam = False,
                      fake_data = False,
-                     device = 'cuda')
+                     device = 'cpu')
     

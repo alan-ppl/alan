@@ -104,10 +104,10 @@ if __name__ == "__main__":
     sys.path.insert(1, os.path.join(sys.path[0], '..'))
     import basic_runner
 
-    basic_runner.run('movielens',
+    basic_runner.run('movielens_reparam',
                      K = 10,
                      num_runs = 1,
                      num_iters = 10,
                      lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1},
                      fake_data = False,
-                     device = 'cuda')
+                     device = 'cpu')

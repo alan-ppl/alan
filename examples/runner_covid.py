@@ -106,20 +106,32 @@ def run_experiment(cfg):
                             sample = prob.sample_nonmp(K, reparam)
                         else:
                             sample = prob.sample(K, reparam)
-
-                        if cfg.method == 'vi':
-                            elbo = sample.elbo_vi() if split is None else sample.elbo_vi(computation_strategy = split)
-                        elif cfg.method == 'rws':
-                            elbo = sample.elbo_rws() if split is None else sample.elbo_rws(computation_strategy = split)
-                        elif cfg.method == 'qem':
-                            elbo = sample.elbo_nograd() if split is None else sample.elbo_nograd(computation_strategy = split)
+                            
+                        if cfg.non_mp:
+                            #Non-mp doesn't take computation_strategy
+                            if cfg.method == 'vi':
+                                elbo = sample.elbo_vi()
+                            elif cfg.method == 'rws':
+                                elbo = sample.elbo_rws()
+                            elif cfg.method == 'qem':
+                                elbo = sample.elbo_nograd()
+                        else:
+                            if cfg.method == 'vi':
+                                elbo = sample.elbo_vi() if split is None else sample.elbo_vi(computation_strategy = split)
+                            elif cfg.method == 'rws':
+                                elbo = sample.elbo_rws() if split is None else sample.elbo_rws(computation_strategy = split)
+                            elif cfg.method == 'qem':
+                                elbo = sample.elbo_nograd() if split is None else sample.elbo_nograd(computation_strategy = split) 
 
                         elbo_end_time = safe_time(device)
 
                         elbos[K_idx, lr_idx, i, num_run] = elbo.item()
 
                         if do_predll:
-                            importance_sample = sample.importance_sample(N=N_predll) if split is None else sample.importance_sample(N=N_predll, computation_strategy = split)
+                            if cfg.non_mp:
+                                importance_sample = sample.importance_sample(N=N_predll)
+                            else:
+                                importance_sample = sample.importance_sample(N=N_predll) if split is None else sample.importance_sample(N=N_predll, computation_strategy = split)
                             extended_importance_sample = importance_sample.extend(all_platesizes, all_covariates)
                             ll = extended_importance_sample.predictive_ll(all_data)
                             

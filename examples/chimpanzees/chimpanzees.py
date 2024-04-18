@@ -81,17 +81,18 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
 
     if Q_param_type == "opt":
         Q = Plate(
-            sigma_block = HalfCauchy(OptParam(1.)),
-            sigma_actor = HalfCauchy(OptParam(1.)),
+            global_latents = Group(
+                sigma_block = HalfCauchy(OptParam(1.)),
+                sigma_actor = HalfCauchy(OptParam(1.)),
 
-            # sigma_block = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-            # sigma_actor = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                # sigma_block = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                # sigma_actor = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
 
-            beta_PC = Normal(OptParam(0.), OptParam(t.tensor(10.).log(), transformation=t.exp)),
-            beta_P = Normal(OptParam(0.), OptParam(t.tensor(10.).log(), transformation=t.exp)),
+                beta_PC = Normal(OptParam(0.), OptParam(t.tensor(10.).log(), transformation=t.exp)),
+                beta_P = Normal(OptParam(0.), OptParam(t.tensor(10.).log(), transformation=t.exp)),
 
-            alpha = Normal(OptParam(0.), OptParam(t.tensor(10.).log(), transformation=t.exp)),
-
+                alpha = Normal(OptParam(0.), OptParam(t.tensor(10.).log(), transformation=t.exp)),
+            ),
             plate_actors = Plate(
                 alpha_actor = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
 
@@ -111,14 +112,15 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
         assert Q_param_type == 'qem'
 
         Q = Plate(
-            sigma_block = HalfCauchy(OptParam(1.)),
-            sigma_actor = HalfCauchy(OptParam(1.)),
+            global_latents = Group(
+                sigma_block = HalfCauchy(OptParam(1.)),
+                sigma_actor = HalfCauchy(OptParam(1.)),
 
-            beta_PC = Normal(QEMParam(0.), QEMParam(t.tensor(10.))),
-            beta_P = Normal(QEMParam(0.), QEMParam(t.tensor(10.))),
+                beta_PC = Normal(QEMParam(0.), QEMParam(t.tensor(10.))),
+                beta_P = Normal(QEMParam(0.), QEMParam(t.tensor(10.))),
 
-            alpha = Normal(QEMParam(0.), QEMParam(t.tensor(10.))),
-
+                alpha = Normal(QEMParam(0.), QEMParam(t.tensor(10.))),
+            ),
             plate_actors = Plate(
                 alpha_actor = Normal(QEMParam(0.), QEMParam(1.)),
 
@@ -157,4 +159,4 @@ if __name__ == "__main__":
                      num_iters = 10,
                      lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1},
                      fake_data = False,
-                     device = 'cuda')
+                     device = 'cpu')

@@ -76,19 +76,21 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
     if Q_param_type == "opt":
 
         Q = Plate(
-            log_sigma_phi_psi = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+            global_latents = Group(
+                log_sigma_phi_psi = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
 
-            psi = Normal(OptParam(t.zeros(run_type_dim)), OptParam(t.zeros(run_type_dim), transformation=t.exp)),
-            phi = Normal(OptParam(t.zeros(bus_company_name_dim)), OptParam(t.zeros(bus_company_name_dim), transformation=t.exp)),
+                psi = Normal(OptParam(t.zeros(run_type_dim)), OptParam(t.zeros(run_type_dim), transformation=t.exp)),
+                phi = Normal(OptParam(t.zeros(bus_company_name_dim)), OptParam(t.zeros(bus_company_name_dim), transformation=t.exp)),
 
-            sigma_beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-            mu_beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-
+                sigma_beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                mu_beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+            ),
             plate_Year = Plate(
-                beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                year_latents = Group(
+                    beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
 
-                sigma_alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-
+                    sigma_alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                ),
                 plate_Borough = Plate(
                     alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
 
@@ -105,19 +107,21 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
         assert Q_param_type == "qem"
 
         Q = Plate(
-            log_sigma_phi_psi = Normal(QEMParam(0.), QEMParam(1.)),
+            global_latents = Group(
+                log_sigma_phi_psi = Normal(QEMParam(0.), QEMParam(1.)),
 
-            psi = Normal(QEMParam(t.zeros((run_type_dim,))), QEMParam(t.ones((run_type_dim,)))),
-            phi = Normal(QEMParam(t.zeros((bus_company_name_dim,))), QEMParam(t.ones((bus_company_name_dim,)))),
+                psi = Normal(QEMParam(t.zeros((run_type_dim,))), QEMParam(t.ones((run_type_dim,)))),
+                phi = Normal(QEMParam(t.zeros((bus_company_name_dim,))), QEMParam(t.ones((bus_company_name_dim,)))),
 
-            sigma_beta = Normal(QEMParam(0.), QEMParam(1.)),
-            mu_beta = Normal(QEMParam(0.), QEMParam(1.)),
-
+                sigma_beta = Normal(QEMParam(0.), QEMParam(1.)),
+                mu_beta = Normal(QEMParam(0.), QEMParam(1.)),
+            ),
             plate_Year = Plate(
-                beta = Normal(QEMParam(0.), QEMParam(1.)),
+                year_latents = Group(
+                    beta = Normal(QEMParam(0.), QEMParam(1.)),
 
-                sigma_alpha = Normal(QEMParam(0.), QEMParam(1.)),
-
+                    sigma_alpha = Normal(QEMParam(0.), QEMParam(1.)),
+                ),
                 plate_Borough = Plate(
                     alpha = Normal(QEMParam(0.), QEMParam(1.)),
 
@@ -151,4 +155,4 @@ if __name__ == "__main__":
                      num_iters = 10,
                      lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1},
                      fake_data = False,
-                     device = 'cuda')
+                     device = 'cpu')

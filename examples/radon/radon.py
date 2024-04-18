@@ -1,6 +1,6 @@
 ## Radon model in 919 houses and 85 counties from Gelman et al. (2006)
 import torch as t
-from alan import Normal, Bernoulli, HalfNormal, Plate, BoundPlate, Problem, Data, mean, OptParam, QEMParam, checkpoint, no_checkpoint, Split
+from alan import Normal, Bernoulli, HalfNormal, Plate, BoundPlate, Problem, Data, mean, OptParam, QEMParam, checkpoint, no_checkpoint, Split, Group
 
 import numpy as np
 from pathlib import Path
@@ -90,16 +90,22 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
 
     if Q_param_type == "opt": 
         Q_plate = Plate(
-            global_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-            global_log_sigma = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+            global_latents = Group(
+                global_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                global_log_sigma = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+            ),
             States = Plate(
-                State_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-                State_log_sigma = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                state_latents = Group(
+                    State_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                    State_log_sigma = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                ),
                 Counties = Plate(
-                    County_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-                    County_log_sigma = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-                    Beta_u = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-                    Beta_basement = Normal(OptParam(0.), OptParam(t.tensor(10.).log(), transformation=t.exp)),
+                    county_latents = Group(
+                        County_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                        County_log_sigma = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                        Beta_u = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                        Beta_basement = Normal(OptParam(0.), OptParam(t.tensor(10.).log(), transformation=t.exp)),
+                    ),
                     Zips = Plate(
                         obs = Data(),
                     ),
@@ -108,16 +114,22 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
         )
     elif Q_param_type == "qem":
         Q_plate = Plate(
-            global_mean = Normal(QEMParam(0.), QEMParam(1.)),
-            global_log_sigma = Normal(QEMParam(0.), QEMParam(1.)),
+            global_latents = Group(
+                global_mean = Normal(QEMParam(0.), QEMParam(1.)),
+                global_log_sigma = Normal(QEMParam(0.), QEMParam(1.)),
+            ),
             States = Plate(
-                State_mean = Normal(QEMParam(0.), QEMParam(1.)),
-                State_log_sigma = Normal(QEMParam(0.), QEMParam(1.)),
+                state_latents = Group(
+                    State_mean = Normal(QEMParam(0.), QEMParam(1.)),
+                    State_log_sigma = Normal(QEMParam(0.), QEMParam(1.)),
+                ),
                 Counties = Plate(
-                    County_mean = Normal(QEMParam(0.), QEMParam(1.)),
-                    County_log_sigma = Normal(QEMParam(0.), QEMParam(1.)),
-                    Beta_u = Normal(QEMParam(0.), QEMParam(1.)),
-                    Beta_basement = Normal(QEMParam(0.), QEMParam(10.)),
+                    county_latents = Group(
+                        County_mean = Normal(QEMParam(0.), QEMParam(1.)),
+                        County_log_sigma = Normal(QEMParam(0.), QEMParam(1.)),
+                        Beta_u = Normal(QEMParam(0.), QEMParam(1.)),
+                        Beta_basement = Normal(QEMParam(0.), QEMParam(10.)),
+                    ),
                     Zips = Plate(
                         obs = Data(),
                     ),
@@ -148,8 +160,8 @@ if __name__ == "__main__":
     basic_runner.run('radon',
                      K = 10,
                      num_runs = 1,
-                     num_iters = 100,
-                     lrs = {'vi': 0.1, 'rws': 0.3, 'qem': 0.3},
+                     num_iters = 10,
+                     lrs = {'vi': 0.03, 'rws': 0.3, 'qem': 0.3},
                      fake_data = False,
                      device = 'cpu')
     
