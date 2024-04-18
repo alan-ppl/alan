@@ -115,7 +115,7 @@ def sample_Ks_timeseries(lps, Ks_to_sum, ts_init_Ks, N_dim, num_samples, T_dim, 
         smoothed_t_plus_one = None
 
         for t_idx in range(T_dim.size-1,-1,-1):
-            print(t_idx, generic_dims(lp), generic_dims(filtered_t_plus_one), generic_dims(smoothed_t_plus_one))
+            # print(t_idx, generic_dims(lp), generic_dims(filtered_t_plus_one), generic_dims(smoothed_t_plus_one))
             
             # this filtering/forward-run gives us log p(x_t | y_{1:t}, x_{1:t-1}) as a K x K tensor 
             filtered_t = chain_logmmexp(lp.order(T_dim, init_K_dim, K_dim)[:t_idx+1])[init_K_dim, K_dim] 
@@ -126,16 +126,14 @@ def sample_Ks_timeseries(lps, Ks_to_sum, ts_init_Ks, N_dim, num_samples, T_dim, 
             # i.e.  filtered_t * INTEGRATE{dx_{t+1} * smoothed_{t+1} * p(x_{t+1} | x_t) / filtered_{t+1} }
             # 
             # see e.g. http://www.gatsby.ucl.ac.uk/~byron/nlds/briers04.pdf
-            if t_idx < T_dim.size-1:
-                # smoothed_t = filtered_t * chain_logmmexp(lp.order(T_dim, init_K_dim, K_dim)[t_idx+1:])[init_K_dim, K_dim] / chain_logmmexp(lp.order(T_dim, init_K_dim, K_dim)[:t_idx+1])[init_K_dim, K_dim]
-                
+            if t_idx < T_dim.size-1:                
                 integrand = ((smoothed_t_plus_one - filtered_t_plus_one) + lp.order(T_dim)[t_idx:t_idx+2]) # [2, init_K_dim, K_dim] with torchdims
                 integrand = integrand.order(init_K_dim, K_dim).transpose(-1,0) # [init_K_dim, K_dim, 2] without torchdims
                 integrand = integrand.transpose(-1,-2)                         # [2, init_K_dim, K_dim] without torchdims (which is what we want for chain_logmmexp)
 
                 # breakpoint()
                 
-                smoothed_t = filtered_t * chain_logmmexp(integrand)[init_K_dim, K_dim]
+                smoothed_t = filtered_t + chain_logmmexp(integrand)[init_K_dim, K_dim]
             else:
                 smoothed_t = filtered_t
             
@@ -153,8 +151,8 @@ def sample_Ks_timeseries(lps, Ks_to_sum, ts_init_Ks, N_dim, num_samples, T_dim, 
             sampled_flat_idx = t.multinomial(t.exp(smoothed_t.order(K_dim) - lp_max).ravel(), 1, replacement=True)[0]
             ts_indices[t_idx] = sampled_flat_idx#[N_dim]
 
-            print(ts_indices)
-        # breakpoint()
+            # print(ts_indices)
+
         indices[K_dim] = ts_indices[T_dim] # TODO: try just the final timestep (as we were doing before)
         
     return indices

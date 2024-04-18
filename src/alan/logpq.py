@@ -182,8 +182,6 @@ def logPQ_gdt(
     assert 1<=len(prog_P) 
     assert set(prog_P.keys()) == set(prog_Q.keys())
 
-    print(name)
-
     #Immediately return if data.
     if datagroup(prog_Q):
         assert len(prog_Q) == 1

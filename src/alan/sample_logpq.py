@@ -41,8 +41,6 @@ def logPQ_sample(
     assert isinstance(extra_log_factors, dict)
     assert isinstance(indices, dict)
 
-    print("starting logPQ_sample for", name)
-
     #Push an extra plate, if not the top-layer plate (top-layer plate is signalled
     #by name=None.
     if name is not None:
