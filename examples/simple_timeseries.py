@@ -105,7 +105,7 @@ print("First importance sample check done.")
 # breakpoint()
 
 # see if we can recover the true posterior using importance sampling
-max_K = 100
+max_K = 150
 
 ts_means = t.zeros(max_K, T)
 
