@@ -1,5 +1,5 @@
 import torch as t
-from alan import Normal, Binomial, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
+from alan import Normal, NegativeBinomial, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
 
 M, J, I = 3, 3, 30
 
@@ -56,7 +56,7 @@ def get_P(platesizes, covariates):
                 alpha = Normal('beta', lambda sigma_alpha: sigma_alpha.exp()),
         
                 plate_ID = Plate(
-                    obs = Binomial(total_count=131, logits = lambda alpha, phi, psi, run_type, bus_company_name: alpha + phi @ bus_company_name + psi @ run_type),
+                    obs = NegativeBinomial(total_count=131, logits = lambda alpha, phi, psi, run_type, bus_company_name: alpha + phi @ bus_company_name + psi @ run_type),
                 )
             )
         )
