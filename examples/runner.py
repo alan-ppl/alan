@@ -22,8 +22,15 @@ def run_experiment(cfg):
     # device = 'cpu'
     print(device)
 
-    Ks = cfg.Ks
-    lrs = cfg.lrs
+    Ks_lrs = cfg.Ks_lrs
+
+    Ks = [K for K, lrs in Ks_lrs.items()]
+    with open(f"{cfg.model}/results/{cfg.model_name}/Ks_lrs.pkl", "wb") as f:
+        pickle.dump(Ks_lrs, f)
+        
+    #longest list of lrs:
+    num_lrs = max([len(lrs) for K, lrs in Ks_lrs.items()])
+    
     num_runs = cfg.num_runs
     num_iters = cfg.num_iters
 
@@ -70,8 +77,8 @@ def run_experiment(cfg):
     for key in all_covariates:
         all_covariates[key] = all_covariates[key].to(device)
 
-    elbos = t.zeros((len(Ks), len(lrs), num_iters+1, num_runs)).to(device)
-    p_lls = t.zeros((len(Ks), len(lrs), num_iters+1, num_runs)).to(device)
+    elbos = t.zeros((len(Ks), num_lrs, num_iters+1, num_runs)).to(device)
+    p_lls = t.zeros((len(Ks), num_lrs, num_iters+1, num_runs)).to(device)
 
 
     temp_P = model.get_P(platesizes, covariates)
@@ -80,7 +87,7 @@ def run_experiment(cfg):
 
     moment_list = list(product(latent_names, [mean, mean2]))
     # the below times should NOT include predictive ll computation time, as this is optional
-    iter_times = t.zeros((len(Ks), len(lrs), num_iters+1, num_runs))
+    iter_times = t.zeros((len(Ks), num_lrs, num_iters+1, num_runs))
 
     if cfg.write_job_status:
         with open(f"{cfg.model}/job_status/{model_name}/{cfg.method}{non_mp_string}_status.txt", "w") as f:
@@ -91,6 +98,7 @@ def run_experiment(cfg):
         means = []
         means2 = []
         for K_idx, K in enumerate(Ks):
+            lrs = Ks_lrs[K]
             K_start_time = safe_time(device)
             for lr_idx, lr in enumerate(lrs):
                 t.manual_seed(num_run)

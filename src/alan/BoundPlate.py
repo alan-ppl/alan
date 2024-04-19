@@ -362,20 +362,20 @@ class BoundPlate(nn.Module):
 
         return sample, groupvarname2Kdim
 
-    def sample(self):
+    def sample(self, sample_size:int=1):
         """
         Returns a single sample from the model, as a flat dictionary of named tensors, where the names correspond to plate dimensions.
         """
-
+        N_dim = Dim("N", sample_size)
         all_platedims = {platename: Dim(platename, size) for (platename, size) in self.all_platesizes.items()}
         set_platedims = list(all_platedims.values())
-        torchdim_tree_withK, _ = self._sample(1, False, PermutationSampler, all_platedims)
+        torchdim_tree_withK, _ = self._sample(sample_size, False, PermutationSampler, all_platedims)
         torchdim_flatdict_withK = flatten_tree(torchdim_tree_withK)
 
         torchdim_flatdict_noK = {}
         for k, v in torchdim_flatdict_withK.items():
             K_dims = list(set(generic_dims(v)).difference(set_platedims))
-            v = v.order(K_dims)
+            v = v.order(K_dims)[N_dim]
             v = v.squeeze(tuple(range(len(K_dims))))
             torchdim_flatdict_noK[k] = v.detach()
 

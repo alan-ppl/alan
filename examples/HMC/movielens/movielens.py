@@ -23,6 +23,9 @@ def get_model(data, covariates):
         x = pm.MutableData('x', covariates['x'])
 
         logits = pm.Deterministic('logits', (z @ x.transpose(0,2,1)).diagonal().transpose())
+
+        
+        
         # ^^ equivalent to:
         # logits = pm.Deterministic('logits', np.einsum('ij,ikj->ik', z, x))
         # but pymc doesn't like einsums in Deterministic nodes
@@ -49,5 +52,18 @@ if __name__ == '__main__':
     
     model = get_model(data, covariates)
     with model:
-        trace = pm.sample(10, tune=10, chains=1)
-        print(trace)
+        # trace = pm.sample(1, tune=1, chains=1)
+        prior = pm.sample_prior_predictive(samples=2000)
+        
+        moments_collection = {}
+        print(prior)
+        # compute moments for each latent
+        for name in latent_names:
+            print(name)
+            print(prior.prior[name].mean(("chain", "draw")))
+            print(prior.prior[name].std(("chain", "draw")))
+            
+        for name in ['obs']:
+            print(name)
+            print(prior.prior_predictive[name].mean(("chain", "draw")))
+            print(prior.prior_predictive[name].std(("chain", "draw")))

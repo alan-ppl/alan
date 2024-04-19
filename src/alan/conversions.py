@@ -117,7 +117,7 @@ class ExponentialConversion(AbstractConversion):
 
 class DirichletConversion(AbstractConversion):
     dist = t.distributions.Dirichlet
-    sufficient_stats = (mean_log)
+    sufficient_stats = (mean_log,)
 
     @staticmethod
     def conv2mean(concentration):
@@ -268,6 +268,20 @@ class MultivariateNormalConversion(AbstractConversion):
             covariance_matrix = scale_tril @ scale_tril.mT
         return {'loc': loc, 'covariance_matrix': covariance_matrix}
 
+class HalfNormalConversion(AbstractConversion):
+    dist = t.distributions.HalfNormal
+    sufficient_stats = (mean2,)
+
+    @staticmethod
+    def conv2mean(scale):
+        return (scale**2,)
+    @staticmethod
+    def mean2conv(mean2):
+        return {'scale': mean2.sqrt()}
+    @staticmethod
+    def test_conv(N):
+        return {'scale': t.randn(N).exp()}
+    
 conversion_dict = {
     t.distributions.Bernoulli: BernoulliConversion,
     t.distributions.ContinuousBernoulli: ContinuousBernoulliConversion,
@@ -278,4 +292,5 @@ conversion_dict = {
     t.distributions.Normal: NormalConversion,
     t.distributions.Gamma: GammaConversion,
     t.distributions.MultivariateNormal: MultivariateNormalConversion,
+    t.distributions.HalfNormal: HalfNormalConversion,
 }
