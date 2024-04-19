@@ -16,6 +16,8 @@ def safe_time(device):
 
 @hydra.main(version_base=None, config_path='config', config_name='conf')
 def run_experiment(cfg):
+    start_time = time.asctime()
+    print(start_time)
     print(cfg)
 
     device = t.device('cuda' if t.cuda.is_available() else 'cpu')
@@ -91,6 +93,7 @@ def run_experiment(cfg):
 
     if cfg.write_job_status:
         with open(f"{cfg.model}/job_status/{model_name}/{cfg.method}{non_mp_string}_status.txt", "w") as f:
+            f.write(f"{start_time}\n{cfg}\n\n")
             f.write(f"Starting job.\n")
 
     
@@ -227,6 +230,14 @@ def run_experiment(cfg):
             print(f"elbo: {elbos[K_idx, lr_idx, 0,:].mean():.3f}")
             print(f"p_ll: {p_lls[K_idx, lr_idx, 0,:].mean():.3f}")
             print()
+
+    if device.type == 'cuda':
+        cuda_mem_summary = f"CUDA memory - Card size: {t.cuda.get_device_properties(device).total_memory/1e9:.2f}GB, Max allocated: {t.cuda.max_memory_allocated(device)/1e9:.2f}GB, Max reserved: {t.cuda.max_memory_reserved(device)/1e9:.2f}GB"
+        print(cuda_mem_summary)
+
+        if cfg.write_job_status:
+            with open(f"{cfg.model}/job_status/{model_name}/{cfg.method}{non_mp_string}_status.txt", "a") as f:
+                f.write(f"\n{cuda_mem_summary}\n")
 
     # breakpoint()
     with open(f'{cfg.model}/results/{model_name}{results_subfolder}/{cfg.method}{non_mp_string}{cfg.dataset_seed}.pkl', 'wb') as f:
