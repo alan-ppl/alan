@@ -13,8 +13,8 @@ def get_model(data, covariates):
     model = pm.Model()
 
 
-    # def Expected_Log_Rs(RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility, i):       
-    #     return (RegionR + ActiveCMs_NPIs@CM_alpha + Wearing_alpha*ActiveCMs_wearing + Mobility_alpha*ActiveCMs_mobility)[:,i]
+    def Expected_Log_Rs(RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility, i):       
+        return (RegionR + ActiveCMs_NPIs@CM_alpha + Wearing_alpha*ActiveCMs_wearing + Mobility_alpha*ActiveCMs_mobility)[:,i]
     
     with model:
         true_obs = pm.MutableData('true_obs', data['obs'])
@@ -45,35 +45,19 @@ def get_model(data, covariates):
 
         #Region level
         InitialSize_log = pm.Normal('InitialSize_log', mu=InitialSize_log_mean, sigma=0.5, shape=nRs)
-        # log_infected_noise = pm.Normal('log_infected_noise', mu=log_infected_noise_mean, sigma=0.25, shape=nRs)
+        log_infected_noise = pm.Normal('log_infected_noise', mu=log_infected_noise_mean, sigma=0.25, shape=nRs)
         psi = pm.Normal('psi', mu=math.log(1000), sigma=1, shape=nRs)
 
         #Days 
-        log_infected_noise = pm.Normal("log_infected_noise", mu = 0, sigma=0.25 / 10, shape=(nRs, data['obs'].shape[1]))
-        # log_infecteds = [InitialSize_log]
-        # for i in range(data['obs'].shape[1]):
-        #     log_infected = pm.Normal(f'log_infected_{i}', mu=log_infecteds[i] + Expected_Log_Rs(RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility, i), sigma=pm.math.exp(log_infected_noise))
-        #     log_infecteds.append(log_infected)
-        expanded_r_walk_noise = pt.tile(
-                10 * pt.extra_ops.cumsum(log_infected_noise, axis=-1),
-                1,
-            )[:nRs, :data['obs'].shape[1]]
+        log_infecteds = [InitialSize_log]
+        for i in range(data['obs'].shape[1]):
+            log_infected = pm.Normal(f'log_infected_{i}', mu=log_infecteds[i] + Expected_Log_Rs(RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility, i), sigma=pm.math.exp(log_infected_noise))
+            log_infecteds.append(log_infected)
         
-
-        growth = pm.Deterministic("growth", RegionR + 
-                                  ActiveCMs_NPIs@CM_alpha + Wearing_alpha*ActiveCMs_wearing + 
-                                  Mobility_alpha*ActiveCMs_mobility)# + expanded_r_walk_noise)
+        log_infected = pm.Deterministic("log_infected", pt.stack(log_infecteds[1:], axis=1))
         
-        log_infected = pm.Deterministic(
-                "log_infected",
-                pt.reshape(InitialSize_log, (nRs, 1))
-                + growth.cumsum(axis=1),
-            )
-        
-
         obs = pm.NegativeBinomial('obs', alpha=pt.exp(pt.reshape(psi, (nRs, 1))), mu=pt.exp(log_infected), observed=true_obs)
         
-        # obs = pm.Bernoulli("obs", logit_p=logits, shape=(num_actors, num_blocks, num_repeats_plate), observed=true_obs)
             
     return model
 
