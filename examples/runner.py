@@ -10,7 +10,7 @@ from pathlib import Path
 from itertools import product
 
 def safe_time(device):
-    if device == 'cuda':
+    if device.type == 'cuda':
         t.cuda.synchronize()
     return time.time()
 
@@ -22,7 +22,7 @@ def run_experiment(cfg):
 
     device = t.device('cuda' if t.cuda.is_available() else 'cpu')
     # device = 'cpu'
-    print(device)
+    print("Device:", device)
 
     Ks_lrs = cfg.Ks_lrs
 
@@ -232,7 +232,7 @@ def run_experiment(cfg):
             print()
 
     if device.type == 'cuda':
-        cuda_mem_summary = f"CUDA memory - Card size: {t.cuda.get_device_properties(device).total_memory/1e9:.2f}GB, Max allocated: {t.cuda.max_memory_allocated(device)/1e9:.2f}GB, Max reserved: {t.cuda.max_memory_reserved(device)/1e9:.2f}GB"
+        cuda_mem_summary = f"CUDA memory - Card size: {t.cuda.get_device_properties(device).total_memory/(1024**3):.2f}GB, Max allocated: {t.cuda.max_memory_allocated(device)/(1024**3):.2f}GB, Max reserved: {t.cuda.max_memory_reserved(device)/(1024**3):.2f}GB"
         print(cuda_mem_summary)
 
         if cfg.write_job_status:
