@@ -61,7 +61,14 @@ def sample_Ks(lps, Ks_to_sum, N_dim, num_samples):
         # shift lps up by the max value in each kdim_to_sample to avoid numerical issues
         lp_max = lp.amax(kdims_to_sample)
 
-        sampled_flat_idx = t.multinomial(t.exp(lp.order(*kdims_to_sample) - lp_max).ravel(), num_samples, replacement=True)
+        logits = t.exp(lp.order(*kdims_to_sample) - lp_max).ravel()
+        
+        assert generic_all(logits.isnan().sum() == 0)
+        assert generic_all(logits.isinf().sum() == 0)
+        assert generic_all(logits >= 0)
+        assert generic_all(logits.sum() > 0)
+        
+        sampled_flat_idx = t.multinomial(logits, num_samples, replacement=True)
         unravelled_indices = unravel_index(sampled_flat_idx, shape=[dim.size for dim in kdims_to_sample])
         
         for idx, kdim in zip(unravelled_indices, kdims_to_sample):

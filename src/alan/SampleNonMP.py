@@ -76,7 +76,16 @@ class SampleNonMP:
         lps = self.logpq(self.detached_sample)
         lps_max = lps.amax(self.Kdim)
 
-        indices = t.multinomial(t.exp(lps - lps_max), N, replacement=True)
+
+        logits = t.exp(lps - lps_max)
+        
+        #not all zeros
+        assert generic_all(logits.isnan().sum() == 0)
+        assert generic_all(logits.isinf().sum() == 0)
+        assert generic_all(logits >= 0)
+        assert generic_all(logits.sum() > 0)
+        
+        indices = t.multinomial(logits, N, replacement=True)
 
         indices = indices.order(self.Kdim)[N_dim]
 

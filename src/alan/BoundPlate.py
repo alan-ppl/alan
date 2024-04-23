@@ -54,7 +54,7 @@ class BoundPlate(nn.Module):
         super().__init__()
         #A tensor that e.g. moves to GPU when we call `problem.to(device='cuda')`.
         self.register_buffer("_device_tensor", t.zeros(()))
-
+    
         assert isinstance(plate, Plate)
         self.plate = plate
 

@@ -33,7 +33,7 @@ def check_support(name:str, distP:Dist, distQ:Dist):
     supportQ = distQ.dist.support 
     supportP = distP.dist.support 
     if supportQ != supportP:
-        raise Exception(f"Distributions in P and Q for {nameP} have different support.  For P: {supportP}.  While for Q: {supportQ}")
+        raise Exception(f"Distributions in P and Q for {distP.dist} have different support.  For P: {supportP}.  While for Q: {supportQ}")
 
 def mismatch_names(A: list[str], B: list[str], prefix="", AnotB_msg="", BnotA_msg=""):
     #Check for mismatches between two lists of names
