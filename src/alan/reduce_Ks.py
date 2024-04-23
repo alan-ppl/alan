@@ -118,12 +118,15 @@ def sample_Ks_timeseries(lps, Ks_to_sum, ts_init_Ks, N_dim, num_samples, T_dim, 
             # print(t_idx, generic_dims(lp), generic_dims(filtered_t_plus_one), generic_dims(smoothed_t_plus_one))
             
             # this filtering/forward-run gives us log p(x_t | y_{1:t}, x_{1:t-1}) as a K x K tensor 
-            filtered_t = chain_logmmexp(lp.order(T_dim, init_K_dim, K_dim)[:t_idx+1])[init_K_dim, K_dim] 
+            filtered_t = chain_logmmexp(lp.order(T_dim, init_K_dim, K_dim)[:t_idx+1])[init_K_dim, K_dim]
             
             # index into filtered_t with the ts_init_Ks indices to get the filtering distribution as a K-long vector
-            # filtered_t = filtered_t.order(init_K_dim)[indices[init_K_dim]]
-            # filtered_t = filtered_t.order(N_dim)
-            # filtered_t = t.logsumexp(filtered_t, 0) #- t.tensor(num_samples).log().to(filtered_t.device)
+            filtered_t = filtered_t.order(init_K_dim)[indices[init_K_dim]]
+            filtered_t = filtered_t.order(N_dim)
+            filtered_t = t.logsumexp(filtered_t, 0) #- t.tensor(num_samples).log().to(filtered_t.device)
+
+            # normalise
+            filtered_t = filtered_t - t.logsumexp(filtered_t.order(K_dim), 0)
 
             # now do smoothing/backward-run to get log p(x_t | y_{1:T}, x_{1:T})
             # this is calculated as 
@@ -132,20 +135,39 @@ def sample_Ks_timeseries(lps, Ks_to_sum, ts_init_Ks, N_dim, num_samples, T_dim, 
             # 
             # see e.g. http://www.gatsby.ucl.ac.uk/~byron/nlds/briers04.pdf
             if t_idx < T_dim.size-1:
-                integrand = ((smoothed_t_plus_one - filtered_t_plus_one) + lp.order(T_dim)[t_idx:t_idx+2]) # [2, init_K_dim, K_dim] with torchdims
-                integrand = integrand.order(init_K_dim, K_dim).transpose(-1,0) # [init_K_dim, K_dim, 2] without torchdims
-                integrand = integrand.transpose(-1,-2)                         # [2, init_K_dim, K_dim] without torchdims (which is what we want for chain_logmmexp)
+                # transition = lp.order(T_dim)[t_idx:t_idx+2]
+                # transition = t.cat([filtered_t.expand((1,)), filtered_t_plus_one.expand((1,))], dim=0)
+                transition = lp.order(T_dim)[t_idx+1]
+                # breakpoint()
+
+                # transition = transition.order(init_K_dim)[indices[init_K_dim]]
+                # transition = transition.order(N_dim)
+                # transition = t.logsumexp(transition, 0)
+
+                integrand = ((smoothed_t_plus_one - filtered_t_plus_one) + transition) # [2, init_K_dim, K_dim] with torchdims
+                # integrand = integrand.order(init_K_dim, K_dim).transpose(-1,0) # [init_K_dim, K_dim, 2] without torchdims
+                # integrand = integrand.transpose(-1,-2)                         # [2, init_K_dim, K_dim] without torchdims (which is what we want for chain_logmmexp)
 
                 # breakpoint()
                 
-                smoothed_t = filtered_t + chain_logmmexp(integrand)[init_K_dim, K_dim]
+                # smoothed_t = filtered_t + chain_logmmexp(integrand)[init_K_dim, K_dim]
                 # smoothed_t = filtered_t + t.logsumexp(chain_logmmexp(integrand), -1)[init_K_dim]
                 # smoothed_t = filtered_t + t.logsumexp(chain_logmmexp(integrand), 0)[K_dim]
 
+                smoothed_t = filtered_t + integrand.logsumexp(K_dim)
+
                 # index into smoothed_t with the ts_init_Ks indices to get the smoothed distribution as a K-long vector
-                # smoothed_t = smoothed_t.order(init_K_dim)[indices[init_K_dim]]
-                # smoothed_t = smoothed_t.order(N_dim)
-                # smoothed_t = t.logsumexp(smoothed_t, 0)
+                smoothed_t = smoothed_t.order(init_K_dim)[indices[init_K_dim]]
+                smoothed_t = smoothed_t.order(N_dim)
+                smoothed_t = t.logsumexp(smoothed_t, 0)
+
+                # integrand = integrand.order(init_K_dim)[indices[init_K_dim]]
+                # smoothed_t = filtered_t + integrand.logsumexp(N_dim)
+
+                # smoothed_t = filtered_t + integrand.logsumexp(init_K_dim)
+
+                # normalise
+                smoothed_t = smoothed_t - t.logsumexp(smoothed_t.order(K_dim), 0)
 
             else:
                 smoothed_t = filtered_t
@@ -158,22 +180,22 @@ def sample_Ks_timeseries(lps, Ks_to_sum, ts_init_Ks, N_dim, num_samples, T_dim, 
 
 
             # save for next iteration
-            # filtered_t_plus_one = filtered_t
-            # smoothed_t_plus_one = smoothed_t
-
-            # index into smoothed_t with the ts_init_Ks indices to get the smoothed distribution as a K-long vector
-            smoothed_t = smoothed_t.order(init_K_dim)[indices[init_K_dim]]
-            smoothed_t = smoothed_t.order(N_dim)
-            smoothed_t = t.logsumexp(smoothed_t, 0)
-
-            # # do the same for filtered_t
-            filtered_t = filtered_t.order(init_K_dim)[indices[init_K_dim]]
-            filtered_t = filtered_t.order(N_dim)
-            filtered_t = t.logsumexp(filtered_t, 0)
-
-            # save for next iteration
             filtered_t_plus_one = filtered_t
             smoothed_t_plus_one = smoothed_t
+
+            # index into smoothed_t with the ts_init_Ks indices to get the smoothed distribution as a K-long vector
+            # smoothed_t = smoothed_t.order(init_K_dim)[indices[init_K_dim]]
+            # smoothed_t = smoothed_t.order(N_dim)
+            # smoothed_t = t.logsumexp(smoothed_t, 0)
+
+            # do the same for filtered_t
+            # filtered_t = filtered_t.order(init_K_dim)[indices[init_K_dim]]
+            # filtered_t = filtered_t.order(N_dim)
+            # filtered_t = t.logsumexp(filtered_t, 0)
+
+            # save for next iteration
+            # filtered_t_plus_one = filtered_t
+            # smoothed_t_plus_one = smoothed_t
 
             print(smoothed_t)
             # shift lps up by the max value in each kdim_to_sample to avoid numerical issues

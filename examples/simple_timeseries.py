@@ -48,6 +48,7 @@ def get_Q():
             
             # ts = Timeseries('ts_init', Normal(lambda prev: 0.9*prev, lambda ts_log_var: ts_log_var.exp())),
             # ts2 = Timeseries('ts_init2', Normal(lambda prev: 0.8*prev, lambda ts_log_var: ts_log_var.exp())),
+
             # ts = Normal(QEMParam(0.), QEMParam(1.)),
             a = Data(),
         ),
@@ -105,7 +106,7 @@ print("First importance sample check done.")
 # breakpoint()
 
 # see if we can recover the true posterior using importance sampling
-max_K = 200
+max_K = 250
 
 ts_means = t.zeros(max_K, T)
 
