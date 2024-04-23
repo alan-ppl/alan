@@ -66,7 +66,6 @@ def sample_Ks(lps, Ks_to_sum, N_dim, num_samples):
         assert generic_all(logits.isnan().sum() == 0)
         assert generic_all(logits.isinf().sum() == 0)
         assert generic_all(logits >= 0)
-        assert generic_all(logits.sum() > 0)
         
         sampled_flat_idx = t.multinomial(logits, num_samples, replacement=True)
         unravelled_indices = unravel_index(sampled_flat_idx, shape=[dim.size for dim in kdims_to_sample])

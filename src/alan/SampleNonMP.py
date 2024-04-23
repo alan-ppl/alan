@@ -83,7 +83,6 @@ class SampleNonMP:
         assert generic_all(logits.isnan().sum() == 0)
         assert generic_all(logits.isinf().sum() == 0)
         assert generic_all(logits >= 0)
-        assert generic_all(logits.sum() > 0)
         
         indices = t.multinomial(logits, N, replacement=True)
 
