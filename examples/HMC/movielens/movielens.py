@@ -16,7 +16,7 @@ def get_model(data, covariates):
         psi_z = pm.Normal('psi_z', mu=0, sigma=1, shape=d_z)
 
         # z = pm.MvNormal('z', mu=mu_z, cov=np.eye(d_z)*psi_z.exp(), shape=(M, d_z))
-        z_non_cent = pm.Normal('z_non_cent', mu=0, sigma=1, shape=(M, d_z))
+        z_non_cent = np.random.normal(loc=0, scale=1, size=(M, d_z))
         
         z = pm.Deterministic('z', mu_z + z_non_cent * psi_z.exp())
 
