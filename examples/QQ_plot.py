@@ -36,8 +36,8 @@ def QQ(problem, num_samples, rvs, K, filename="QQ_plot.png"):
         ax = [ax]
     for i, rv in enumerate(rvs):
         # sort the samples
-        prior = prior_latent_samples[rv].sort()[0]
-        posterior = posterior_latent_samples[rv].sort()[0]
+        prior = prior_latent_samples[rv].sort(0)[0]
+        posterior = posterior_latent_samples[rv].sort(-1)[0]
 
         # plot the ordered samples
         ax[i].scatter(prior, posterior)
@@ -75,8 +75,8 @@ if __name__ == '__main__':
     )
 
 
-    platesizes = {'p1': 30}
-    data = {'obs': t.randn((30,), names=('p1',))}
+    platesizes = {'p1': 3}
+    data = {'obs': t.randn((3,), names=('p1',))}
 
     P = BoundPlate(P, platesizes)
     Q = BoundPlate(Q, platesizes)
