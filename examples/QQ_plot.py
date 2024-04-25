@@ -7,20 +7,19 @@ def QQ(problem, num_samples, data_name, rvs, K, filename="QQ_plot.png"):
     # sample latents from the prior
     prior_latent_samples = problem.P.sample()
     prior_latent_sample_collection = {k: [v.rename(None)] for k,v in prior_latent_samples.items() if k in rvs}
-    for _ in range(num_samples-1):
-        prior_latent_sample_collection = {k: v + [problem.P.sample()[k].rename(None)] for k,v in prior_latent_sample_collection.items()}
-
 
     # sample latents from the posterior
-
-    temp_data = problem.P.sample().pop(data_name)[:,0]
-    temp_problem = Problem(problem.P, problem.Q, {data_name: temp_data})
+    temp_problem = Problem(problem.P, problem.Q, {data_name: prior_latent_samples[data_name][:,0]})
     posterior_latent_samples = temp_problem.sample(K).importance_sample(1)
     N_dim = posterior_latent_samples.Ndim
     posterior_latent_sample_collection = {k: [posterior_latent_samples.samples_flatdict[k].order(N_dim).rename(None)] for k in prior_latent_sample_collection.keys()}
+    
+    # repeat the process for the remaining n-1 samples
     for _ in range(num_samples-1):
-        temp_data = problem.P.sample().pop(data_name)[:,0]
-        temp_problem = Problem(problem.P, problem.Q, {data_name: temp_data})
+        prior_latent_samples = problem.P.sample()
+        prior_latent_sample_collection = {k: v + [prior_latent_samples[k].rename(None)] for k,v in prior_latent_sample_collection.items()}
+
+        temp_problem = Problem(problem.P, problem.Q, {data_name: prior_latent_samples[data_name][:,0]})
         posterior_latent_samples = problem.sample(K).importance_sample(1)
         N_dim = posterior_latent_samples.Ndim
         posterior_latent_sample_collection = {k: v + [posterior_latent_samples.samples_flatdict[k].order(N_dim).rename(None)] for k,v in posterior_latent_sample_collection.items()}
@@ -53,7 +52,7 @@ def QQ(problem, num_samples, data_name, rvs, K, filename="QQ_plot.png"):
 
 
 if __name__ == '__main__':
-    K= 100
+    K= 500
 
     P = Plate(
         mu = Normal(0., 1.), 
