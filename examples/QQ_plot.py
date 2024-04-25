@@ -41,9 +41,9 @@ def QQ(problem, num_samples, rvs, K, filename="QQ_plot.png"):
 
         # plot the ordered samples
         ax[i].scatter(prior, posterior)
-        ax[i].set_title(rv)
-        ax[i].set_xlabel("Prior")
-        ax[i].set_ylabel("Posterior")
+        ax[i].set_title(f"QQ plot for {rv}")
+        ax[i].set_xlabel("Latent drawn from p(z)")
+        ax[i].set_ylabel("Latent drawn from p(z|x)")
 
         # also plot the line y=x
         lims = [
@@ -83,12 +83,12 @@ if __name__ == '__main__':
 
     prob = Problem(P, Q, data)
 
-    QQ(prob, 1000, 'obs', ['mu'], K, "QQ_plot_pre_QEM.png")
+    QQ(prob, 1000, ['mu'], K, "QQ_plot_pre_QEM.png")
 
     for _ in range(500):
         sample = prob.sample(K, True)
         sample.update_qem_params(0.3)
     
     
-    QQ(prob, 1000, 'obs', ['mu'], K, "QQ_plot_post_QEM.png")
+    QQ(prob, 1000, ['mu'], K, "QQ_plot_post_QEM.png")
 
