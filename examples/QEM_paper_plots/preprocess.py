@@ -1,7 +1,7 @@
 import pickle
 import numpy as np
 
-def get_best_results(model_name, validation_iter_number=200, method_names=['qem', 'rws', 'vi', 'global_vi', 'global_rws'], global_K = 10, dataset_seeds=[0]):
+def get_best_results(model_name, validation_iter_number=200, method_names=['qem', 'rws', 'vi', 'qem_nonmp', 'global_vi', 'global_rws'], global_K = 10, dataset_seeds=[0]):
     print(f"Getting best results for {model_name}.")
 
     results = {method_name: {} for method_name in method_names}
@@ -30,6 +30,7 @@ def get_best_results(model_name, validation_iter_number=200, method_names=['qem'
                     p_lls[method_name].append(results[method_name][dataset_seed]['p_lls'])
                     iter_times[method_name].append(results[method_name][dataset_seed]['iter_times'])
             else:
+                # this branch loads results from the moments (autodiff) paper 
                 with open(f'../{model_name}/results/moments/{method_name[7:]}{global_K}K{dataset_seed}.pkl', 'rb') as f:
                     results[method_name][dataset_seed] = pickle.load(f)
 
@@ -86,6 +87,13 @@ def get_best_results(model_name, validation_iter_number=200, method_names=['qem'
 
             # if method_name == 'qem' and model_name == 'bus_breakdown' and K == 3:
             #     breakpoint()
+            # print(model_name, method_name, K, results[method_name][dataset_seeds[0]]['lrs'], lr_order)
+            # print(f"Model: {model_name}, Method: {method_name}, K: {K}, lrs: {results[method_name][dataset_seeds[0]]['lrs']}, elbo_shape: {elbos[method_name][k].shape}, lr_order: {lr_order}")
+            
+            # breakpoint()
+
+            if 'bus' in model_name or 'movielens' in model_name:
+                results[method_name][dataset_seeds[0]]['lrs'] = {3: [0.001, None], 10: [0.001, None], 30: [0.1, 0.03], 100: [0.1, None]}[K]
 
             lrs = np.array(results[method_name][dataset_seeds[0]]['lrs'])[lr_order]
 
@@ -115,11 +123,17 @@ def get_best_results(model_name, validation_iter_number=200, method_names=['qem'
     print()
 
 if __name__ == "__main__":
+    method_names = ['qem', 'rws', 'vi', 'qem_nonmp']
 
 
-    get_best_results('bus_breakdown')
-    get_best_results('movielens')
-    get_best_results('chimpanzees')
+    get_best_results('bus_breakdown', method_names=method_names)
+    get_best_results('bus_breakdown_reparam', method_names=method_names)
 
-    get_best_results('occupancy', method_names=['qem', 'rws', 'global_rws'])
-    # get_best_results('radon')
+    get_best_results('chimpanzees', method_names=method_names)
+
+    get_best_results('movielens', method_names=method_names)
+    get_best_results('movielens_reparam', method_names=method_names)
+
+    # get_best_results('occupancy', method_names=['qem', 'rws', 'qem_nonmp'])
+
+    get_best_results('radon', method_names=['qem', 'rws', 'qem_nonmp'])

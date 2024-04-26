@@ -4,9 +4,19 @@ import matplotlib.pyplot as plt
 import torch as t 
 import preprocess
 
-ALL_MODEL_NAMES = ['bus_breakdown', 'chimpanzees', 'movielens', 'occupancy', 'radon']
+# ALL_MODEL_NAMES = ['bus_breakdown', 'chimpanzees', 'movielens', 'occupancy', 'radon']
+ALL_MODEL_NAMES = ['bus_breakdown', 'bus_breakdown_reparam', 'chimpanzees', 'movielens', 'movielens_reparam', 'occupancy', 'radon']
 
 DEFAULT_ALPHA_FUNC = lambda i, num_lrs: 1 if i == 0 else 1 - 0.5*i/(num_lrs-1)
+
+# using default matplotlib colours
+DEFAULT_COLOURS = {'qem': "C1", 'rws': "C2", 'vi': "C3", 
+                   'qem_nonmp': "C4", 'global_rws': "C2", 'global_vi': "C3"}
+
+# using colorbrewer2.org
+DEFAULT_COLOURS = {'qem': '#e7298a', 'qem_nonmp' : '#7570b3',
+                   'rws': '#1b9e77', 'global_rws': '#1b9e77', 
+                   'vi' : '#d95f02', 'global_vi' : '#d95f02'}
 
 def load_results(model_name):
     with open(f'{model_name}_results/best.pkl', 'rb') as f:
@@ -44,7 +54,7 @@ def plot_method_K_lines(ax,
                         force_lrs = None,
                         short_labels = False):
     
-    short_label_dict = {'qem': 'QEM', 'rws': 'MP RWS', 'vi': 'MP VI', 'global_rws': 'Global RWS', 'global_vi': 'IWAE'}
+    short_label_dict = {'qem': 'QEM', 'rws': 'MP RWS', 'vi': 'MP VI', 'qem_nonmp': 'Global QEM', 'global_rws': 'Global RWS', 'global_vi': 'IWAE'}
     
     metric     = model_results[method][K][metric_name]
     stderrs    = model_results[method][K][f'{metric_name[:-1]}_stderrs']
@@ -97,6 +107,7 @@ def plot_all_2col(model_names  = ALL_MODEL_NAMES,
                   smoothing_window = 3,
                   error_bars   = False,
                   alpha_func   = DEFAULT_ALPHA_FUNC,
+                  colours_dict = DEFAULT_COLOURS,
                   save_pdf     = False,
                   filename_end = ""):
     
@@ -117,7 +128,7 @@ def plot_all_2col(model_names  = ALL_MODEL_NAMES,
     for i, model_name in enumerate(model_names):
         for k, K in enumerate(Ks_to_plot[model_name]):
             for j, method_name in enumerate(results[model_name].keys()):
-                colour = f'C{j}'
+                colour = colours_dict[method_name]
 
                 axs[row_counter,0].set_title(f'{model_name.upper()} (K={K})')
 
@@ -184,6 +195,7 @@ def plot_all_2row(model_names  = ALL_MODEL_NAMES,
                   smoothing_window = 1,
                   error_bars   = False,
                   alpha_func   = DEFAULT_ALPHA_FUNC,
+                  colours_dict = DEFAULT_COLOURS,
                   ylims        = {'elbo': {}, 'p_ll': {}},
                   save_pdf     = False,
                   filename_end = ""):
@@ -205,7 +217,7 @@ def plot_all_2row(model_names  = ALL_MODEL_NAMES,
     for i, model_name in enumerate(model_names):
         for k, K in enumerate(Ks_to_plot[model_name]):
             for j, method_name in enumerate(results[model_name].keys()):
-                colour = f'C{j}'
+                colour = colours_dict[method_name]
 
                 axs[0,col_counter].set_title(f'{model_name.upper()}\nK={K}')
 
@@ -277,17 +289,12 @@ def plot_all_2row_plus_global(model_names  = ALL_MODEL_NAMES,
                               smoothing_window = 1,
                               error_bars   = False,
                               alpha_func   = DEFAULT_ALPHA_FUNC,
+                              colours_dict = DEFAULT_COLOURS,
                               ylims        = {'elbo': {}, 'p_ll': {}},
                               force_lrs_per_model_method = None,
                               short_labels = True,
                               save_pdf     = False,
                               filename_end = ""):
-    
-    method_colour = {'qem': '#00b982',
-                     'rws': '#f33',
-                     'vi':  '#645cc7',
-                     'global_rws': '#f33',
-                     'global_vi':  '#645cc7'}
     
     results = {model_name: load_results(model_name) for model_name in model_names}
 
@@ -308,7 +315,7 @@ def plot_all_2row_plus_global(model_names  = ALL_MODEL_NAMES,
             auto_x_lim = [np.inf, np.inf]
 
             for j, method_name in enumerate(results[model_name].keys()):
-                colour = method_colour[method_name]
+                colour = colours_dict[method_name]
 
                 if method_name in ['qem', 'rws', 'vi']:
                     alpha_func = lambda i, num_lrs : 1
@@ -394,6 +401,7 @@ def plot_all_2row_plus_global(model_names  = ALL_MODEL_NAMES,
         plt.savefig(f'plots/pdfs/all_2row{filename_end}.pdf')
 
 def plot_avg_iter_time_per_K(model_names  = ALL_MODEL_NAMES,
+                             colours_dict = DEFAULT_COLOURS,
                              save_pdf     = False,
                              filename_end = ""):
     
@@ -406,14 +414,16 @@ def plot_avg_iter_time_per_K(model_names  = ALL_MODEL_NAMES,
         Ks = results[model_name]['qem'].keys()
 
         x = np.arange(len(Ks))  # the label locations
-        width = 0.25  # the width of the bars
+        width = 1/(1+len(results[model_name].keys()))  # the width of the bars
         multiplier = 0
         
         for j, method_name in enumerate(results[model_name].keys()):
+            colour = colours_dict[method_name]
+
             avg_iter_times_per_K = [np.nanmean(results[model_name][method_name][K]['iter_times']) for K in Ks]
             
             offset = width * multiplier
-            rects = axs[i].bar(x + offset, avg_iter_times_per_K, width, label=method_name.upper())
+            rects = axs[i].bar(x + offset, avg_iter_times_per_K, width, label=method_name.upper(), color=colour)
             # axs[i].bar_label(rects, padding=3)
             multiplier += 1
 
@@ -438,22 +448,27 @@ if __name__ == "__main__":
 
     for model_name in ALL_MODEL_NAMES:
         if model_name == 'occupancy':
-            preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=['qem', 'rws'])
+            pass
+            preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=['qem', 'rws', 'qem_nonmp'])
         else:
-            preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=['qem', 'rws', 'vi'])
+            preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=['qem', 'rws', 'vi', 'qem_nonmp'])
 
-    best_Ks = {'bus_breakdown': [30], 'chimpanzees': [15], 'movielens': [30], 'occupancy': [10], 'radon': [30]}
+    best_Ks = {'bus_breakdown': [30], 'bus_breakdown_reparam': [30], 'chimpanzees': [30], 'movielens': [30], 'movielens_reparam': [30], 'occupancy': [30], 'radon': [30]}
 
-    ylims = {'elbo': {'bus_breakdown': (-1800,  -1400),
-                      'chimpanzees':   (-270,   -235),
-                      'movielens':     (-1400,  -980),
-                      'occupancy':     (-49750, -49250),
-                      'radon':         (-5000, 0)},#(-494,   -484)},
-             'p_ll': {'bus_breakdown': (-2800,  -1600),
+    ylims = {'elbo': {'bus_breakdown': (-2500,  -1240),
+                      'chimpanzees':   (-270,   -243),
+                      'movielens':     (-3000,  -900),
+                      'occupancy':     (-52000, -49300),
+                      'radon':         (-16000, 0), #(-494,   -484)},
+                      'bus_breakdown_reparam': (-2500,  -1240),
+                      'movielens_reparam':     (-10000,  -900),},
+             'p_ll': {'bus_breakdown': (-3000,  -1450),
                       'chimpanzees':   (-45,    -39),
-                      'movielens':     (-1040,  -940),
-                      'occupancy':     (-24800, -24750),
-                      'radon':         (-3000000, -100000)},#(-170,   -120)},
+                      'movielens':     (-1200,  -940),
+                      'occupancy':     (-25800, -24750),
+                      'radon':         (-18000000, -100000),#(-170,   -120)},
+                      'bus_breakdown_reparam': (-3000,  -1450),
+                      'movielens_reparam':     (-2400,  -940),}
             }
 
     plot_all_2row(Ks_to_plot=best_Ks,
@@ -466,52 +481,52 @@ if __name__ == "__main__":
 
 
 
-    ########## GLOBAL VS MP ##########
-    validation_iter_number = 50
-    iteration_x_lim = 250#2*validation_iter_number
+    # ########## GLOBAL VS MP ##########
+    # validation_iter_number = 50
+    # iteration_x_lim = 250#2*validation_iter_number
 
-    smoothing_window = 1
+    # smoothing_window = 1
 
-    model_names = ['bus_breakdown', 'chimpanzees', 'movielens', 'occupancy']
+    # model_names = ['bus_breakdown', 'chimpanzees', 'movielens', 'occupancy']
 
-    for model_name in model_names:
-        if model_name == 'occupancy':
-            preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=['qem', 'rws', 'global_rws'])
-        else:
-            preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=['qem', 'rws', 'vi', 'global_rws', 'global_vi'])
+    # for model_name in model_names:
+    #     if model_name == 'occupancy':
+    #         preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=['qem', 'rws', 'global_rws'])
+    #     else:
+    #         preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=['qem', 'rws', 'vi', 'global_rws', 'global_vi'])
 
-    best_Ks = {'bus_breakdown': [10], 'chimpanzees': [10], 'movielens': [10], 'occupancy': [10], 'radon': [10]}
-    # ylims = {'elbo': {},
-    #          'p_ll': {}}
+    # best_Ks = {'bus_breakdown': [10], 'chimpanzees': [10], 'movielens': [10], 'occupancy': [10], 'radon': [10]}
+    # # ylims = {'elbo': {},
+    # #          'p_ll': {}}
 
-    ylims = {'elbo': {'bus_breakdown': (-6000,  -1500),
-                      'chimpanzees':   (-750,   -235),
-                      'movielens':     (-9000,  -1000),
-                      'occupancy':     (-150000, -49250),#(-51400, -49250)
-                      'radon':         (-5000, 0)},#(-494,   -484)},
-             'p_ll': {'bus_breakdown': (-6000,  -1800),
-                      'chimpanzees':   (-100,    -39),
-                      'movielens':     (-1250,  -950),
-                      'occupancy':     (-100000, -24750),#(-25500, -24750),
-                      'radon':         (-1000000, -100000)},#(-170,   -120)},
-            }
+    # ylims = {'elbo': {'bus_breakdown': (-6000,  -1500),
+    #                   'chimpanzees':   (-750,   -235),
+    #                   'movielens':     (-9000,  -1000),
+    #                   'occupancy':     (-150000, -49250),#(-51400, -49250)
+    #                   'radon':         (-5000, 0)},#(-494,   -484)},
+    #          'p_ll': {'bus_breakdown': (-6000,  -1800),
+    #                   'chimpanzees':   (-100,    -39),
+    #                   'movielens':     (-1250,  -950),
+    #                   'occupancy':     (-100000, -24750),#(-25500, -24750),
+    #                   'radon':         (-1000000, -100000)},#(-170,   -120)},
+    #         }
 
-    force_lrs = {'bus_breakdown': {'rws': [0.1], 'vi': [0.1], 'global_rws': [0.1], 'global_vi': [0.1]},
-                    'chimpanzees': {'rws': [0.1], 'vi': [0.1], 'global_rws': [0.1], 'global_vi': [0.1]},}
-                    # 'movielens': {'rws': [0.1], 'vi': [0.1], 'global_rws': [0.1], 'global_vi': [0.1]},
-                    # 'occupancy': {'rws': [0.1], 'vi': [0.1], 'global_rws': [0.1], 'global_vi': [0.1]},
-                    # 'radon': {'rws': [0.1], 'vi': [0.1], 'global_rws': [0.1], 'global_vi': [0.1]}
-                    # }
+    # force_lrs = {'bus_breakdown': {'rws': [0.1], 'vi': [0.1], 'global_rws': [0.1], 'global_vi': [0.1]},
+    #                 'chimpanzees': {'rws': [0.1], 'vi': [0.1], 'global_rws': [0.1], 'global_vi': [0.1]},}
+    #                 # 'movielens': {'rws': [0.1], 'vi': [0.1], 'global_rws': [0.1], 'global_vi': [0.1]},
+    #                 # 'occupancy': {'rws': [0.1], 'vi': [0.1], 'global_rws': [0.1], 'global_vi': [0.1]},
+    #                 # 'radon': {'rws': [0.1], 'vi': [0.1], 'global_rws': [0.1], 'global_vi': [0.1]}
+    #                 # }
     
-    time_x_lim = {'bus_breakdown': 1, 'chimpanzees': 1, 'movielens': 1, 'occupancy': 1, 'radon': 1}
-    # time_x_lim = 'auto'
+    # time_x_lim = {'bus_breakdown': 1, 'chimpanzees': 1, 'movielens': 1, 'occupancy': 1, 'radon': 1}
+    # # time_x_lim = 'auto'
 
-    short_labels = True
+    # short_labels = True
 
-    plot_all_2row_plus_global(Ks_to_plot=best_Ks, model_names=model_names,
-                   num_lrs=1, filename_end="L_talk_TIME", x_axis_iters=False, error_bars=False, save_pdf=True, ylims=ylims, x_lim=iteration_x_lim, x_lim_time=time_x_lim, smoothing_window=smoothing_window, force_lrs_per_model_method = force_lrs, short_labels=short_labels)
-    plot_all_2row_plus_global(Ks_to_plot=best_Ks, model_names=model_names,
-                   num_lrs=1, filename_end="L_talk_ITER", x_axis_iters=True, error_bars=False, save_pdf=True, ylims=ylims, x_lim=iteration_x_lim, x_lim_time=time_x_lim, smoothing_window=smoothing_window, force_lrs_per_model_method = force_lrs, short_labels=short_labels)
+    # plot_all_2row_plus_global(Ks_to_plot=best_Ks, model_names=model_names,
+    #                num_lrs=1, filename_end="L_talk_TIME", x_axis_iters=False, error_bars=False, save_pdf=True, ylims=ylims, x_lim=iteration_x_lim, x_lim_time=time_x_lim, smoothing_window=smoothing_window, force_lrs_per_model_method = force_lrs, short_labels=short_labels)
+    # plot_all_2row_plus_global(Ks_to_plot=best_Ks, model_names=model_names,
+    #                num_lrs=1, filename_end="L_talk_ITER", x_axis_iters=True, error_bars=False, save_pdf=True, ylims=ylims, x_lim=iteration_x_lim, x_lim_time=time_x_lim, smoothing_window=smoothing_window, force_lrs_per_model_method = force_lrs, short_labels=short_labels)
     
-    # plot_avg_iter_time_per_K(save_pdf=True)
+    # # plot_avg_iter_time_per_K(save_pdf=True)
         
