@@ -114,106 +114,106 @@ def run_experiment(cfg):
                 elif cfg.method == 'rws':
                     opt = t.optim.Adam(prob.Q.parameters(), lr=lr, maximize=True)
                 
-                # try:
-                for i in range(num_iters+1):
-                    elbo_start_time = safe_time(device)
+                try:
+                    for i in range(num_iters+1):
+                        elbo_start_time = safe_time(device)
 
-                    if cfg.method == 'vi' or cfg.method == 'rws':
-                        opt.zero_grad()
+                        if cfg.method == 'vi' or cfg.method == 'rws':
+                            opt.zero_grad()
 
-                    if cfg.non_mp: 
-                        sample = prob.sample_nonmp(K, reparam)
-                    else:
-                        sample = prob.sample(K, reparam)
-
-                    if cfg.non_mp:
-                        #Non-mp doesn't take computation_strategy
-                        if cfg.method == 'vi':
-                            elbo = sample.elbo_vi()
-                        elif cfg.method == 'rws':
-                            elbo = sample.elbo_rws()
-                        elif cfg.method == 'qem':
-                            elbo = sample.elbo_nograd()
-                    else:
-                        if cfg.method == 'vi':
-                            elbo = sample.elbo_vi() if split is None else sample.elbo_vi(computation_strategy = split)
-                        elif cfg.method == 'rws':
-                            elbo = sample.elbo_rws() if split is None else sample.elbo_rws(computation_strategy = split)
-                        elif cfg.method == 'qem':
-                            elbo = sample.elbo_nograd() if split is None else sample.elbo_nograd(computation_strategy = split)                            
-
-                    elbo_end_time = safe_time(device)
-
-                    elbos[K_idx, lr_idx, i, num_run] = elbo.item()
-
-                    if do_predll:
-                        if cfg.non_mp:
-                            importance_sample = sample.importance_sample(N=N_predll)
+                        if cfg.non_mp: 
+                            sample = prob.sample_nonmp(K, reparam)
                         else:
-                            importance_sample = sample.importance_sample(N=N_predll) if split is None else sample.importance_sample(N=N_predll, computation_strategy = split)
-                        extended_importance_sample = importance_sample.extend(all_platesizes, all_covariates)
-                        ll = extended_importance_sample.predictive_ll(all_data)
-                        
-                        p_lls[K_idx, lr_idx, i, num_run] = ll['obs'].item()
+                            sample = prob.sample(K, reparam)
 
-                        if i % 50 == 0:
-                            print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
+                        if cfg.non_mp:
+                            #Non-mp doesn't take computation_strategy
+                            if cfg.method == 'vi':
+                                elbo = sample.elbo_vi()
+                            elif cfg.method == 'rws':
+                                elbo = sample.elbo_rws()
+                            elif cfg.method == 'qem':
+                                elbo = sample.elbo_nograd()
+                        else:
+                            if cfg.method == 'vi':
+                                elbo = sample.elbo_vi() if split is None else sample.elbo_vi(computation_strategy = split)
+                            elif cfg.method == 'rws':
+                                elbo = sample.elbo_rws() if split is None else sample.elbo_rws(computation_strategy = split)
+                            elif cfg.method == 'qem':
+                                elbo = sample.elbo_nograd() if split is None else sample.elbo_nograd(computation_strategy = split)                            
 
-                    if not do_predll and i % 50 == 0:
-                        print(f"Iter {i}. Elbo: {elbo:.3f}")
+                        elbo_end_time = safe_time(device)
 
-                    update_start_time = safe_time(device)
+                        elbos[K_idx, lr_idx, i, num_run] = elbo.item()
 
-                    if i < num_iters and (cfg.method == 'vi' or cfg.method == 'rws'):
-                        (-elbo).backward()
-                        opt.step()
-                    else:
-                        sample.update_qem_params(lr)
-
-                    update_end_time = safe_time(device)
-
-                    iter_times[K_idx, lr_idx, i, num_run] = elbo_end_time - elbo_start_time + update_end_time - update_start_time
-            
-                    t.save(prob.state_dict(), f"{cfg.model}/results/{model_name}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_{non_mp_string}.pth")
-                    
-                    
-                    if len(means) == cfg.num_moments_to_save:
-                        del means[-cfg.num_moments_to_save]
-                        del means2[-cfg.num_moments_to_save]
-                        
-                    means.append({name:[] for name in latent_names})
-                    means2.append({name:[] for name in latent_names})
-                    for _ in range(100):
-                        sample = prob.sample(K, reparam=False)
-                        
-                        
-                        m = sample.moments(moment_list)
-                        temp_means = [m[i] for i in range(0,len(latent_names)*2,2)]
-                        temp_means2 = [m[i] for i in range(1,len(latent_names)*2,2)]
-                        for j, k in enumerate(latent_names):
-                            means[-1][k].append(temp_means[j].rename(None))
-                            means2[-1][k].append(temp_means2[j].rename(None))
+                        if do_predll:
+                            if cfg.non_mp:
+                                importance_sample = sample.importance_sample(N=N_predll)
+                            else:
+                                importance_sample = sample.importance_sample(N=N_predll) if split is None else sample.importance_sample(N=N_predll, computation_strategy = split)
+                            extended_importance_sample = importance_sample.extend(all_platesizes, all_covariates)
+                            ll = extended_importance_sample.predictive_ll(all_data)
                             
-                        #convert moments to numpy
-                    
-                    for k,v in means[-1].items():
-                        means[-1][k] = t.stack(v).detach().mean(0).cpu().numpy()
+                            p_lls[K_idx, lr_idx, i, num_run] = ll['obs'].item()
+
+                            if i % 50 == 0:
+                                print(f"Iter {i}. Elbo: {elbo:.3f}, PredLL: {ll['obs']:.3f}")
+
+                        if not do_predll and i % 50 == 0:
+                            print(f"Iter {i}. Elbo: {elbo:.3f}")
+
+                        update_start_time = safe_time(device)
+
+                        if i < num_iters and (cfg.method == 'vi' or cfg.method == 'rws'):
+                            (-elbo).backward()
+                            opt.step()
+                        else:
+                            sample.update_qem_params(lr)
+
+                        update_end_time = safe_time(device)
+
+                        iter_times[K_idx, lr_idx, i, num_run] = elbo_end_time - elbo_start_time + update_end_time - update_start_time
+                
+                        t.save(prob.state_dict(), f"{cfg.model}/results/{model_name}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_{non_mp_string}.pth")
                         
-                    for k,v in means2[-1].items():
-                        means2[-1][k] = t.stack(v).detach().mean(0).cpu().numpy()
-                    
-                    #save moments to file
-                    moments = {'means': means, 'means2': means2}
-                    with open(f"{cfg.model}/results/{model_name}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_moments_{non_mp_string}.pkl", "wb") as f:
-                        pickle.dump(moments, f)
+                        
+                        if len(means) == cfg.num_moments_to_save:
+                            del means[-cfg.num_moments_to_save]
+                            del means2[-cfg.num_moments_to_save]
+                            
+                        means.append({name:[] for name in latent_names})
+                        means2.append({name:[] for name in latent_names})
+                        for _ in range(100):
+                            sample = prob.sample(K, reparam=False)
+                            
+                            
+                            m = sample.moments(moment_list)
+                            temp_means = [m[i] for i in range(0,len(latent_names)*2,2)]
+                            temp_means2 = [m[i] for i in range(1,len(latent_names)*2,2)]
+                            for j, k in enumerate(latent_names):
+                                means[-1][k].append(temp_means[j].rename(None))
+                                means2[-1][k].append(temp_means2[j].rename(None))
+                                
+                            #convert moments to numpy
+                        
+                        for k,v in means[-1].items():
+                            means[-1][k] = t.stack(v).detach().mean(0).cpu().numpy()
+                            
+                        for k,v in means2[-1].items():
+                            means2[-1][k] = t.stack(v).detach().mean(0).cpu().numpy()
+                        
+                        #save moments to file
+                        moments = {'means': means, 'means2': means2}
+                        with open(f"{cfg.model}/results/{model_name}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_moments_{non_mp_string}.pkl", "wb") as f:
+                            pickle.dump(moments, f)
                         
                         
-                # except Exception as e:
-                #     print(f"num_run: {num_run} K: {K} lr: {lr} failed at iteration {i} with exception {e}.")
-                #     if cfg.write_job_status:
-                #         with open(f"{cfg.model}/job_status/{model_name}/{cfg.method}{non_mp_string}_status.txt", "a") as f:
-                #             f.write(f"num_run: {num_run} K: {K} lr: {lr} failed at iteration {i} with exception {e}.\n")
-                #     continue
+                except Exception as e:
+                    print(f"num_run: {num_run} K: {K} lr: {lr} failed at iteration {i} with exception {e}.")
+                    if cfg.write_job_status:
+                        with open(f"{cfg.model}/job_status/{model_name}/{cfg.method}{non_mp_string}_status.txt", "a") as f:
+                            f.write(f"num_run: {num_run} K: {K} lr: {lr} failed at iteration {i} with exception {e}.\n")
+                    continue
 
             if cfg.write_job_status:
                 with open(f"{cfg.model}/job_status/{model_name}/{cfg.method}{non_mp_string}_status.txt", "a") as f:
