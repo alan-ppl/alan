@@ -1,6 +1,8 @@
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
+from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 import torch as t 
 import preprocess
 
@@ -39,6 +41,15 @@ def smooth(x, window):
 
     return result
 
+class Zoomed_Inset:
+    def __init__(self, model_name, methods, K, metric_name, xlims, ylims):
+        self.model_name = model_name
+        self.methods = methods
+        self.K = K
+        self.metric_name = metric_name
+        self.xlims = xlims
+        self.ylims = ylims
+
 def plot_method_K_lines(ax, 
                         model_results, 
                         method,
@@ -52,7 +63,7 @@ def plot_method_K_lines(ax,
                         error_bars = False,
                         alpha_func = DEFAULT_ALPHA_FUNC,
                         force_lrs = None,
-                        short_labels = False):
+                        short_labels = True):
     
     short_label_dict = {'qem': 'QEM', 'rws': 'MP RWS', 'vi': 'MP VI', 'qem_nonmp': 'Global QEM', 'global_rws': 'Global RWS', 'global_vi': 'IWAE'}
     
@@ -104,7 +115,7 @@ def plot_all_2col(model_names  = ALL_MODEL_NAMES,
                   num_lrs      = 1,
                   x_axis_iters = True,
                   x_lim        = None,
-                  smoothing_window = 3,
+                  smoothing_window = 1,
                   error_bars   = False,
                   alpha_func   = DEFAULT_ALPHA_FUNC,
                   colours_dict = DEFAULT_COLOURS,
@@ -187,18 +198,19 @@ def plot_all_2col(model_names  = ALL_MODEL_NAMES,
     if save_pdf:
         plt.savefig(f'plots/pdfs/all_2col{filename_end}.pdf')
 
-def plot_all_2row(model_names  = ALL_MODEL_NAMES,
-                  Ks_to_plot   = 'largest',
-                  num_lrs      = 1,
-                  x_axis_iters = True,
-                  x_lim        = 50,
+def plot_all_2row(model_names   = ALL_MODEL_NAMES,
+                  Ks_to_plot    = 'largest',
+                  num_lrs       = 1,
+                  x_axis_iters  = True,
+                  x_lim         = 50,
                   smoothing_window = 1,
-                  error_bars   = False,
-                  alpha_func   = DEFAULT_ALPHA_FUNC,
-                  colours_dict = DEFAULT_COLOURS,
-                  ylims        = {'elbo': {}, 'p_ll': {}},
-                  save_pdf     = False,
-                  filename_end = ""):
+                  error_bars    = False,
+                  alpha_func    = DEFAULT_ALPHA_FUNC,
+                  colours_dict  = DEFAULT_COLOURS,
+                  ylims         = {'elbo': {}, 'p_ll': {}},
+                  zoomed_insets = [],
+                  save_pdf      = False,
+                  filename_end  = ""):
     
     results = {model_name: load_results(model_name) for model_name in model_names}
 
@@ -216,10 +228,11 @@ def plot_all_2row(model_names  = ALL_MODEL_NAMES,
     col_counter = 0
     for i, model_name in enumerate(model_names):
         for k, K in enumerate(Ks_to_plot[model_name]):
+
+            axs[0,col_counter].set_title(f'{model_name.upper()}\nK={K}')
+
             for j, method_name in enumerate(results[model_name].keys()):
                 colour = colours_dict[method_name]
-
-                axs[0,col_counter].set_title(f'{model_name.upper()}\nK={K}')
 
                 plot_method_K_lines(ax = axs[0,col_counter], 
                                     model_results = results[model_name],
@@ -234,14 +247,6 @@ def plot_all_2row(model_names  = ALL_MODEL_NAMES,
                                     error_bars = error_bars,
                                     alpha_func = alpha_func)
 
-                if x_axis_iters:
-                    axs[0,col_counter].set_xlim(0, x_lim)
-                # else:
-                #     axs[0,col_counter].set_xscale('log')
-                    
-                ylim_for_model = ylims['elbo'].get(model_name, (None, None))
-                axs[0,col_counter].set_ylim(*ylim_for_model)
-                
                 plot_method_K_lines(ax = axs[1,col_counter], 
                                     model_results = results[model_name],
                                     method = method_name,
@@ -256,18 +261,54 @@ def plot_all_2row(model_names  = ALL_MODEL_NAMES,
                                     alpha_func = alpha_func)
                 
 
-                if x_axis_iters:
-                    axs[1,col_counter].set_xlim(0, x_lim)
-                # else:
-                #     axs[1,col_counter].set_xscale('log')
+            if x_axis_iters:
+                axs[0,col_counter].set_xlim(0, x_lim)
+                axs[1,col_counter].set_xlim(0, x_lim)
+            # else:
+            #     axs[0,col_counter].set_xscale('log')
+            #     axs[1,col_counter].set_xscale('log')
+  
+            ylim_for_model = ylims['elbo'].get(model_name, (None, None))
+            axs[0,col_counter].set_ylim(*ylim_for_model)
 
-                ylim_for_model = ylims['p_ll'].get(model_name, (None, None))
-                axs[1,col_counter].set_ylim(*ylim_for_model)
-
-                axs[1,col_counter].set_xlabel('Iterations' if x_axis_iters else 'Time (s)')
+            ylim_for_model = ylims['p_ll'].get(model_name, (None, None))
+            axs[1,col_counter].set_ylim(*ylim_for_model)
 
 
-                axs[1,col_counter].legend()
+            for inset in zoomed_insets:
+                if inset.model_name == model_name and inset.K == K:
+                    row = 0 if inset.metric_name == 'elbos' else 1
+                    
+                    axins = zoomed_inset_axes(axs[row,col_counter], 6.5, loc='center', bbox_to_anchor=(0.58,0.7), bbox_transform=axs[row,col_counter].transAxes, axes_kwargs={'aspect': 2.5})
+                    
+                    for method_name in inset.methods:
+                        colour = colours_dict[method_name]
+
+                        plot_method_K_lines(ax = axins, 
+                                            model_results = results[model_name],
+                                            method = method_name,
+                                            K = K, 
+                                            metric_name = inset.metric_name,
+                                            num_lrs = num_lrs,
+                                            colour = colour,
+                                            x_axis_iters = x_axis_iters,
+                                            smoothing_window = smoothing_window,
+                                            x_lim_iters=x_lim,
+                                            error_bars = error_bars,
+                                            alpha_func = alpha_func)
+                        
+                    # axins.set_xlim(*inset.xlims)
+                    # axins.set_ylim(*inset.ylims)
+
+                    # remove y ticks
+                    plt.yticks(visible=False)
+
+                    mark_inset(axs[row,col_counter], axins, loc1=1, loc2=3, facecolor="none", edgecolor="none") 
+
+
+            axs[1,col_counter].set_xlabel('Iterations' if x_axis_iters else 'Time (s)')
+
+            axs[1,col_counter].legend()
 
             col_counter += 1
 
@@ -443,15 +484,21 @@ def plot_avg_iter_time_per_K(model_names  = ALL_MODEL_NAMES,
         
 
 if __name__ == "__main__":
+    # whether to ignore NaNs in the results or not
+    # i.e. if True, then the results are averaged over all runs, even if some runs have NaNs (runs which failed after some number of iterations)
+    #      if False, then the results are averaged over all runs until the first NaN is encountered (only reports results up to the first failure of any run)
+    #                (this helps avoid weird leaps in the plots when some runs fail early and others don't)
+    ignore_nans = False
+
     validation_iter_number = 125
     iteration_x_lim = 2*validation_iter_number
 
     for model_name in ALL_MODEL_NAMES:
         if model_name == 'occupancy':
             pass
-            preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=['qem', 'rws', 'qem_nonmp'])
+            preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=['qem', 'rws', 'qem_nonmp'], ignore_nans=ignore_nans)
         else:
-            preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=['qem', 'rws', 'vi', 'qem_nonmp'])
+            preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=['qem', 'rws', 'vi', 'qem_nonmp'], ignore_nans=ignore_nans)
 
     best_Ks = {'bus_breakdown': [30], 'bus_breakdown_reparam': [30], 'chimpanzees': [30], 'movielens': [30], 'movielens_reparam': [30], 'occupancy': [30], 'radon': [30]}
 
@@ -465,16 +512,38 @@ if __name__ == "__main__":
              'p_ll': {'bus_breakdown': (-3000,  -1450),
                       'chimpanzees':   (-45,    -39),
                       'movielens':     (-1200,  -940),
-                      'occupancy':     (-25800, -24750),
-                      'radon':         (-18000000, -100000),#(-170,   -120)},
+                      'occupancy':     (-25800, -24700),
+                      'radon':         (-250000000, 10000000),#(-170,   -120)},
                       'bus_breakdown_reparam': (-3000,  -1450),
                       'movielens_reparam':     (-2400,  -940),}
             }
+    
+    zoomed_insets = [Zoomed_Inset(model_name='occupancy', methods=['qem', 'rws'],   K=best_Ks['occupancy'][0], metric_name='p_lls', xlims=(None, None), ylims=(-24800, -24725)),]
+                    #  Zoomed_Inset(model_name='radon', methods=['qem', 'rws', 'vi'], K=best_Ks['radon'][0],     metric_name='p_lls', xlims=(None, None), ylims=(-25000000, -1000000))]
+
+    smoothing_window = 3
 
     plot_all_2row(Ks_to_plot=best_Ks,
-                   num_lrs=1, filename_end="_BEST_SPECIFIC_Ks_TIME", x_axis_iters=False, x_lim=iteration_x_lim, error_bars=True, save_pdf=True, ylims=ylims)
+                  num_lrs = 1,
+                  filename_end = f"_K30_SMOOTH{smoothing_window}_TIME",
+                  x_axis_iters = False, 
+                  x_lim = iteration_x_lim, 
+                  error_bars = True, 
+                  save_pdf = True, 
+                  ylims = ylims,
+                  zoomed_insets = zoomed_insets,
+                  smoothing_window=smoothing_window)
+    
     plot_all_2row(Ks_to_plot=best_Ks,
-                   num_lrs=1, filename_end="_BEST_SPECIFIC_Ks_ITER", x_axis_iters=True, x_lim=iteration_x_lim, error_bars=True, save_pdf=True, ylims=ylims)
+                  num_lrs = 1, 
+                  filename_end = f"_K30_SMOOTH{smoothing_window}_ITER", 
+                  x_axis_iters = True, 
+                  x_lim = iteration_x_lim, 
+                  error_bars = True, 
+                  save_pdf = True, 
+                  ylims = ylims,
+                  zoomed_insets = zoomed_insets,
+                  smoothing_window=smoothing_window)
     
     plot_avg_iter_time_per_K(save_pdf=True)
 

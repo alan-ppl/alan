@@ -1,7 +1,7 @@
 import pickle
 import numpy as np
 
-def get_best_results(model_name, validation_iter_number=200, method_names=['qem', 'rws', 'vi', 'qem_nonmp', 'global_vi', 'global_rws'], global_K = 10, dataset_seeds=[0]):
+def get_best_results(model_name, validation_iter_number=200, method_names=['qem', 'rws', 'vi', 'qem_nonmp', 'global_vi', 'global_rws'], global_K = 10, dataset_seeds=[0], ignore_nans=True):
     print(f"Getting best results for {model_name}.")
 
     results = {method_name: {} for method_name in method_names}
@@ -16,6 +16,10 @@ def get_best_results(model_name, validation_iter_number=200, method_names=['qem'
     iter_times_stderrs = {method_name: [] for method_name in method_names}
 
     output_to_pickle = {method_name: {} for method_name in method_names}
+
+    # select whether to ignore NaNs or not
+    mean_func = np.nanmean if ignore_nans else np.mean
+    std_func = np.nanstd if ignore_nans else np.std
 
     for method_name in method_names:
 
@@ -58,20 +62,20 @@ def get_best_results(model_name, validation_iter_number=200, method_names=['qem'
         iter_times[method_name][iter_times[method_name] == 0] = np.nan
 
         # Average out over the seed dimension
-        elbos[method_name] = np.nanmean(elbos[method_name], 0)  # ignore nans in mean calculation
-        p_lls[method_name] = np.nanmean(p_lls[method_name], 0)
-        iter_times[method_name] = np.nanmean(iter_times[method_name], 0)
+        elbos[method_name] = mean_func(elbos[method_name], 0)  
+        p_lls[method_name] = mean_func(p_lls[method_name], 0)
+        iter_times[method_name] = mean_func(iter_times[method_name], 0)
         # N.B. each of these is now a 4D array of shape (num_Ks, num_lrs, num_iters, num_runs)
 
         # Compute stds over the runs
-        elbo_stderrs[method_name] = np.nanstd(elbos[method_name], 3) / np.sqrt(elbos[method_name].shape[3])
-        p_ll_stderrs[method_name] = np.nanstd(p_lls[method_name], 3) / np.sqrt(p_lls[method_name].shape[3])
-        iter_times_stderrs[method_name] = np.nanstd(iter_times[method_name], 3) / np.sqrt(iter_times[method_name].shape[3])
+        elbo_stderrs[method_name] = std_func(elbos[method_name], 3) / np.sqrt(elbos[method_name].shape[3])
+        p_ll_stderrs[method_name] = std_func(p_lls[method_name], 3) / np.sqrt(p_lls[method_name].shape[3])
+        iter_times_stderrs[method_name] = std_func(iter_times[method_name], 3) / np.sqrt(iter_times[method_name].shape[3])
 
         # Average out over the run dimension
-        elbos[method_name] = np.nanmean(elbos[method_name], 3)  # ignore nans in mean calculation
-        p_lls[method_name] = np.nanmean(p_lls[method_name], 3)
-        iter_times[method_name] = np.nanmean(iter_times[method_name], 3)
+        elbos[method_name] = mean_func(elbos[method_name], 3) 
+        p_lls[method_name] = mean_func(p_lls[method_name], 3)
+        iter_times[method_name] = mean_func(iter_times[method_name], 3)
         # N.B. each of these is now a 3D array of shape (num_Ks, num_lrs, num_iters)
 
         # For each K, order the lr dimensions in order of decreasing elbo at the validation_iter_number
@@ -85,13 +89,7 @@ def get_best_results(model_name, validation_iter_number=200, method_names=['qem'
             lr_order = np.concatenate([lr_order[~np.isnan(elbos[method_name][k, lr_order, validation_iter_number])],
                                        lr_order[np.isnan(elbos[method_name][k, lr_order, validation_iter_number])]])
 
-            # if method_name == 'qem' and model_name == 'bus_breakdown' and K == 3:
-            #     breakpoint()
-            # print(model_name, method_name, K, results[method_name][dataset_seeds[0]]['lrs'], lr_order)
-            # print(f"Model: {model_name}, Method: {method_name}, K: {K}, lrs: {results[method_name][dataset_seeds[0]]['lrs']}, elbo_shape: {elbos[method_name][k].shape}, lr_order: {lr_order}")
-            
-            # breakpoint()
-
+            # for bus and movielens results, we know what learning rates were used but they are saved incorrectly in results[method_name][dataset_seed]['lrs']
             if 'bus' in model_name or 'movielens' in model_name:
                 results[method_name][dataset_seeds[0]]['lrs'] = {3: [0.001, None], 10: [0.001, None], 30: [0.1, 0.03], 100: [0.1, None]}[K]
 
@@ -134,6 +132,6 @@ if __name__ == "__main__":
     get_best_results('movielens', method_names=method_names)
     get_best_results('movielens_reparam', method_names=method_names)
 
-    # get_best_results('occupancy', method_names=['qem', 'rws', 'qem_nonmp'])
+    get_best_results('occupancy', method_names=['qem', 'rws', 'qem_nonmp'])
 
     get_best_results('radon', method_names=['qem', 'rws', 'qem_nonmp'])
