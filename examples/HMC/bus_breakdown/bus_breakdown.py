@@ -36,7 +36,7 @@ def get_model(data, covariates):
 
         logits = pm.Deterministic('logits', (alpha + ((bus_company_name @ phi) + (run_type @ psi)).reshape((I,J,M))))
 
-        obs = pm.NegativeBinomial('obs', n=131, logit_p = logits, observed=true_obs, shape=(I, J, M))
+        obs = pm.NegativeBinomial('obs', n=131, p = pm.math.sigmoid(logits), observed=true_obs, shape=(I, J, M))
 
     return model
 

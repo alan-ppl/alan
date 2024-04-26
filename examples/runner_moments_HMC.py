@@ -114,7 +114,7 @@ def run_experiment(cfg):
                     p_ll = pm.Deterministic('p_ll', model.observedlogp)
 
                     print("Sampling posterior with JAX")
-                    trace = pmjax.sample_blackjax_nuts(draws=num_samples, tune=num_tuning_samples, chains=1, random_seed=seed, target_accept=target_accept)
+                    trace = pmjax.sample_blackjax_nuts(draws=num_samples, tune=num_tuning_samples, chains=10, random_seed=seed, target_accept=target_accept)
                     times['moments'][:, num_run] = np.linspace(0,trace.attrs["sampling_time"],num_samples+num_tuning_samples+1)[num_tuning_samples+1:]
                     
                     # compute moments for each latent
