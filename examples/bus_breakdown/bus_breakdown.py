@@ -1,5 +1,6 @@
 import torch as t
-from alan import Normal, NegativeBinomial, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
+from alan import Normal, Exponential, NegativeBinomial, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
+import math
 
 M, J, I = 3, 3, 30
 
@@ -54,13 +55,15 @@ def get_P(platesizes, covariates):
 
             plate_Borough = Plate(
                 alpha = Normal('beta', lambda sigma_alpha: sigma_alpha.exp()),
-        
+
                 plate_ID = Plate(
-                    obs = NegativeBinomial(total_count=131, logits = lambda alpha, phi, psi, run_type, bus_company_name: alpha + phi @ bus_company_name + psi @ run_type),
+                    alph = Exponential(1.),
+                    log_delay = Normal(lambda alpha, phi, psi, run_type, bus_company_name: alpha + phi @ bus_company_name + psi @ run_type, 1.),
+
+                    obs = NegativeBinomial(total_count=lambda alph: alph ** 2, probs=lambda log_delay, alph: 1/((alph**2/ t.sigmoid(log_delay)) + 1 + 1e-7) )
                 )
             )
         )
-
     )
 
     P = BoundPlate(P, platesizes, inputs = covariates)
@@ -93,8 +96,9 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                 ),
                 plate_Borough = Plate(
                     alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-
                     plate_ID = Plate(
+                        alph = Exponential(OptParam(0., transformation=t.exp)),
+                        log_delay = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                         obs = Data()
                     )
                 )
@@ -124,8 +128,10 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                 ),
                 plate_Borough = Plate(
                     alpha = Normal(QEMParam(0.), QEMParam(1.)),
-
                     plate_ID = Plate(
+                        alph = Exponential(QEMParam(1.)),
+                        log_delay = Normal(QEMParam(0.), QEMParam(1.)),
+
                         obs = Data()
                     )
                 )
@@ -150,9 +156,9 @@ if __name__ == "__main__":
 
     basic_runner.run('bus_breakdown',
                      methods = ['vi', 'rws', 'qem'],
-                     K = 3,
+                     K = 10,
                      num_runs = 1,
-                     num_iters = 10,
+                     num_iters = 50,
                      lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1},
                      fake_data = False,
                      device = 'cpu')

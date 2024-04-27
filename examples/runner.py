@@ -88,6 +88,7 @@ def run_experiment(cfg):
     latent_names.remove('obs')
 
     moment_list = list(product(latent_names, [mean, mean2]))
+    print(moment_list)
     # the below times should NOT include predictive ll computation time, as this is optional
     iter_times = t.zeros((len(Ks), num_lrs, num_iters+1, num_runs))
 
@@ -174,38 +175,35 @@ def run_experiment(cfg):
 
                         iter_times[K_idx, lr_idx, i, num_run] = elbo_end_time - elbo_start_time + update_end_time - update_start_time
                 
-                        t.save(prob.state_dict(), f"{cfg.model}/results/{model_name}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_{non_mp_string}.pth")
+                        t.save(prob.state_dict(), f"{cfg.model}/results/{model_name}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}{non_mp_string}.pth")
                         
-                        
-                        if len(means) == cfg.num_moments_to_save:
-                            del means[-cfg.num_moments_to_save]
-                            del means2[-cfg.num_moments_to_save]
+                        if cfg.save_moments:
                             
-                        means.append({name:[] for name in latent_names})
-                        means2.append({name:[] for name in latent_names})
-                        for _ in range(100):
-                            sample = prob.sample(K, reparam=False)
-                            
-                            
-                            m = sample.moments(moment_list)
-                            temp_means = [m[i] for i in range(0,len(latent_names)*2,2)]
-                            temp_means2 = [m[i] for i in range(1,len(latent_names)*2,2)]
-                            for j, k in enumerate(latent_names):
-                                means[-1][k].append(temp_means[j].rename(None))
-                                means2[-1][k].append(temp_means2[j].rename(None))
+                            means.append({name:[] for name in latent_names})
+                            means2.append({name:[] for name in latent_names})
+                            for _ in range(10):
+                                sample = prob.sample(K, reparam=False)
                                 
-                            #convert moments to numpy
-                        
-                        for k,v in means[-1].items():
-                            means[-1][k] = t.stack(v).detach().mean(0).cpu().numpy()
+                                
+                                m = sample.moments(moment_list)
+                                temp_means = [m[i] for i in range(0,len(latent_names)*2,2)]
+                                temp_means2 = [m[i] for i in range(1,len(latent_names)*2,2)]
+                                for j, k in enumerate(latent_names):
+                                    means[-1][k].append(temp_means[j].rename(None))
+                                    means2[-1][k].append(temp_means2[j].rename(None))
+                                    
+                                #convert moments to numpy
                             
-                        for k,v in means2[-1].items():
-                            means2[-1][k] = t.stack(v).detach().mean(0).cpu().numpy()
-                        
-                        #save moments to file
-                        moments = {'means': means, 'means2': means2}
-                        with open(f"{cfg.model}/results/{model_name}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_moments_{non_mp_string}.pkl", "wb") as f:
-                            pickle.dump(moments, f)
+                            for k,v in means[-1].items():
+                                means[-1][k] = t.stack(v).detach().mean(0).cpu().numpy()
+                                
+                            for k,v in means2[-1].items():
+                                means2[-1][k] = t.stack(v).detach().mean(0).cpu().numpy()
+                            
+                            #save moments to file
+                            moments = {'means': means, 'means2': means2}
+                            with open(f"{cfg.model}/results/{model_name}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_moments{non_mp_string}.pkl", "wb") as f:
+                                pickle.dump(moments, f)
                         
                         
                 except Exception as e:

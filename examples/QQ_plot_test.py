@@ -1,6 +1,6 @@
 import torch as t
 import numpy as np
-from alan import Problem, Plate, BoundPlate, Normal, Timeseries, Data, QEMParam, OptParam
+from alan import Problem, Plate, BoundPlate, Normal, Timeseries, Data, QEMParam, OptParam, mean, mean2
 import matplotlib.pyplot as plt
 
 def QQ(problem, num_samples, data_name, rvs, K, filename="QQ_plot.png"):
@@ -72,21 +72,74 @@ if __name__ == '__main__':
 
 
     platesizes = {'p1': 5}
-    data = {'obs': t.randn((5,), names=('p1',))}
+    # data = {'obs': t.randn((5,), names=('p1',))}
 
     P = BoundPlate(P, platesizes)
 
     # data = P.sample()['obs']
-    Q = BoundPlate(Q, platesizes)
+    Q_bound = BoundPlate(Q, platesizes)
 
-    prob = Problem(P, Q, data)
+    # QQ(prob, 500, 'obs', ['mu'], K, "QQ_plot_pre_QEM.png")
 
-    QQ(prob, 500, 'obs', ['mu'], K, "QQ_plot_pre_QEM.png")
-
-    for _ in range(100):
-        sample = prob.sample(K, True)
-        sample.update_qem_params(0.3)
+    # for _ in range(100):
+    #     sample = prob.sample(K, True)
+    #     sample.update_qem_params(0.3)
     
     
-    QQ(prob, 500, 'obs', ['mu'], K, "QQ_plot_post_QEM.png")
+    # QQ(prob, 500, 'obs', ['mu'], K, "QQ_plot_post_QEM.png")
+    
+    num_samples = 100
+    prior_latent_samples = P.sample(num_samples)
+    
+    data_samples = prior_latent_samples['obs'].rename(None).rename('p1', None)
+    
+    prior_mean = prior_latent_samples['mu'].mean()
+    print(prior_mean)
+    
+    prior_var = prior_latent_samples['mu'].var()
+    print(prior_var)
+    
+    means = []
+    vars = []
+    
+    post_mu = []
+    for i in range(num_samples):
+        Q = Plate(
+        mu = Normal(QEMParam(0.), QEMParam(1.)),
+        p1 = Plate(
+            z = Normal('mu', 1.),
+            obs = Data()
+        )
+        )
+        Q_bound = BoundPlate(Q, platesizes)
+        prob = Problem(P, Q_bound, {'obs': data_samples[:,i]})
+        for _ in range(100):
+            sample = prob.sample(K, reparam=False)
+            sample.update_qem_params(0.3)
+        
+        posterior_samples = prob.sample(K)
+        posterior_latent_samples = posterior_samples.importance_sample(1)
+        N_dim = posterior_latent_samples.Ndim
+        post_mu.append(posterior_latent_samples.samples_flatdict['mu'].order(N_dim).rename(None))
+        posterior_means = posterior_samples.moments([('mu', mean), ('mu', mean2)])
+        
+        means.append(posterior_means[0])
+        vars.append(posterior_means[1] - posterior_means[0]**2)
+    
+    after_mean = t.stack(means).mean()
+    print(after_mean)
+    after_var = t.stack(means).var() + t.stack(vars).mean()
+    print(after_var)
+    
+    
 
+    #plot means against each other with diagonal line
+    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+    ax.scatter(prior_latent_samples['mu'].rename(None).sort(0)[0], t.stack(post_mu).sort(0)[0])
+    # also plot the line y=x
+    lims = [
+        np.min([ax.get_xlim(), ax.get_ylim()]),  # min of both axes
+        np.max([ax.get_xlim(), ax.get_ylim()]),  # max of both axes
+    ]
+    ax.plot(lims, lims, 'k-', alpha=0.75, zorder=0)
+    plt.show()

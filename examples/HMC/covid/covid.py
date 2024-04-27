@@ -51,10 +51,10 @@ def get_model(data, covariates):
         #Days 
         log_infecteds = [InitialSize_log]
         for i in range(data['obs'].shape[1]):
-            log_infected = pm.Normal(f'log_infected_{i}', mu=log_infecteds[i] + Expected_Log_Rs(RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility, i), sigma=pm.math.exp(log_infected_noise))
+            log_infected = np.random.normal(loc=log_infecteds[i] + Expected_Log_Rs(RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility, i), scale=pm.math.exp(log_infected_noise))
             log_infecteds.append(log_infected)
         
-        log_infected = pm.Deterministic("log_infected", pt.stack(log_infecteds[1:], axis=1))
+        log_infected = pm.Potential("log_infected", pt.stack(log_infecteds[1:], axis=1))
         
         obs = pm.NegativeBinomial('obs', alpha=pt.exp(pt.reshape(psi, (nRs, 1))), mu=pt.exp(log_infected), observed=true_obs)
         
