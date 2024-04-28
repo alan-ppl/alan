@@ -375,7 +375,10 @@ class BoundPlate(nn.Module):
         torchdim_flatdict_noK = {}
         for k, v in torchdim_flatdict_withK.items():
             K_dims = list(set(generic_dims(v)).difference(set_platedims))
-            v = v.order(K_dims)[N_dim]
+            if sample_size > 1:
+                v = v.order(K_dims)[N_dim]
+            else:
+                v = v.order(K_dims)
             v = v.squeeze(tuple(range(len(K_dims))))
             torchdim_flatdict_noK[k] = v.detach()
 

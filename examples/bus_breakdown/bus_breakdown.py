@@ -40,8 +40,6 @@ def get_P(platesizes, covariates):
     run_type_dim = covariates['run_type'].shape[-1]
 
     P = Plate(
-        log_sigma_phi_psi = Normal(0, 1),
-
         psi = Normal(t.zeros((run_type_dim,)), t.ones((run_type_dim,))),
         phi = Normal(t.zeros((bus_company_name_dim,)), t.ones((bus_company_name_dim,))),
 
@@ -80,8 +78,6 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
 
         Q = Plate(
             global_latents = Group(
-                log_sigma_phi_psi = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-
                 psi = Normal(OptParam(t.zeros(run_type_dim)), OptParam(t.zeros(run_type_dim), transformation=t.exp)),
                 phi = Normal(OptParam(t.zeros(bus_company_name_dim)), OptParam(t.zeros(bus_company_name_dim), transformation=t.exp)),
 
@@ -112,8 +108,6 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
 
         Q = Plate(
             global_latents = Group(
-                log_sigma_phi_psi = Normal(QEMParam(0.), QEMParam(1.)),
-
                 psi = Normal(QEMParam(t.zeros((run_type_dim,))), QEMParam(t.ones((run_type_dim,)))),
                 phi = Normal(QEMParam(t.zeros((bus_company_name_dim,))), QEMParam(t.ones((bus_company_name_dim,)))),
 

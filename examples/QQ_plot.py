@@ -52,7 +52,7 @@ def QQ(problem, num_samples, data_name, rvs, K, filename="QQ_plot.png"):
 
 
 if __name__ == '__main__':
-    K= 30
+    K= 200
 
     P = Plate(
         mu = Normal(0., 1.), 
@@ -63,9 +63,9 @@ if __name__ == '__main__':
     )
         
     Q = Plate(
-        mu = Normal(QEMParam(0.), QEMParam(1.)),
+        mu = Normal(QEMParam(0.), QEMParam(100.)),
         p1 = Plate(
-            z = Normal('mu', 1.),
+            z = Normal('mu', 100.),
             obs = Data()
         )
     )
