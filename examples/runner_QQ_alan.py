@@ -10,11 +10,6 @@ from itertools import product
 
 from matplotlib import pyplot as plt
 
-def QQ_plot(prior_samples, post_samples):
-
-    
-
-
 @hydra.main(version_base=None, config_path='config', config_name='conf_QQ')
 def run_experiment(cfg):
     print(cfg)
