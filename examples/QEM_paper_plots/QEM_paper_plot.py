@@ -11,14 +11,10 @@ ALL_MODEL_NAMES = ['bus_breakdown', 'bus_breakdown_reparam', 'chimpanzees', 'mov
 
 DEFAULT_ALPHA_FUNC = lambda i, num_lrs: 1 if i == 0 else 1 - 0.5*i/(num_lrs-1)
 
-# using default matplotlib colours
-DEFAULT_COLOURS = {'qem': "C1", 'rws': "C2", 'vi': "C3", 
-                   'qem_nonmp': "C4", 'global_rws': "C2", 'global_vi': "C3"}
-
-# using colorbrewer2.org
 DEFAULT_COLOURS = {'qem': '#e7298a', 'qem_nonmp' : '#7570b3',
                    'rws': '#1b9e77', 'global_rws': '#1b9e77', 
-                   'vi' : '#d95f02', 'global_vi' : '#d95f02'}
+                   'vi' : '#d95f02', 'global_vi' : '#d95f02',
+                   'HMC': '#000000'}
 
 def load_results(model_name):
     with open(f'{model_name}_results/best.pkl', 'rb') as f:
@@ -63,29 +59,41 @@ def plot_method_K_lines(ax,
                         error_bars = False,
                         alpha_func = DEFAULT_ALPHA_FUNC,
                         force_lrs = None,
-                        short_labels = True):
+                        short_labels = True,
+                        HMC = False):
     
-    short_label_dict = {'qem': 'QEM', 'rws': 'MP RWS', 'vi': 'MP VI', 'qem_nonmp': 'Global QEM', 'global_rws': 'Global RWS', 'global_vi': 'IWAE'}
+    short_label_dict = {'qem': 'QEM', 'rws': 'MP RWS', 'vi': 'MP VI', 'qem_nonmp': 'Global QEM', 'global_rws': 'Global RWS', 'global_vi': 'IWAE', 'HMC': 'HMC'}
     
-    metric     = model_results[method][K][metric_name]
-    stderrs    = model_results[method][K][f'{metric_name[:-1]}_stderrs']
-    iter_times = model_results[method][K]['iter_times'].cumsum(axis=1)
+    if not HMC:
+        metric     = model_results[method][K][metric_name]
+        stderrs    = model_results[method][K][f'{metric_name[:-1]}_stderrs']
+        iter_times = model_results[method][K]['iter_times'].cumsum(axis=1) 
+        lrs = model_results[method][K]['lrs']
 
-    lrs = model_results[method][K]['lrs']
+        if force_lrs is not None:
+            # order the 0th (lr) dimension of metric, stderrs and iter_times to match the order of force_lrs
+            lr_order = np.array([lrs.tolist().index(lr) for lr in force_lrs])
+            metric = metric[lr_order, :]
+            stderrs = stderrs[lr_order, :]
+            iter_times = iter_times[lr_order, :]
+            lrs = force_lrs
+            num_lrs = len(lrs)
+
+    else:
+        metric     = model_results[method][metric_name]
+        stderrs    = model_results[method][f'{metric_name[:-1]}_stderrs']
+        iter_times = model_results[method]['iter_times'].cumsum(axis=0)
+        lrs = []
+
+        # add a dummy lr dimension 
+        metric = metric[None, :]
+        stderrs = stderrs[None, :]
+        iter_times = iter_times[None, :]
 
     min_x_val = np.inf
 
-    if force_lrs is not None:
-        # order the 0th (lr) dimension of metric, stderrs and iter_times to match the order of force_lrs
-        lr_order = np.array([lrs.tolist().index(lr) for lr in force_lrs])
-        metric = metric[lr_order, :]
-        stderrs = stderrs[lr_order, :]
-        iter_times = iter_times[lr_order, :]
-        lrs = force_lrs
-        num_lrs = len(lrs)
-
     for i in range(num_lrs):
-        if i < metric.shape[0]:
+        if HMC or i < metric.shape[0]:
             smoothed_metric = smooth(metric[i, :], smoothing_window)
 
             alpha_val = alpha_func(i, num_lrs)
@@ -105,8 +113,9 @@ def plot_method_K_lines(ax,
             if error_bars:
                 ax.fill_between(xs[:x_lim_iters], (smoothed_metric - stderrs[i, :])[:x_lim_iters], (smoothed_metric + stderrs[i, :])[:x_lim_iters], color=colour, alpha=0.2*alpha_val)
 
-            if xs[x_lim_iters-1] < min_x_val:
-                min_x_val = xs[x_lim_iters-1]
+            if not HMC:  # don't count HMC when computing min_x_val
+                if xs[x_lim_iters-1] < min_x_val:
+                    min_x_val = xs[x_lim_iters-1]
 
     return min_x_val
     
@@ -234,31 +243,34 @@ def plot_all_2row(model_names   = ALL_MODEL_NAMES,
             for j, method_name in enumerate(results[model_name].keys()):
                 colour = colours_dict[method_name]
 
-                plot_method_K_lines(ax = axs[0,col_counter], 
-                                    model_results = results[model_name],
-                                    method = method_name,
-                                    K = K, 
-                                    metric_name = 'elbos',
-                                    num_lrs = num_lrs,
-                                    colour = colour,
-                                    x_axis_iters = x_axis_iters,
-                                    smoothing_window = smoothing_window,
-                                    x_lim_iters=x_lim,
-                                    error_bars = error_bars,
-                                    alpha_func = alpha_func)
-
-                plot_method_K_lines(ax = axs[1,col_counter], 
-                                    model_results = results[model_name],
-                                    method = method_name,
-                                    K = K, 
-                                    metric_name = 'p_lls',
-                                    num_lrs = num_lrs,
-                                    colour = colour,
-                                    x_axis_iters = x_axis_iters,
-                                    smoothing_window = smoothing_window,
-                                    x_lim_iters=x_lim,
-                                    error_bars = error_bars,
-                                    alpha_func = alpha_func)
+                if method_name != 'HMC':
+                    plot_method_K_lines(ax = axs[0,col_counter], 
+                                        model_results = results[model_name],
+                                        method = method_name,
+                                        K = K,
+                                        metric_name = 'elbos',
+                                        num_lrs = num_lrs,
+                                        colour = colour,
+                                        x_axis_iters = x_axis_iters,
+                                        smoothing_window = smoothing_window,
+                                        x_lim_iters=x_lim,
+                                        error_bars = error_bars,
+                                        alpha_func = alpha_func)
+                
+                if not (method_name == 'HMC' and x_axis_iters):
+                    plot_method_K_lines(ax = axs[1,col_counter], 
+                                        model_results = results[model_name],
+                                        method = method_name,
+                                        K = K,
+                                        metric_name = 'p_lls',
+                                        num_lrs = num_lrs,
+                                        colour = colour,
+                                        x_axis_iters = x_axis_iters,
+                                        smoothing_window = smoothing_window,
+                                        x_lim_iters=x_lim,
+                                        error_bars = error_bars,
+                                        alpha_func = alpha_func,
+                                        HMC = method_name == 'HMC')
                 
 
             if x_axis_iters:
@@ -287,7 +299,7 @@ def plot_all_2row(model_names   = ALL_MODEL_NAMES,
                         plot_method_K_lines(ax = axins, 
                                             model_results = results[model_name],
                                             method = method_name,
-                                            K = K, 
+                                            K = K if method_name != 'HMC' else -1, 
                                             metric_name = inset.metric_name,
                                             num_lrs = num_lrs,
                                             colour = colour,
@@ -458,10 +470,14 @@ def plot_avg_iter_time_per_K(model_names  = ALL_MODEL_NAMES,
         Ks = results[model_name]['qem'].keys()
 
         x = np.arange(len(Ks))  # the label locations
-        width = 1/(1+len(results[model_name].keys()))  # the width of the bars
+
+        methods = list(results[model_name].keys())
+        width = 1/(1+len(methods) if 'HMC' not in methods else len(methods)-1)  # the width of the bars
         multiplier = 0
         
         for j, method_name in enumerate(results[model_name].keys()):
+            if method_name == 'HMC':
+                continue
             colour = colours_dict[method_name]
 
             avg_iter_times_per_K = [np.nanmean(results[model_name][method_name][K]['iter_times']) for K in Ks]
@@ -473,7 +489,7 @@ def plot_avg_iter_time_per_K(model_names  = ALL_MODEL_NAMES,
 
         axs[i].set_xlabel('K')
         axs[i].set_title(f'{model_name.upper()}')
-        axs[i].set_xticks(x + width, results[model_name][method_name].keys())
+        axs[i].set_xticks(x + width, results[model_name]['qem'].keys())
 
     axs[0].legend()
     axs[0].set_ylabel('Average iteration time (s)')
@@ -496,12 +512,20 @@ if __name__ == "__main__":
     validation_iter_number = 125
     iteration_x_lim = 2*validation_iter_number
 
+    plot_HMC = False
+
     for model_name in ALL_MODEL_NAMES:
         if model_name == 'occupancy':
             pass
             preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=['qem', 'rws', 'qem_nonmp'], ignore_nans=ignore_nans)
-        else:
+        elif model_name == 'radon':
             preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=['qem', 'rws', 'vi', 'qem_nonmp'], ignore_nans=ignore_nans)
+        else:
+            if plot_HMC:
+                preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=['qem', 'rws', 'vi', 'qem_nonmp', 'HMC'], ignore_nans=ignore_nans)
+            else:
+                preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=['qem', 'rws', 'vi', 'qem_nonmp'], ignore_nans=ignore_nans)
+
 
     best_Ks = {'bus_breakdown': [30], 'bus_breakdown_reparam': [30], 'chimpanzees': [30], 'movielens': [30], 'movielens_reparam': [30], 'occupancy': [30], 'radon': [30]}
 
