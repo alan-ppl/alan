@@ -1,7 +1,7 @@
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 import torch as t 
 import preprocess
@@ -278,8 +278,8 @@ def plot_all_2row(model_names   = ALL_MODEL_NAMES,
             for inset in zoomed_insets:
                 if inset.model_name == model_name and inset.K == K:
                     row = 0 if inset.metric_name == 'elbos' else 1
-                    
-                    axins = zoomed_inset_axes(axs[row,col_counter], 6.5, loc='center', bbox_to_anchor=(0.58,0.7), bbox_transform=axs[row,col_counter].transAxes, axes_kwargs={'aspect': 2.5})
+
+                    axins = inset_axes(axs[row,col_counter], 1.5,1, loc='center', bbox_to_anchor=(0.58,0.71), bbox_transform=axs[row,col_counter].transAxes)
                     
                     for method_name in inset.methods:
                         colour = colours_dict[method_name]
@@ -301,16 +301,19 @@ def plot_all_2row(model_names   = ALL_MODEL_NAMES,
                     # axins.set_ylim(*inset.ylims)
 
                     # remove y ticks
-                    plt.yticks(visible=False)
+                    axins.yaxis.set_tick_params(labelleft=False)
+                    axins.set_yticks([])
 
                     mark_inset(axs[row,col_counter], axins, loc1=1, loc2=3, facecolor="none", edgecolor="none") 
 
 
             axs[1,col_counter].set_xlabel('Iterations' if x_axis_iters else 'Time (s)')
 
-            axs[1,col_counter].legend()
+            # axs[1,col_counter].legend()
 
             col_counter += 1
+
+        axs[1,0].legend()
 
         axs[0,0].set_ylabel('ELBO')
         axs[1,0].set_ylabel('Predictive log-likelihood')
@@ -505,45 +508,48 @@ if __name__ == "__main__":
     ylims = {'elbo': {'bus_breakdown': (-2500,  -1240),
                       'chimpanzees':   (-270,   -243),
                       'movielens':     (-3000,  -900),
-                      'occupancy':     (-52000, -49300),
+                      'occupancy':     (-54000, -49300),
                       'radon':         (-16000, 0), #(-494,   -484)},
                       'bus_breakdown_reparam': (-2500,  -1240),
                       'movielens_reparam':     (-10000,  -900),},
              'p_ll': {'bus_breakdown': (-3000,  -1450),
                       'chimpanzees':   (-45,    -39),
-                      'movielens':     (-1200,  -940),
-                      'occupancy':     (-25800, -24700),
-                      'radon':         (-250000000, 10000000),#(-170,   -120)},
+                      'movielens':     (-1250,  -940),
+                      'occupancy':     (-26000, -24700),
+                      'radon':         (-450000000, 10000000),#(-170,   -120)},
                       'bus_breakdown_reparam': (-3000,  -1450),
                       'movielens_reparam':     (-2400,  -940),}
             }
     
-    zoomed_insets = [Zoomed_Inset(model_name='occupancy', methods=['qem', 'rws'],   K=best_Ks['occupancy'][0], metric_name='p_lls', xlims=(None, None), ylims=(-24800, -24725)),]
-                    #  Zoomed_Inset(model_name='radon', methods=['qem', 'rws', 'vi'], K=best_Ks['radon'][0],     metric_name='p_lls', xlims=(None, None), ylims=(-25000000, -1000000))]
+    _zoomed_insets = [Zoomed_Inset(model_name='occupancy', methods=['qem', 'rws'],       K=best_Ks['occupancy'][0], metric_name='p_lls', xlims=(None, None), ylims=(-24800,    -24725)),    
+                     Zoomed_Inset(model_name='radon',     methods=['qem', 'rws', 'vi'], K=best_Ks['radon'][0],     metric_name='p_lls', xlims=(None, None), ylims=(-25000000, -1000000))]
 
     smoothing_window = 3
 
-    plot_all_2row(Ks_to_plot=best_Ks,
-                  num_lrs = 1,
-                  filename_end = f"_K30_SMOOTH{smoothing_window}_TIME",
-                  x_axis_iters = False, 
-                  x_lim = iteration_x_lim, 
-                  error_bars = True, 
-                  save_pdf = True, 
-                  ylims = ylims,
-                  zoomed_insets = zoomed_insets,
-                  smoothing_window=smoothing_window)
-    
-    plot_all_2row(Ks_to_plot=best_Ks,
-                  num_lrs = 1, 
-                  filename_end = f"_K30_SMOOTH{smoothing_window}_ITER", 
-                  x_axis_iters = True, 
-                  x_lim = iteration_x_lim, 
-                  error_bars = True, 
-                  save_pdf = True, 
-                  ylims = ylims,
-                  zoomed_insets = zoomed_insets,
-                  smoothing_window=smoothing_window)
+    for zoom in [True, False]:
+        zoomed_insets = _zoomed_insets if zoom else []
+
+        plot_all_2row(Ks_to_plot=best_Ks,
+                      num_lrs = 1,
+                      filename_end = f"_K30_SMOOTH{smoothing_window}_TIME{'_nozoom' if not zoom else ''}",
+                      x_axis_iters = False, 
+                      x_lim = iteration_x_lim, 
+                      error_bars = True, 
+                      save_pdf = True, 
+                      ylims = ylims,
+                      zoomed_insets = zoomed_insets,
+                      smoothing_window=smoothing_window)
+        
+        plot_all_2row(Ks_to_plot=best_Ks,
+                      num_lrs = 1, 
+                      filename_end = f"_K30_SMOOTH{smoothing_window}_ITER{'_nozoom' if not zoom else ''}", 
+                      x_axis_iters = True, 
+                      x_lim = iteration_x_lim, 
+                      error_bars = True, 
+                      save_pdf = True, 
+                      ylims = ylims,
+                      zoomed_insets = zoomed_insets,
+                      smoothing_window=smoothing_window)
     
     plot_avg_iter_time_per_K(save_pdf=True)
 
