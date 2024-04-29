@@ -232,7 +232,7 @@ def plot_all_2row(model_names   = ALL_MODEL_NAMES,
 
     num_cols = sum([len(Ks_to_plot[model_name]) for model_name in model_names])
 
-    fig, axs = plt.subplots(2, num_cols, figsize=(num_cols*3, 7), sharex=x_axis_iters)
+    fig, axs = plt.subplots(2, num_cols, figsize=(max(num_cols*3, 12), 7), sharex=x_axis_iters)
 
     col_counter = 0
     for i, model_name in enumerate(model_names):
@@ -574,6 +574,37 @@ if __name__ == "__main__":
                       ylims = ylims,
                       zoomed_insets = zoomed_insets,
                       smoothing_window=smoothing_window)
+
+        sub_model_collections = {'standard': ['bus_breakdown', 'chimpanzees', 'movielens', 'radon', 'occupancy'],
+                                 'reparams': ['bus_breakdown_reparam', 'movielens_reparam']}
+        for name, sub_models in sub_model_collections.items():
+
+            if zoom and set(sub_models).intersection(set([inset.model_name for inset in zoomed_insets])) == set():
+                continue
+            
+            plot_all_2row(model_names=sub_models,
+                          Ks_to_plot=best_Ks,
+                          num_lrs = 1,
+                          filename_end = f"_{name}ONLY_K30_SMOOTH{smoothing_window}_TIME{'_nozoom' if not zoom else ''}",
+                          x_axis_iters = False, 
+                          x_lim = iteration_x_lim, 
+                          error_bars = True, 
+                          save_pdf = True, 
+                          ylims = ylims,
+                          zoomed_insets = zoomed_insets,
+                          smoothing_window=smoothing_window)
+            
+            plot_all_2row(model_names=sub_models,
+                          Ks_to_plot=best_Ks,
+                          num_lrs = 1, 
+                          filename_end = f"_{name}ONLY_K30_SMOOTH{smoothing_window}_ITER{'_nozoom' if not zoom else ''}", 
+                          x_axis_iters = True, 
+                          x_lim = iteration_x_lim, 
+                          error_bars = True, 
+                          save_pdf = True, 
+                          ylims = ylims,
+                          zoomed_insets = zoomed_insets,
+                          smoothing_window=smoothing_window)
     
     plot_avg_iter_time_per_K(save_pdf=True)
 
