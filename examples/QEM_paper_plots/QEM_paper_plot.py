@@ -119,94 +119,6 @@ def plot_method_K_lines(ax,
 
     return min_x_val
     
-def plot_all_2col(model_names  = ALL_MODEL_NAMES,
-                  Ks_to_plot   = 'largest',
-                  num_lrs      = 1,
-                  x_axis_iters = True,
-                  x_lim        = None,
-                  smoothing_window = 1,
-                  error_bars   = False,
-                  alpha_func   = DEFAULT_ALPHA_FUNC,
-                  colours_dict = DEFAULT_COLOURS,
-                  save_pdf     = False,
-                  filename_end = ""):
-    
-    results = {model_name: load_results(model_name) for model_name in model_names}
-
-    if Ks_to_plot == 'largest':
-        Ks_to_plot = {model_name: [max(results[model_name]['qem'].keys())] for model_name in model_names}
-    elif Ks_to_plot == 'smallest':
-        Ks_to_plot = {model_name: [min(results[model_name]['qem'].keys())] for model_name in model_names}
-    elif Ks_to_plot == 'all':
-        Ks_to_plot = {model_name: list(results[model_name]['qem'].keys()) for model_name in model_names}
-
-    num_rows = sum([len(Ks_to_plot[model_name]) for model_name in model_names])
-
-    fig, axs = plt.subplots(num_rows, 2, figsize=(7, num_rows*2), sharex=x_axis_iters)
-
-    row_counter = 0
-    for i, model_name in enumerate(model_names):
-        for k, K in enumerate(Ks_to_plot[model_name]):
-            for j, method_name in enumerate(results[model_name].keys()):
-                colour = colours_dict[method_name]
-
-                axs[row_counter,0].set_title(f'{model_name.upper()} (K={K})')
-
-                plot_method_K_lines(ax = axs[row_counter,0], 
-                                    model_results = results[model_name],
-                                    method = method_name,
-                                    K = K, 
-                                    metric_name = 'elbos',
-                                    num_lrs = num_lrs,
-                                    colour = colour,
-                                    x_axis_iters = x_axis_iters,
-                                    smoothing_window = smoothing_window,
-                                    error_bars = error_bars,
-                                    alpha_func = alpha_func)
-
-                axs[row_counter,0].set_ylabel('ELBO')
-
-                if x_axis_iters:
-                    axs[row_counter,0].set_xlim(0, x_lim)
-                else:
-                    axs[row_counter,0].set_xscale('log')
-
-                axs[row_counter,0].set_ylim(None, None)
-                
-                plot_method_K_lines(ax = axs[row_counter,1], 
-                                    model_results = results[model_name],
-                                    method = method_name,
-                                    K = K, 
-                                    metric_name = 'p_lls',
-                                    num_lrs = num_lrs,
-                                    colour = colour,
-                                    x_axis_iters = x_axis_iters,
-                                    smoothing_window = smoothing_window,
-                                    error_bars = error_bars,
-                                    alpha_func = alpha_func)
-                
-                axs[row_counter,1].set_ylabel('Predictive log-likelihood')
-
-                if x_axis_iters:
-                    axs[row_counter,1].set_xlim(0, x_lim)
-                else:
-                    axs[row_counter,1].set_xscale('log')
-
-                axs[row_counter,1].set_ylim(None, None)
-
-                axs[row_counter,1].legend()
-
-            row_counter += 1
-
-        axs[-1,0].set_xlabel('Iterations' if x_axis_iters else 'Time (s)')
-        axs[-1,1].set_xlabel('Iterations' if x_axis_iters else 'Time (s)')
-
-    fig.tight_layout()
-
-    plt.savefig(f'plots/all_2col{filename_end}.png')
-    if save_pdf:
-        plt.savefig(f'plots/pdfs/all_2col{filename_end}.pdf')
-
 def plot_all_2row(model_names   = ALL_MODEL_NAMES,
                   Ks_to_plot    = 'largest',
                   num_lrs       = 1,
@@ -332,9 +244,9 @@ def plot_all_2row(model_names   = ALL_MODEL_NAMES,
 
     fig.tight_layout()
 
-    plt.savefig(f'plots/all_2row{filename_end}.png')
+    plt.savefig(f'plots/{filename_end}.png')
     if save_pdf:
-        plt.savefig(f'plots/pdfs/all_2row{filename_end}.pdf')
+        plt.savefig(f'plots/pdfs/{filename_end}.pdf')
 
 def plot_all_2row_plus_global(model_names  = ALL_MODEL_NAMES,
                               Ks_to_plot   = 'largest',
@@ -528,89 +440,135 @@ if __name__ == "__main__":
             else:
                 preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=['qem', 'rws', 'vi', 'qem_nonmp'], ignore_nans=ignore_nans)
 
-
-    best_Ks = {'bus_breakdown': [30], 'bus_breakdown_reparam': [30], 'chimpanzees': [30], 'movielens': [30], 'movielens_reparam': [30], 'occupancy': [30], 'radon': [30]}
-
-    ylims = {'elbo': {'bus_breakdown': (-2500,  -1240),
-                      'chimpanzees':   (-270,   -243),
-                      'movielens':     (-3000,  -900),
-                      'occupancy':     (-54000, -49300),
-                      'radon':         (-16000, 0), #(-494,   -484)},
-                      'bus_breakdown_reparam': (-2500,  -1240),
-                      'movielens_reparam':     (-10000,  -900),},
-             'p_ll': {'bus_breakdown': (-3000,  -1450),
-                      'chimpanzees':   (-45,    -39),
-                      'movielens':     (-1250,  -940),
-                      'occupancy':     (-26000, -24700),
-                      'radon':         (-450000000, 10000000),#(-170,   -120)},
-                      'bus_breakdown_reparam': (-3000,  -1450),
-                      'movielens_reparam':     (-2400,  -940),}
-            }
+    sub_model_collections = {'standard': ['bus_breakdown', 'chimpanzees', 'movielens', 'radon', 'occupancy'],
+                             'reparams': ['bus_breakdown_reparam', 'movielens_reparam']}
     
-    _zoomed_insets = [Zoomed_Inset(model_name='occupancy', methods=['qem', 'rws'],       K=best_Ks['occupancy'][0], metric_name='p_lls', xlims=(None, None), ylims=(-24800,    -24725)),    
-                     Zoomed_Inset(model_name='radon',     methods=['qem', 'rws', 'vi'], K=best_Ks['radon'][0],     metric_name='p_lls', xlims=(None, None), ylims=(-25000000, -1000000))]
-
-    smoothing_window = 3
-
-    for zoom in [True, False]:
-        zoomed_insets = _zoomed_insets if zoom else []
-
-        plot_all_2row(Ks_to_plot=best_Ks,
-                      num_lrs = 1,
-                      filename_end = f"_K30_SMOOTH{smoothing_window}_TIME{'_nozoom' if not zoom else ''}",
-                      x_axis_iters = False, 
-                      x_lim = iteration_x_lim, 
-                      error_bars = True, 
-                      save_pdf = True, 
-                      ylims = ylims,
-                      zoomed_insets = zoomed_insets,
-                      smoothing_window=smoothing_window)
-        
-        plot_all_2row(Ks_to_plot=best_Ks,
-                      num_lrs = 1, 
-                      filename_end = f"_K30_SMOOTH{smoothing_window}_ITER{'_nozoom' if not zoom else ''}", 
-                      x_axis_iters = True, 
-                      x_lim = iteration_x_lim, 
-                      error_bars = True, 
-                      save_pdf = True, 
-                      ylims = ylims,
-                      zoomed_insets = zoomed_insets,
-                      smoothing_window=smoothing_window)
-
-        sub_model_collections = {'standard': ['bus_breakdown', 'chimpanzees', 'movielens', 'radon', 'occupancy'],
-                                 'reparams': ['bus_breakdown_reparam', 'movielens_reparam']}
-        for name, sub_models in sub_model_collections.items():
-
-            if zoom and set(sub_models).intersection(set([inset.model_name for inset in zoomed_insets])) == set():
-                continue
-            
-            plot_all_2row(model_names=sub_models,
-                          Ks_to_plot=best_Ks,
-                          num_lrs = 1,
-                          filename_end = f"_{name}ONLY_K30_SMOOTH{smoothing_window}_TIME{'_nozoom' if not zoom else ''}",
-                          x_axis_iters = False, 
-                          x_lim = iteration_x_lim, 
-                          error_bars = True, 
-                          save_pdf = True, 
-                          ylims = ylims,
-                          zoomed_insets = zoomed_insets,
-                          smoothing_window=smoothing_window)
-            
-            plot_all_2row(model_names=sub_models,
-                          Ks_to_plot=best_Ks,
-                          num_lrs = 1, 
-                          filename_end = f"_{name}ONLY_K30_SMOOTH{smoothing_window}_ITER{'_nozoom' if not zoom else ''}", 
-                          x_axis_iters = True, 
-                          x_lim = iteration_x_lim, 
-                          error_bars = True, 
-                          save_pdf = True, 
-                          ylims = ylims,
-                          zoomed_insets = zoomed_insets,
-                          smoothing_window=smoothing_window)
-    
+    ##################### TIME-PER-ITERATION PLOTS #####################
     plot_avg_iter_time_per_K(save_pdf=True)
     plot_avg_iter_time_per_K(save_pdf=True, model_names=sub_model_collections['standard'], filename_end='_standardONLY')
 
+
+    #####################     ELBO/P_LL PLOTS      #####################
+    best_Ks = {'bus_breakdown': [30], 'bus_breakdown_reparam': [30], 'chimpanzees': [30], 'movielens': [30], 'movielens_reparam': [30], 'occupancy': [30], 'radon': [30]}
+    smoothing_window = 3
+
+    # YLIMS FOCUSING ON END OF TRAINING (WILL OFTEN IGNORE GLOBAL QEM) #
+    ylims = {'elbo': {'bus_breakdown': (-1600,  -1280),
+                      'chimpanzees':   (-255,   -244),
+                      'movielens':     (-1250,  -950),
+                      'occupancy':     (-49800, -49300),
+                      'radon':         (-4000, -500), #(-494,   -484)},
+                      'bus_breakdown_reparam': (-1600,  -1280),
+                      'movielens_reparam':     (-2000,  -900),},
+             'p_ll': {'bus_breakdown': (-2000,  -1450),
+                      'chimpanzees':   (-45,    -39.5),
+                      'movielens':     (-1000,  -940),
+                      'occupancy':     (-24790, -24755),
+                      'radon':         (-12500000, 0),#(-170,   -120)},
+                      'bus_breakdown_reparam': (-2000,  -1450),
+                      'movielens_reparam':     (-1200,  -940),}
+            }
+    
+    for x_axis_iters in [True, False]:
+        x_axis_str = 'ITER' if x_axis_iters else 'TIME'
+        plot_all_2row(model_names=ALL_MODEL_NAMES,
+                    Ks_to_plot=best_Ks,
+                    num_lrs = 1,
+                    filename_end = f"K30_SMOOTH{smoothing_window}_{x_axis_str}",
+                    x_axis_iters = x_axis_iters, 
+                    x_lim = iteration_x_lim, 
+                    error_bars = True, 
+                    save_pdf = True, 
+                    ylims = ylims,
+                    smoothing_window=smoothing_window)
+        
+        for name, sub_models in sub_model_collections.items():
+            plot_all_2row(model_names=sub_models,
+                        Ks_to_plot=best_Ks,
+                        num_lrs = 1,
+                        filename_end = f"{name}ONLY_K30_SMOOTH{smoothing_window}_{x_axis_str}",
+                        x_axis_iters = x_axis_iters, 
+                        x_lim = iteration_x_lim, 
+                        error_bars = True, 
+                        save_pdf = True, 
+                        ylims = ylims,
+                        smoothing_window=smoothing_window)
+
+    
+    # PLOTS W/ ZOOMED INSETS TO ALWAYS SHOW GLOBAL QEM BUT KEEP DETAIL #
+
+    # ylims_for_zoomed_insets = {'elbo': {'bus_breakdown': (-2500,  -1240),
+    #                                     'chimpanzees':   (-270,   -243),
+    #                                     'movielens':     (-3000,  -900),
+    #                                     'occupancy':     (-54000, -49300),
+    #                                     'radon':         (-16000, 0), #(-494,   -484)},
+    #                                     'bus_breakdown_reparam': (-2500,  -1240),
+    #                                     'movielens_reparam':     (-10000,  -900),},
+    #                             'p_ll': {'bus_breakdown': (-3000,  -1450),
+    #                                     'chimpanzees':   (-45,    -39),
+    #                                     'movielens':     (-1250,  -940),
+    #                                     'occupancy':     (-26000, -24700),
+    #                                     'radon':         (-450000000, 10000000),#(-170,   -120)},
+    #                                     'bus_breakdown_reparam': (-3000,  -1450),
+    #                                     'movielens_reparam':     (-2400,  -940),}
+    #                             }
+    
+    # _zoomed_insets = [Zoomed_Inset(model_name='occupancy', methods=['qem', 'rws'],       K=best_Ks['occupancy'][0], metric_name='p_lls', xlims=(None, None), ylims=(-24800,    -24725)),    
+    #                  Zoomed_Inset(model_name='radon',     methods=['qem', 'rws', 'vi'], K=best_Ks['radon'][0],     metric_name='p_lls', xlims=(None, None), ylims=(-25000000, -1000000))]
+
+    # for zoom in [True, False]:
+    #     zoomed_insets = _zoomed_insets if zoom else []
+
+    #     plot_all_2row(Ks_to_plot=best_Ks,
+    #                   num_lrs = 1,
+    #                   filename_end = f"_K30_SMOOTH{smoothing_window}_TIME{'_nozoom' if not zoom else ''}",
+    #                   x_axis_iters = False, 
+    #                   x_lim = iteration_x_lim, 
+    #                   error_bars = True, 
+    #                   save_pdf = True, 
+    #                   ylims = ylims_for_zoomed_insets,
+    #                   zoomed_insets = zoomed_insets,
+    #                   smoothing_window=smoothing_window)
+        
+    #     plot_all_2row(Ks_to_plot=best_Ks,
+    #                   num_lrs = 1, 
+    #                   filename_end = f"_K30_SMOOTH{smoothing_window}_ITER{'_nozoom' if not zoom else ''}", 
+    #                   x_axis_iters = True, 
+    #                   x_lim = iteration_x_lim, 
+    #                   error_bars = True, 
+    #                   save_pdf = True, 
+    #                   ylims = ylims_for_zoomed_insets,
+    #                   zoomed_insets = zoomed_insets,
+    #                   smoothing_window=smoothing_window)
+
+    #     for name, sub_models in sub_model_collections.items():
+
+    #         if zoom and set(sub_models).intersection(set([inset.model_name for inset in zoomed_insets])) == set():
+    #             continue
+            
+    #         plot_all_2row(model_names=sub_models,
+    #                       Ks_to_plot=best_Ks,
+    #                       num_lrs = 1,
+    #                       filename_end = f"_{name}ONLY_K30_SMOOTH{smoothing_window}_TIME{'_nozoom' if not zoom else ''}",
+    #                       x_axis_iters = False, 
+    #                       x_lim = iteration_x_lim, 
+    #                       error_bars = True, 
+    #                       save_pdf = True, 
+    #                       ylims = ylims_for_zoomed_insets,
+    #                       zoomed_insets = zoomed_insets,
+    #                       smoothing_window=smoothing_window)
+            
+    #         plot_all_2row(model_names=sub_models,
+    #                       Ks_to_plot=best_Ks,
+    #                       num_lrs = 1, 
+    #                       filename_end = f"_{name}ONLY_K30_SMOOTH{smoothing_window}_ITER{'_nozoom' if not zoom else ''}", 
+    #                       x_axis_iters = True, 
+    #                       x_lim = iteration_x_lim, 
+    #                       error_bars = True, 
+    #                       save_pdf = True, 
+    #                       ylims = ylims_for_zoomed_insets,
+    #                       zoomed_insets = zoomed_insets,
+    #                       smoothing_window=smoothing_window)
 
 
 
