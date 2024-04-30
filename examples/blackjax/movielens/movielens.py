@@ -11,11 +11,11 @@ M, N = 300, 5
 def get_model(data, covariates):
 
     params = namedtuple("model_params", ["mu_z", "psi_z", "z"])
-    def joint_logdensity(params):
+    def joint_logdensity(params, data, covariates):
         mu_z = stats.norm.logpdf(params.mu_z, 0., 1.).sum()
         psi_z = stats.norm.logpdf(params.psi_z, 0., 1.).sum()
         z = stats.norm.logpdf(params.z, params.mu_z, jnp.exp(params.psi_z)).sum()
-        obs = stats.bernoulli.logpmf(data['obs'], jax.nn.sigmoid((params.z @ covariates['x']))).sum()
+        obs = stats.bernoulli.logpmf(data, jax.nn.sigmoid((params.z @ covariates['x']))).sum()
         
         return mu_z + psi_z + z + obs
     
@@ -39,7 +39,7 @@ def get_test_data_cov_dict(all_data, all_covariates, platesizes):
     test_covariates = all_covariates
     test_covariates['x'] = test_covariates['x'][:,platesizes['plate_2']:]
 
-    return {**test_data, **test_covariates}
+    return test_data, test_covariates
 
 if __name__ == '__main__':
     #Test model without jax

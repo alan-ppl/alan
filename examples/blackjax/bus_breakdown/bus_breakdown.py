@@ -13,7 +13,7 @@ def get_model(data, covariates):
     run_type_dim = covariates['run_type'].shape[-1]
 
     params = namedtuple("model_params", ["psi", "phi", "sigma_beta", "mu_beta", "beta", "sigma_alpha", "alpha", "alph", "log_delay"])
-    def joint_logdensity(params):
+    def joint_logdensity(params, data, covariates):
         #prior
         
         psi = stats.norm.logpdf(params.psi, 0., 1.).sum()
@@ -26,14 +26,14 @@ def get_model(data, covariates):
         sigma_alpha = stats.norm.logpdf(params.sigma_alpha, 0., 1.).sum()
         
         # borough level
-        alpha = stats.norm.logpdf(params.alpha, params.beta, jnp.sqrt(jnp.exp(params.sigma_alpha))).sum()
+        alpha = stats.norm.logpdf(params.alpha, params.beta, jnp.exp(params.sigma_alpha)).sum()
         
         # ID level
-        alph = stats.expon.logpdf(params.alph, 1.).sum()
+        alph = stats.norm.logpdf(params.sigma_alpha, 0., np.log(10.)).sum()
 
         log_delay = stats.norm.logpdf(params.log_delay, params.alpha.reshape(3,3,1) + ((covariates['bus_company_name'] @ params.phi.transpose()) + (covariates['run_type'] @ params.psi.transpose())), 1.).sum()
         
-        obs = stats.nbinom.logpmf(data['obs'], params.alph**2, 1/((params.alph**2/ jax.nn.sigmoid(params.log_delay)) + 1 + 1e-7)).sum()
+        obs = stats.nbinom.logpmf(data, jnp.exp(params.alph)**2, 1/((jnp.exp(params.alph)**2/ jax.nn.sigmoid(params.log_delay)) + 1 + 1e-7)).sum()
         
         return psi + phi + sigma_beta + mu_beta + beta + sigma_alpha + alpha + alph + log_delay + obs
 
@@ -66,4 +66,4 @@ def get_test_data_cov_dict(all_data, all_covariates, platesizes):
     for key in test_covariates:
         test_covariates[key] = test_covariates[key][:,:,platesizes['plate_ID']:]
 
-    return {**test_data, **test_covariates}
+    return test_data, test_covariates

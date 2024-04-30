@@ -8,7 +8,6 @@ from pathlib import Path
 
 from itertools import product
 
-from matplotlib import pyplot as plt
 
 @hydra.main(version_base=None, config_path='config', config_name='conf_QQ')
 def run_experiment(cfg):
@@ -72,8 +71,8 @@ def run_experiment(cfg):
     plate_names_obs = prior_latent_samples['obs'].names
     data_samples = prior_latent_samples['obs'].rename(*plate_names_obs[:-1], None)
 
-    prior_means = {name: prior_latent_samples[name].mean('N').rename(None) for name in latent_names}
-    prior_vars = {name: prior_latent_samples[name].var('N').rename(None) for name in latent_names}
+    prior_means = {name: prior_latent_samples[name].mean('N').rename(None).cpu() for name in latent_names}
+    prior_vars = {name: prior_latent_samples[name].var('N').rename(None).cpu() for name in latent_names}
     
     post_means = {name: [] for name in latent_names}
     post_vars = {name: [] for name in latent_names}
@@ -97,8 +96,8 @@ def run_experiment(cfg):
             post_vars[k].append(temp_means2[j].rename(None) - temp_means[j].rename(None)**2)
             post_samples[k].append(posterior_latent_samples.samples_flatdict[k].order(N_dim))
 
-    overall_post_means = {name: t.stack(post_means[name]).mean(0).detach().rename(None) for name in latent_names}
-    overall_post_vars = {name: t.stack(post_means[name]).var(0).detach().rename(None) + t.stack(post_means[name]).mean(0).detach().rename(None) for name in latent_names}
+    overall_post_means = {name: t.stack(post_means[name]).mean(0).detach().rename(None).cpu() for name in latent_names}
+    overall_post_vars = {name: t.stack(post_means[name]).var(0).detach().rename(None).cpu() + t.stack(post_means[name]).mean(0).detach().rename(None).cpu() for name in latent_names}
 
     pickle_dict = {'prior_means': prior_means, 'prior_vars': prior_vars, 'post_means': overall_post_means, 'post_vars': overall_post_vars} 
     

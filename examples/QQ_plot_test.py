@@ -52,7 +52,7 @@ def QQ(problem, num_samples, data_name, rvs, K, filename="QQ_plot.png"):
 
 
 if __name__ == '__main__':
-    K= 30
+    K= 300
 
     P = Plate(
         mu = Normal(0., 1.), 
@@ -88,21 +88,30 @@ if __name__ == '__main__':
     
     # QQ(prob, 500, 'obs', ['mu'], K, "QQ_plot_post_QEM.png")
     
-    num_samples = 100
+    num_samples = 1000
     prior_latent_samples = P.sample(num_samples)
     
     data_samples = prior_latent_samples['obs'].rename(None).rename('p1', None)
+    print(data_samples.var())
     
-    prior_mean = prior_latent_samples['mu'].mean()
-    print(prior_mean)
+    print('mu')
+    print(prior_latent_samples['mu'].mean())
+    print(prior_latent_samples['mu'].var())
     
-    prior_var = prior_latent_samples['mu'].var()
-    print(prior_var)
+    print('z')
+    print(prior_latent_samples['z'].mean(1))
+    print(prior_latent_samples['z'].var(1))
     
-    means = []
-    vars = []
+    mu_means = []
+    mu_mean2s = []
+    mu_vars = []
+    
+    z_means = []
+    z_mean2s = []
+    z_vars = []
     
     post_mu = []
+    post_z = []
     for i in range(num_samples):
         Q = Plate(
         mu = Normal(QEMParam(0.), QEMParam(1.)),
@@ -113,23 +122,44 @@ if __name__ == '__main__':
         )
         Q_bound = BoundPlate(Q, platesizes)
         prob = Problem(P, Q_bound, {'obs': data_samples[:,i]})
-        for _ in range(100):
-            sample = prob.sample(K, reparam=False)
-            sample.update_qem_params(0.3)
+        # for _ in range(50):
+        #     sample = prob.sample(K, reparam=False)
+        #     sample.update_qem_params(0.3)
         
         posterior_samples = prob.sample(K)
         posterior_latent_samples = posterior_samples.importance_sample(1)
         N_dim = posterior_latent_samples.Ndim
+        dims = posterior_latent_samples.samples_flatdict['z'].dims
         post_mu.append(posterior_latent_samples.samples_flatdict['mu'].order(N_dim).rename(None))
-        posterior_means = posterior_samples.moments([('mu', mean), ('mu', mean2)])
+        post_z.append(posterior_latent_samples.samples_flatdict['z'].order(dims[::-1]).rename(None))
+        posterior_means = posterior_samples.moments([('mu', mean), ('mu', mean2), ('z', mean), ('z', mean2)])
         
-        means.append(posterior_means[0])
-        vars.append(posterior_means[1] - posterior_means[0]**2)
+        mu_means.append(posterior_means[0])
+        mu_vars.append(posterior_means[1] - posterior_means[0]**2)
+        
+        z_means.append(posterior_means[2].rename(None))
+        z_vars.append(posterior_means[3].rename(None) - posterior_means[2].rename(None)**2)
+        
+        mu_mean2s.append(posterior_means[1])
+        z_mean2s.append(posterior_means[3].rename(None))
+        
+        
     
-    after_mean = t.stack(means).mean()
-    print(after_mean)
-    after_var = t.stack(means).var() + t.stack(vars).mean()
-    print(after_var)
+    print('mu')
+    print(t.stack(mu_means).mean())
+    print(t.stack(mu_means).var() + t.stack(mu_vars).mean())
+    print(t.stack(mu_mean2s).mean())
+    
+    print('z')
+    print(t.stack(z_means).mean(0))
+    print(t.stack(z_means).var(0) + t.stack(z_vars).mean(0))
+    print(t.stack(z_mean2s).mean(0))
+    
+    # print(t.stack(mu_mean2s) - t.stack(mu_means)**2)
+    print(t.stack(mu_means))
+    print(t.stack(mu_means).var())
+    # print(t.stack(z_mean2s))
+    
     
     
 
@@ -142,4 +172,21 @@ if __name__ == '__main__':
         np.max([ax.get_xlim(), ax.get_ylim()]),  # max of both axes
     ]
     ax.plot(lims, lims, 'k-', alpha=0.75, zorder=0)
-    plt.show()
+    ax.set_xlabel("Latent drawn from p(z)")
+    ax.set_ylabel("Latent drawn from p(z|x)")
+    plt.savefig('QQ_test_mu.png')
+    
+        #plot means against each other with diagonal line
+    fig, ax = plt.subplots(1, 5, figsize=(15, 5))
+    for i in range(5):
+        ax[i].scatter(prior_latent_samples['z'][i,:].rename(None).sort(0)[0], t.stack(post_z)[:,i].sort(0)[0])
+        # also plot the line y=x
+        lims = [
+            np.min([ax[i].get_xlim(), ax[i].get_ylim()]),  # min of both axes
+            np.max([ax[i].get_xlim(), ax[i].get_ylim()]),  # max of both axes
+        ]
+        ax[i].plot(lims, lims, 'k-', alpha=0.75, zorder=0)
+        ax[i].set_xlabel("Latent drawn from p(z)")
+        
+    ax[0].set_ylabel("Latent drawn from p(z|x)")
+    plt.savefig('QQ_test_z.png')

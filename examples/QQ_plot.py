@@ -9,7 +9,7 @@ def QQ(problem, num_samples, data_name, rvs, K, filename="QQ_plot.png"):
     prior_latent_sample_collection = {k: [v.rename(None)] for k,v in prior_latent_samples.items() if k in rvs}
 
     # sample latents from the posterior
-    temp_problem = Problem(problem.P, problem.Q, {data_name: prior_latent_samples[data_name][:,0]})
+    temp_problem = Problem(problem.P, problem.Q, {data_name: prior_latent_samples[data_name]})
     posterior_latent_samples = temp_problem.sample(K).importance_sample(1)
     N_dim = posterior_latent_samples.Ndim
     posterior_latent_sample_collection = {k: [posterior_latent_samples.samples_flatdict[k].order(N_dim).rename(None)] for k in prior_latent_sample_collection.keys()}
@@ -19,7 +19,7 @@ def QQ(problem, num_samples, data_name, rvs, K, filename="QQ_plot.png"):
         prior_latent_samples = problem.P.sample()
         prior_latent_sample_collection = {k: v + [prior_latent_samples[k].rename(None)] for k,v in prior_latent_sample_collection.items()}
 
-        temp_problem = Problem(problem.P, problem.Q, {data_name: prior_latent_samples[data_name][:,0]})
+        temp_problem = Problem(problem.P, problem.Q, {data_name: prior_latent_samples[data_name]})
         posterior_latent_samples = problem.sample(K).importance_sample(1)
         N_dim = posterior_latent_samples.Ndim
         posterior_latent_sample_collection = {k: v + [posterior_latent_samples.samples_flatdict[k].order(N_dim).rename(None)] for k,v in posterior_latent_sample_collection.items()}
@@ -63,9 +63,9 @@ if __name__ == '__main__':
     )
         
     Q = Plate(
-        mu = Normal(QEMParam(0.), QEMParam(100.)),
+        mu = Normal(QEMParam(0.), QEMParam(20.)),
         p1 = Plate(
-            z = Normal('mu', 100.),
+            z = Normal('mu', 20.),
             obs = Data()
         )
     )
