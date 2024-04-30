@@ -55,10 +55,10 @@ def get_P(platesizes, covariates):
                 alpha = Normal('beta', lambda sigma_alpha: sigma_alpha.exp()),
 
                 plate_ID = Plate(
-                    alph = Exponential(1.),
+                    alph = Normal(0, math.log(10)),
                     log_delay = Normal(lambda alpha, phi, psi, run_type, bus_company_name: alpha + phi @ bus_company_name + psi @ run_type, 1.),
 
-                    obs = NegativeBinomial(total_count=lambda alph: alph ** 2, probs=lambda log_delay, alph: 1/((alph**2/ t.sigmoid(log_delay)) + 1 + 1e-7) )
+                    obs = NegativeBinomial(total_count=lambda alph: alph.exp() ** 2, probs=lambda log_delay, alph: 1/((alph.exp()**2/ t.sigmoid(log_delay)) + 1 + 1e-7) )
                 )
             )
         )

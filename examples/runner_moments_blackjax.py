@@ -22,6 +22,13 @@ def safe_time(device):
         # t.cuda.synchronize()
     return time.time()
 
+def get_predll(model, samples, rng_key):
+    vectorized_apply = jax.vmap(model, in_axes=0, out_axes=0)
+    probs = vectorized_apply(samples)
+
+
+    return probs
+                
 @hydra.main(version_base=None, config_path='config', config_name='moments_blackjax_conf')
 def run_experiment(cfg):
     print(cfg)
@@ -55,14 +62,14 @@ def run_experiment(cfg):
     if not fake_data:
         # platesizes, all_platesizes, data, all_data, covariates, all_covariates = alan_model.load_data_covariates(device, dataset_seed, f'{cfg.model}/data/', False)
         with open(f'blackjax/{cfg.model}/data/real_data.pkl', 'rb') as f:
-            platesizes, all_platesizes, data, all_data, covariates, all_covariates, latent_names = pickle.load(f)
+            platesizes, all_platesizes, data, test_data, covariates, test_covariates, latent_names = pickle.load(f)
     else:
         with open(f'blackjax/{cfg.model}/data/fake_data.pkl', 'rb') as f:
-            platesizes, all_platesizes, data, all_data, covariates, all_covariates, fake_latents, latent_names = pickle.load(f)
+            platesizes, all_platesizes, data, test_data, covariates, test_covariates, fake_latents, latent_names = pickle.load(f)
         # platesizes, all_platesizes, data, all_data, covariates, all_covariates, fake_latents, _ = alan_model.load_data_covariates(device, dataset_seed, f'{cfg.model}/data/', True, return_fake_latents=True)
 
 
-
+    p_lls = np.zeros((num_samples, num_runs))
     times = {"moments": np.zeros((num_samples, num_runs)),
              "p_ll":   np.zeros((num_samples, num_runs))}
 
@@ -80,7 +87,7 @@ def run_experiment(cfg):
         failed = True 
 
         while failed and num_failed < 10:
-        # try:
+            # try:
             seed += 1
 
             if not fake_data:
@@ -92,65 +99,53 @@ def run_experiment(cfg):
 
             print(f"num_run: {num_run}")
             num_run_start_time = safe_time(device)
-
             joint_logdensity, params, init_param_fn = model.get_model(data, covariates)
-            rng_key = jax.random.PRNGKey(num_run)
-            rng_key, init_key = jax.random.split(rng_key)
+            training_joint_logdensity = lambda params: joint_logdensity(params, data['obs'], covariates)
             
-            warmup = blackjax.window_adaptation(blackjax.nuts, joint_logdensity)
+            warmup = blackjax.window_adaptation(blackjax.nuts, training_joint_logdensity)
             # we use 4 chains for sampling
-            n_chains = cfg.n_chains
+            rng_key = jax.random.key(num_run)
             rng_key, init_key, warmup_key = jax.random.split(rng_key, 3)
-            init_keys = jax.random.split(init_key, n_chains)
-            init_params = jax.vmap(init_param_fn)(init_keys)
-
-            @jax.vmap
-            def call_warmup(seed, param):
-                (initial_states, tuned_params), _ = warmup.run(seed, param, 1000)
-                return initial_states, tuned_params
+            init_params = init_param_fn(init_key)
 
             
-            warmup_keys = jax.random.split(warmup_key, n_chains)
-            if n_chains == 1:
-                warmup_keys = warmup_keys[0]
+            (state, parameters), _ = warmup.run(warmup_key, init_params, num_tuning_samples)
 
-            initial_states, tuned_params = jax.jit(call_warmup)(warmup_keys, init_params)
-
-            def inference_loop_multiple_chains(
-                rng_key, initial_states, tuned_params, log_prob_fn, num_samples, num_chains
-            ):
-                kernel = blackjax.nuts.build_kernel()
-
-                def step_fn(key, state, **params):
-                    return kernel(key, state, log_prob_fn, **params)
-
-                def one_step(states, rng_key):
-                    keys = jax.random.split(rng_key, num_chains)
-                    states, infos = jax.vmap(step_fn)(keys, states, **tuned_params)
-                    return states, (states, infos)
+            def inference_loop(rng_key, kernel, initial_state, num_samples):
+                @jax.jit
+                def one_step(state, rng_key):
+                    state, _ = kernel(rng_key, state)
+                    return state, state
 
                 keys = jax.random.split(rng_key, num_samples)
-                _, (states, infos) = jax.lax.scan(one_step, initial_states, keys)
+                _, states = jax.lax.scan(one_step, initial_state, keys)
 
-                return (states, infos)
+                return states
+            
+            rng_key, warmup_key, sample_key = jax.random.split(rng_key, 3)
+            kernel = blackjax.nuts(training_joint_logdensity, **parameters).step
+            states = inference_loop(sample_key, kernel, state, num_samples)
 
-            rng_key = jax.random.PRNGKey(num_run)
-            rng_key, sample_key = jax.random.split(rng_key)
-            states, infos = inference_loop_multiple_chains(
-                sample_key, initial_states, tuned_params, joint_logdensity, num_samples, n_chains
-            )
 
-            states = states.position._asdict()
+            states_dict = states.position._asdict()
             #HMC means
-            HMC_means = {key: np.mean(states[key], axis=0) for key in states}
+            HMC_means = {key: np.mean(states_dict[key], axis=0) for key in states_dict}
 
+            print("Sampling predictive log likelihood with JAX")
+            p_ll_start_time = safe_time(device)
+            test_data, test_covariates = model.get_test_data_cov_dict(all_data, all_covariates, platesizes)
+            test_joint_logdensity = lambda params: joint_logdensity(params, test_data['true_obs'], test_covariates)
+            pred_ll = get_predll(test_joint_logdensity, states.position, rng_key)
+            print(f"p_ll sampling time: {safe_time(device)-p_ll_start_time}s")
+            p_lls[:, num_run] = pred_ll
+            times['p_ll'][:, num_run] = np.linspace(0,safe_time(device)-p_ll_start_time,num_samples+1)[1:] + times['moments'][:, num_run]
             # compute moments for each latent
             for name in latent_names:
                 if num_run == 0:
                     latent_shape = HMC_means[name].shape
                     moments_collection[name] = np.zeros((num_samples, num_runs, *latent_shape))
                 
-                moments_collection[name][:, num_run, ...] = np.array([states[name][j,...] for j in range(1, num_samples+1)])
+                moments_collection[name][:, num_run, ...] = np.array([states_dict[name][j,...] for j in range(1, num_samples+1)])
                     
             if cfg.write_job_status:
                 with open(job_status_file, "a") as f:
