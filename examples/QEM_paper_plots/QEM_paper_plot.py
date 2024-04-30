@@ -469,19 +469,21 @@ def plot_avg_iter_time_per_K(model_names  = ALL_MODEL_NAMES,
         # times = {K: {method_name: results[model_name][method_name][K]['iter_times'] for method_name in results[model_name].keys()} for K in results[model_name]['qem'].keys()}
         Ks = results[model_name]['qem'].keys()
 
-        x = np.arange(len(Ks))  # the label locations
-
         methods = list(results[model_name].keys())
         width = 1/(1+len(methods) if 'HMC' not in methods else len(methods)-1)  # the width of the bars
         multiplier = 0
+
+        nan_Ks = [K for K in Ks if np.isnan(np.nanmean(results[model_name]['qem'][K]['iter_times']))]
+        valid_Ks = [K for K in Ks if K not in nan_Ks]
+        x = np.arange(len(valid_Ks))  # the label locations
         
         for j, method_name in enumerate(results[model_name].keys()):
             if method_name == 'HMC':
                 continue
             colour = colours_dict[method_name]
 
-            avg_iter_times_per_K = [np.nanmean(results[model_name][method_name][K]['iter_times']) for K in Ks]
-            
+            avg_iter_times_per_K = [np.nanmean(results[model_name][method_name][K]['iter_times']) for K in valid_Ks]
+         
             offset = width * multiplier
             rects = axs[i].bar(x + offset, avg_iter_times_per_K, width, label=method_name.upper(), color=colour)
             # axs[i].bar_label(rects, padding=3)
@@ -489,9 +491,9 @@ def plot_avg_iter_time_per_K(model_names  = ALL_MODEL_NAMES,
 
         axs[i].set_xlabel('K')
         axs[i].set_title(f'{model_name.upper()}')
-        axs[i].set_xticks(x + width, results[model_name]['qem'].keys())
+        axs[i].set_xticks(x + width, valid_Ks)
 
-    axs[0].legend()
+    axs[1].legend()
     axs[0].set_ylabel('Average iteration time (s)')
 
     fig.tight_layout()
@@ -607,6 +609,7 @@ if __name__ == "__main__":
                           smoothing_window=smoothing_window)
     
     plot_avg_iter_time_per_K(save_pdf=True)
+    plot_avg_iter_time_per_K(save_pdf=True, model_names=sub_model_collections['standard'], filename_end='_standardONLY')
 
 
 
