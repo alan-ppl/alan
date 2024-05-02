@@ -29,11 +29,11 @@ def get_model(data, covariates):
         alpha = stats.norm.logpdf(params.alpha, params.beta, jnp.exp(params.sigma_alpha)).sum()
         
         # ID level
-        alph = stats.norm.logpdf(params.sigma_alpha, 0., np.log(10.)).sum()
+        alph = stats.norm.logpdf(params.sigma_alpha, 0., 1.).sum()
 
         log_delay = stats.norm.logpdf(params.log_delay, params.alpha.reshape(3,3,1) + ((covariates['bus_company_name'] @ params.phi.transpose()) + (covariates['run_type'] @ params.psi.transpose())), 1.).sum()
         
-        obs = stats.nbinom.logpmf(data, jnp.exp(params.alph)**2, 1/((jnp.exp(params.alph)**2/ jax.nn.sigmoid(params.log_delay)) + 1 + 1e-7)).sum()
+        obs = stats.nbinom.logpmf(data, jnp.exp(params.alph), jax.nn.sigmoid(params.log_delay)).sum()
         
         return psi + phi + sigma_beta + mu_beta + beta + sigma_alpha + alpha + alph + log_delay + obs
 

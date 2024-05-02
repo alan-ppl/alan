@@ -58,7 +58,7 @@ def get_P(platesizes, covariates):
                     alph = Normal(0, 1.),
                     log_delay = Normal(lambda alpha, phi, psi, run_type, bus_company_name: alpha + phi @ bus_company_name + psi @ run_type, 1.),
 
-                    obs = NegativeBinomial(total_count=lambda alph: alph.exp(), probs=lambda log_delay, alph: 1/((alph.exp()/ t.sigmoid(log_delay)) + 1 + 1e-7) )
+                    obs = NegativeBinomial(total_count=lambda alph: alph.exp(), logits = 'log_delay')
                 )
             )
         )
