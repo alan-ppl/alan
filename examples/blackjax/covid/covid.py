@@ -1,12 +1,23 @@
-import pymc as pm
+import jax
+import jax.numpy as jnp
+import jax.scipy.stats as stats
 import numpy as np 
-import math 
-#import theano.tensor as T
-import pytensor.tensor as pt
+
+from collections import namedtuple
 
 nRs = 92
 nDs = 137
 nCMs = 11
+
+#constants
+cm_prior_scale=1
+wearing_mean=0
+wearing_sigma=0.4
+mobility_mean=1.704
+mobility_sigma=0.44
+R_prior_mean_mean=1.07
+R_prior_mean_scale=0.2
+R_noise_scale=0.4
 
 def get_model(data, covariates):
 
@@ -25,14 +36,7 @@ def get_model(data, covariates):
         ActiveCMs_mobility = pm.MutableData('ActiveCMs_mobility', covariates['ActiveCMs_mobility'])
 
         #constants
-        cm_prior_scale=1
-        wearing_mean=0
-        wearing_sigma=0.4
-        mobility_mean=1.704
-        mobility_sigma=0.44
-        R_prior_mean_mean=1.07
-        R_prior_mean_scale=0.2
-        R_noise_scale=0.4
+       
 
         
         #Global
@@ -75,7 +79,59 @@ def get_model(data, covariates):
         
         # obs = pm.Bernoulli("obs", logit_p=logits, shape=(num_actors, num_blocks, num_repeats_plate), observed=true_obs)
             
-    return model
+    def joint_logdensity(params, data, covariates):
+        #Global
+        CM_alpha = stats.norm.logpdf(params.CM_alpha, 0., cm_prior_scale).sum()
+        Wearing_alpha = stats.norm.logpdf(params.Wearing_alpha, wearing_mean, wearing_sigma).sum()
+        Mobility_alpha = stats.norm.logpdf(params.Mobility_alpha, mobility_mean, mobility_sigma).sum()
+        RegionR = stats.norm.logpdf(params.RegionR, R_prior_mean_mean, R_prior_mean_scale + R_noise_scale).sum()
+        InitialSize_log_mean = stats.norm.logpdf(params.InitialSize_log_mean, math.log(1000), 0.5).sum()
+        log_infected_noise_mean = stats.norm.logpdf(params.log_infected_noise_mean, 0, 0.25).sum()
+        
+        #Region level
+        InitialSize_log = stats.norm.logpdf(params.InitialSize_log, params.InitialSize_log_mean, 0.5).sum()
+        log_infected_noise = stats.norm.logpdf(params.log_infected_noise, 0, 0.25).sum()
+        
+        #Day level
+        psi = stats.norm.logpdf(params.psi, 0., 1).sum()
+        
+        Expected_Log_Rs = RegionR + CM_alpha@ActiveCMs_NPIs + Wearing_alpha*ActiveCMs_wearing + Mobility_alpha*ActiveCMs_mobility 
+        
+        log_infecteds = [InitialSize_log]
+        
+        for i in range(data['obs'].shape[1]):
+            log_infected = stats.norm.logpdf(params[f'log_infected_{i}'], log_infecteds[i] + Expected_Log_Rs[i], params.log_infected_noise).sum()
+            log_infecteds.append(log_infected)
+        
+        obs = stats.nbinom.logpmf(data, jnp.exp(params.psi), jax.nn.sigmoid(params.log_infected)).sum()
+        
+        return CM_alpha + Wearing_alpha + Mobility_alpha + RegionR + InitialSize_log_mean + log_infected_noise_mean + InitialSize_log + log_infected_noise + psi + obs
+    
+    def init_param_fn(seed):
+        """
+        initialize a, b & thetas
+        """
+        key1, key2, key3, key4, key5, key6, key7, key8, key9 = jax.random.split(seed, 9)
+        log_infected_keys = jax.random.split(key8, data['obs'].shape[1])
+        return params(
+            CM_alpha = jax.random.normal(key1, shape=(nCMs-2,)),
+            Wearing_alpha = jax.random.normal(key2),
+            Mobility_alpha = jax.random.normal(key3),
+            RegionR = jax.random.normal(key4),
+            InitialSize_log_mean = jax.random.normal(key5),
+            log_infected_noise_mean = jax.random.normal(key6),
+            InitialSize_log = jax.random.normal(key7, shape=(nRs,)),
+            log_infected_noise = jax.random.normal(key8, shape=(nRs)),
+            psi = jax.random.normal(key9, shape=(nRs,data['obs'].shape[1])),
+            for i in range(data['obs'].shape[1]):
+                f'log_infected_{i}': jax.random.normal(log_infected_keys[i], shape=(nRs,data['obs'].shape[1]))
+        )
+        
+        
+        
+        
+        
+        
 
 def get_test_data_cov_dict(all_data, all_covariates, platesizes):
     test_data = all_data

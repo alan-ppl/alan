@@ -41,27 +41,4 @@ def get_test_data_cov_dict(all_data, all_covariates, platesizes):
 
     return test_data, test_covariates
 
-if __name__ == '__main__':
-    #Test model without jax
-    import pickle
-    
-    with open(f'data/real_data.pkl', 'rb') as f:
-        platesizes, all_platesizes, data, all_data, covariates, all_covariates, latent_names = pickle.load(f)
-    
-    model = get_model(data, covariates)
-    with model:
-        # trace = pm.sample(1, tune=1, chains=1)
-        prior = pm.sample_prior_predictive(samples=2000)
-        
-        moments_collection = {}
-        print(prior)
-        # compute moments for each latent
-        for name in latent_names:
-            print(name)
-            print(prior.prior[name].mean(("chain", "draw")))
-            print(prior.prior[name].std(("chain", "draw")))
-            
-        for name in ['obs']:
-            print(name)
-            print(prior.prior_predictive[name].mean(("chain", "draw")))
-            print(prior.prior_predictive[name].std(("chain", "draw")))
+
