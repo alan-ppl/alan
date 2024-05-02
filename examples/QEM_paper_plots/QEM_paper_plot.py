@@ -132,6 +132,7 @@ def plot_all_2row(model_names   = ALL_MODEL_NAMES,
                   error_bars    = False,
                   alpha_func    = DEFAULT_ALPHA_FUNC,
                   colours_dict  = DEFAULT_COLOURS,
+                  short_labels  = True,
                   ylims         = {'elbo': {}, 'p_ll': {}},
                   zoomed_insets = [],
                   compare_reparams = False,
@@ -176,7 +177,8 @@ def plot_all_2row(model_names   = ALL_MODEL_NAMES,
                                         smoothing_window = smoothing_window,
                                         x_lim_iters=x_lim,
                                         error_bars = error_bars,
-                                        alpha_func = alpha_func)
+                                        alpha_func = alpha_func,
+                                        short_labels=short_labels)
                 
                 if not (method_name == 'HMC' and x_axis_iters):
                     plot_method_K_lines(ax = axs[1,col_counter], 
@@ -191,6 +193,7 @@ def plot_all_2row(model_names   = ALL_MODEL_NAMES,
                                         x_lim_iters=x_lim,
                                         error_bars = error_bars,
                                         alpha_func = alpha_func,
+                                        short_labels=short_labels,
                                         HMC = method_name == 'HMC')
                     
                 if compare_reparams:
@@ -207,7 +210,8 @@ def plot_all_2row(model_names   = ALL_MODEL_NAMES,
                                             x_lim_iters=x_lim,
                                             error_bars = error_bars,
                                             alpha_func = lambda *args: 0.5*alpha_func(*args),
-                                            show_labels=False,)
+                                            short_labels=short_labels,
+                                            show_labels=True,)
     
                     if not (method_name == 'HMC' and x_axis_iters):
                         plot_method_K_lines(ax = axs[1,col_counter], 
@@ -223,7 +227,8 @@ def plot_all_2row(model_names   = ALL_MODEL_NAMES,
                                             error_bars = error_bars,
                                             alpha_func = lambda *args: 0.5*alpha_func(*args),
                                             HMC = method_name == 'HMC',
-                                            show_labels=False,)
+                                            short_labels=short_labels,
+                                            show_labels=True,)
                 
 
             if x_axis_iters:
@@ -278,7 +283,11 @@ def plot_all_2row(model_names   = ALL_MODEL_NAMES,
 
             col_counter += 1
 
-    axs[1,-1].legend()
+    if short_labels:
+        axs[1,-1].legend()
+    else:
+        for i in range(col_counter):
+            axs[1,i].legend()
 
     axs[0,0].set_ylabel('ELBO')
     axs[1,0].set_ylabel('Predictive log-likelihood')
@@ -508,6 +517,7 @@ if __name__ == "__main__":
     #####################     ELBO/P_LL PLOTS      #####################
     best_Ks = {'bus_breakdown': [30], 'bus_breakdown_reparam': [30], 'chimpanzees': [30], 'movielens': [30], 'movielens_reparam': [30], 'occupancy': [30], 'radon': [30]}
     smoothing_window = 8
+    short_labels = False
 
     # YLIMS FOCUSING ON END OF TRAINING (WILL OFTEN IGNORE GLOBAL QEM) #
     ylims = {'elbo': {'bus_breakdown': (-1400,  -1280),
@@ -543,6 +553,7 @@ if __name__ == "__main__":
                     error_bars = True, 
                     save_pdf = True, 
                     ylims = ylims,
+                    short_labels=short_labels,
                     smoothing_window=smoothing_window)
         
         for name, sub_models in sub_model_collections.items():
@@ -556,6 +567,7 @@ if __name__ == "__main__":
                           compare_reparams = name == 'reparams',
                           save_pdf = True, 
                           ylims = ylims,
+                          short_labels=short_labels,
                           smoothing_window=smoothing_window)
 
     
