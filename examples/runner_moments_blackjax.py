@@ -131,14 +131,15 @@ def run_experiment(cfg):
             #HMC means
             HMC_means = {key: np.mean(states_dict[key], axis=0) for key in states_dict}
 
-            print("Sampling predictive log likelihood with JAX")
-            p_ll_start_time = safe_time(device)
-            test_data, test_covariates = model.get_test_data_cov_dict(all_data, all_covariates, platesizes)
-            test_joint_logdensity = lambda params: joint_logdensity(params, test_data['true_obs'], test_covariates)
-            pred_ll = get_predll(test_joint_logdensity, states.position, rng_key)
-            print(f"p_ll sampling time: {safe_time(device)-p_ll_start_time}s")
-            p_lls[:, num_run] = pred_ll
-            times['p_ll'][:, num_run] = np.linspace(0,safe_time(device)-p_ll_start_time,num_samples+1)[1:] + times['moments'][:, num_run]
+            if cfg.do_predll:
+                print("Sampling predictive log likelihood with JAX")
+                p_ll_start_time = safe_time(device)
+                test_data, test_covariates = model.get_test_data_cov_dict(all_data, all_covariates, platesizes)
+                test_joint_logdensity = lambda params: joint_logdensity(params, test_data['true_obs'], test_covariates)
+                pred_ll = get_predll(test_joint_logdensity, states.position, rng_key)
+                print(f"p_ll sampling time: {safe_time(device)-p_ll_start_time}s")
+                p_lls[:, num_run] = pred_ll
+                times['p_ll'][:, num_run] = np.linspace(0,safe_time(device)-p_ll_start_time,num_samples+1)[1:] + times['moments'][:, num_run]
             # compute moments for each latent
             for name in latent_names:
                 if num_run == 0:

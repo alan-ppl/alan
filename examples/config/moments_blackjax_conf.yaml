@@ -8,4 +8,5 @@
   num_tuning_samples: 100
   n_chains: 1
   target_accept: 0.8
+  do_predll: True
   no_tuning_samples_run: False
