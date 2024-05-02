@@ -27,8 +27,7 @@ def run_experiment(cfg):
     Ks_lrs = cfg.Ks_lrs
 
     Ks = [K for K, lrs in Ks_lrs.items()]
-    with open(f"{cfg.model}/results/{cfg.model_name}/Ks_lrs.pkl", "wb") as f:
-        pickle.dump(Ks_lrs, f)
+
         
     #longest list of lrs:
     num_lrs = max([len(lrs) for K, lrs in Ks_lrs.items()])
@@ -71,6 +70,9 @@ def run_experiment(cfg):
         Path(f"{cfg.model}/{folder}/{model_name}").mkdir(parents=True, exist_ok=True)
     Path(f"{cfg.model}/results/{model_name}{results_subfolder}").mkdir(parents=True, exist_ok=True)
 
+    with open(f"{cfg.model}/results/{cfg.model_name}/Ks_lrs.pkl", "wb") as f:
+        pickle.dump(Ks_lrs, f)
+        
     platesizes, all_platesizes, data, all_data, covariates, all_covariates = model.load_data_covariates(device, cfg.dataset_seed, f'{cfg.model}/data/')
 
     # Put extended data and covariates on device
