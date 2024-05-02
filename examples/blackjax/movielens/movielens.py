@@ -15,7 +15,7 @@ def get_model(data, covariates):
         mu_z = stats.norm.logpdf(params.mu_z, 0., 1.).sum()
         psi_z = stats.norm.logpdf(params.psi_z, 0., 1.).sum()
         z = stats.norm.logpdf(params.z, params.mu_z, jnp.exp(params.psi_z)).sum()
-        obs = stats.bernoulli.logpmf(data, jax.nn.sigmoid((params.z @ covariates['x']))).sum()
+        obs = stats.bernoulli.logpmf(data, jax.nn.sigmoid((params.z @ (covariates['x'].reshape(300,18,5))))).sum()
         
         return mu_z + psi_z + z + obs
     

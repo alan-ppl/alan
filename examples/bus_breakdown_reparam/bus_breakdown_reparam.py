@@ -86,7 +86,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             ),
             plate_Year = Plate(
                 year_latents = Group(
-                    beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                    beta = Normal(OptParam(0.), OptParam(-math.log(1000), transformation=t.exp)),
 
                     sigma_alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                 ),
@@ -116,7 +116,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             ),
             plate_Year = Plate(
                 year_latents = Group(
-                    beta = Normal(QEMParam(0.), QEMParam(1.)),
+                    beta = Normal(QEMParam(0.), QEMParam(1/1000)),
 
                     sigma_alpha = Normal(QEMParam(0.), QEMParam(1.)),
                 ),

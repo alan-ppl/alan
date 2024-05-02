@@ -2,7 +2,8 @@ import torch as t
 import importlib.util
 import sys
 import time
-
+import alan
+from alan import mean
 def safe_time(device):
     if device.type == 'cuda':
         t.cuda.synchronize()

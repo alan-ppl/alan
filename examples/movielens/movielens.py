@@ -106,23 +106,14 @@ def _load_and_generate_problem(device, Q_param_type, run=0, data_dir='data/', fa
     return problem, all_data, all_covariates, all_platesizes
 
 if __name__ == "__main__":
-    # import os, sys
-    # sys.path.insert(1, os.path.join(sys.path[0], '..'))
-    # import basic_runner
+    import os, sys
+    sys.path.insert(1, os.path.join(sys.path[0], '..'))
+    import basic_runner
 
-    # basic_runner.run('movielens',
-    #                  K = 10,
-    #                  num_runs = 1,
-    #                  num_iters = 10,
-    #                  lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1},
-    #                  fake_data = True,
-    #                  device = 'cpu')
-    platesizes, all_platesizes, data, all_data, covariates, all_covariates = load_data_covariates('cpu', fake_data=False)
-    
-    P = get_P(platesizes, covariates)
-    
-    prior_samples = P.sample(1000)
-    # for name, sample in prior_samples.items():
-    #     print(name, sample.mean(0), sample.std(0))
-    for name, sample in prior_samples.items():
-        print(name, sample.mean('N'), sample.std('N'))
+    basic_runner.run('movielens',
+                     K = 10,
+                     num_runs = 1,
+                     num_iters = 10,
+                     lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1},
+                     fake_data = False,
+                     device = 'cpu')

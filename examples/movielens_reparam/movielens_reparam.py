@@ -59,7 +59,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             psi_z = Normal(OptParam(t.zeros((d_z,))), OptParam(t.zeros((d_z,)), transformation=t.exp)),
 
             plate_1 = Plate(
-                z = Normal(OptParam(t.zeros((d_z,))), OptParam(t.zeros((d_z,)), transformation=t.exp)),
+                z = Normal(OptParam(t.zeros((d_z,))), OptParam((-math.log(10)) * t.ones((d_z,)), transformation=t.exp)),
 
                 plate_2 = Plate(
                     obs = Data()
@@ -78,7 +78,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             psi_z = Normal(QEMParam(t.zeros((d_z,))), QEMParam(t.ones((d_z,)))),
 
             plate_1 = Plate(
-                z = Normal(QEMParam(t.zeros((d_z,))), QEMParam(t.ones((d_z,)))),
+                z = Normal(QEMParam(t.zeros((d_z,))), QEMParam(1/10 * t.ones((d_z,)))),
 
                 plate_2 = Plate(
                     obs = Data()
