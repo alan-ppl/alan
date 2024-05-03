@@ -154,7 +154,7 @@ if __name__ == "__main__":
     import basic_runner
 
     basic_runner.run('covid',
-                     methods = ['vi', 'rws', 'qem'],
+                     methods = ['qem'],
                      K = 3,
                      num_runs = 1,
                      num_iters = 50,
