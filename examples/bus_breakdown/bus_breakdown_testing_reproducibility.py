@@ -1,8 +1,23 @@
 import torch as t
 from alan import Normal, Exponential, NegativeBinomial, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
-
+import math
+import random
+import numpy as np
+import os
 
 M, J, I = 3, 3, 30
+
+
+def seed_everything(seed=42):
+  random.seed(seed)
+  os.environ['PYTHONHASHSEED'] = str(seed)
+  np.random.seed(seed)
+  t.manual_seed(seed)
+  t.use_deterministic_algorithms(True)
+  t.backends.cudnn.deterministic = True
+  t.backends.cudnn.benchmark = False
+  
+
 
 def load_data_covariates(device, run=0, data_dir='data/', fake_data=False, return_fake_latents=False):
     platesizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
@@ -144,15 +159,28 @@ def _load_and_generate_problem(device, Q_param_type, run=0, data_dir='data/', fa
     return problem, all_data, all_covariates, all_platesizes
 
 if __name__ == "__main__":
-    import os, sys
-    sys.path.insert(1, os.path.join(sys.path[0], '..'))
-    import basic_runner
-
-    basic_runner.run('bus_breakdown_reparam',
-                     methods = ['vi', 'rws', 'qem'],
-                     K = 10,
-                     num_runs = 1,
-                     num_iters = 20,
-                     lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1},
-                     fake_data = False,
-                     device = 'cpu')
+    # import os, sys
+    # sys.path.insert(1, os.path.join(sys.path[0], '..'))
+    # import basic_runner
+    # t.manual_seed(0)
+    # basic_runner.run('bus_breakdown',
+    #                  methods = ['vi', 'rws', 'qem'],
+    #                  K = 10,
+    #                  num_runs = 1,
+    #                  num_iters = 20,
+    #                  lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1},
+    #                  fake_data = False,
+    #                  device = 'cpu')
+    
+    seed_everything()
+    
+    problem, all_data, all_covariates, all_platesizes = _load_and_generate_problem('cpu', 'qem', run=0, data_dir='data/', fake_data=False)
+    
+    for i in range(10):
+        sample = problem.sample(K=10)
+        sample.update_qem_params(0.1)
+        
+        importance_sample = sample.importance_sample(N=100)
+        extended_importance_sample = importance_sample.extend(all_platesizes, extended_inputs=all_covariates)
+        ll = extended_importance_sample.predictive_ll(all_data)
+        print(f"elbo: {sample.elbo_nograd()}, pred_ll: {ll['obs']}")

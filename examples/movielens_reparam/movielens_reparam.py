@@ -1,7 +1,7 @@
 import torch as t
 import math
-from alan import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam, Split
-
+from alan import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam, Split, mean, mean2
+import numpy as np
 d_z = 18
 M, N = 300, 5
 
@@ -36,10 +36,10 @@ def get_P(platesizes, covariates):
         psi_z = Normal(t.zeros((d_z,)), t.ones((d_z,))),
 
         plate_1 = Plate(
-            z = Normal(lambda mu_z: mu_z / 10, lambda psi_z: (psi_z).exp() / 10),
+            z = Normal(lambda mu_z: mu_z / 100, lambda psi_z: (psi_z).exp() / 100),
 
             plate_2 = Plate(
-                obs = Bernoulli(logits = lambda z, x: (z*10) @ x),
+                obs = Bernoulli(logits = lambda z, x: (z*100) @ x),
             )
         ),
     )
@@ -59,7 +59,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             psi_z = Normal(OptParam(t.zeros((d_z,))), OptParam(t.zeros((d_z,)), transformation=t.exp)),
 
             plate_1 = Plate(
-                z = Normal(OptParam(t.zeros((d_z,))), OptParam((-math.log(10)) * t.ones((d_z,)), transformation=t.exp)),
+                z = Normal(OptParam(t.zeros((d_z,))), OptParam((-np.log(100)) * t.ones((d_z,)), transformation=t.exp)),
 
                 plate_2 = Plate(
                     obs = Data()
@@ -78,7 +78,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             psi_z = Normal(QEMParam(t.zeros((d_z,))), QEMParam(t.ones((d_z,)))),
 
             plate_1 = Plate(
-                z = Normal(QEMParam(t.zeros((d_z,))), QEMParam(1/10 * t.ones((d_z,)))),
+                z = Normal(QEMParam(t.zeros((d_z,))), QEMParam(1/100 * t.ones((d_z,)))),
 
                 plate_2 = Plate(
                     obs = Data()
@@ -105,9 +105,47 @@ if __name__ == "__main__":
     import basic_runner
 
     basic_runner.run('movielens_reparam',
+                     methods=['qem'],
                      K = 10,
                      num_runs = 1,
-                     num_iters = 10,
-                     lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1},
+                     num_iters = 100,
+                     lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.3},
                      fake_data = False,
                      device = 'cpu')
+    
+    
+    # platesizes, all_platesizes, data, all_data, covariates, all_covariates = load_data_covariates('cpu', fake_data=False)
+    
+    # P = get_P(platesizes, covariates)
+    
+    # # prior_samples = P.sample(1000)
+    # # # for name, sample in prior_samples.items():
+    # # #     print(name, sample.mean(0), sample.std(0))
+    # # for name, sample in prior_samples.items():
+    # #     print(name, sample.mean('N'), sample.std('N'))
+        
+    # problem, all_data, all_covariates, all_platesizes = _load_and_generate_problem('cpu', 'qem', run=0, data_dir='data/', fake_data=False)
+    
+    # psi_means = []
+    # psi_vars = []
+    # z_means = []
+    # z_vars = []
+    
+    # #posterior means
+    # print('posterior means')
+    # for _ in range(100):
+    #     posterior_samples = problem.sample(10)
+    #     moments = [('psi_z', mean), ('psi_z', mean2), ('z', mean), ('z', mean2)]
+        
+    #     posterior_means = posterior_samples.moments(moments)
+    #     psi_means.append(posterior_means[0])
+    #     psi_vars.append(posterior_means[1] - posterior_means[0]**2)
+    #     z_means.append(posterior_means[2].rename(None))
+    #     z_vars.append(posterior_means[3].rename(None) - posterior_means[2].rename(None)**2)
+    
+    # print('psi_z')
+    # print(t.stack(psi_means).mean(0))
+    # print(t.stack(psi_vars).mean(0))
+    # print('z')
+    # print(t.stack(z_means).mean(0) * 10)
+    # print(t.stack(z_vars).mean(0) * 100)

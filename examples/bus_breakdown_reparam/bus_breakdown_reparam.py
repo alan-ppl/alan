@@ -47,18 +47,18 @@ def get_P(platesizes, covariates):
         mu_beta = Normal(0, 1),
 
         plate_Year = Plate(
-            beta = Normal(lambda mu_beta: mu_beta / 1000, lambda sigma_beta: sigma_beta.exp() / 1000),
+            beta = Normal(lambda mu_beta: mu_beta, lambda sigma_beta: sigma_beta.exp()),
 
             sigma_alpha = Normal(0, 1),
 
             plate_Borough = Plate(
-                alpha = Normal(lambda beta: beta * 1000, lambda sigma_alpha: sigma_alpha.exp()),
+                alpha = Normal(lambda beta: beta, lambda sigma_alpha: sigma_alpha.exp()),
 
                 plate_ID = Plate(
-                    alph = Normal(0, 1.),
-                    log_delay = Normal(lambda alpha, phi, psi, run_type, bus_company_name: alpha + phi @ bus_company_name + psi @ run_type, 1.),
+                    alph = Normal(0, 1/10.),
+                    log_delay = Normal(lambda alpha, phi, psi, run_type, bus_company_name: (alpha + phi @ bus_company_name + psi @ run_type)/1000, 1/1000.),
 
-                    obs = NegativeBinomial(total_count=lambda alph: alph.exp(), logits = 'log_delay')
+                    obs = NegativeBinomial(total_count=lambda alph: (alph*10).exp(), logits = 'log_delay')
                 )
             )
         )
@@ -86,15 +86,15 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             ),
             plate_Year = Plate(
                 year_latents = Group(
-                    beta = Normal(OptParam(0.), OptParam(-math.log(1000), transformation=t.exp)),
+                    beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
 
                     sigma_alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                 ),
                 plate_Borough = Plate(
                     alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                     plate_ID = Plate(
-                        alph = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-                        log_delay = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                        alph = Normal(OptParam(0.), OptParam(-math.log(10), transformation=t.exp)),
+                        log_delay = Normal(OptParam(0.), OptParam(-math.log(1000), transformation=t.exp)),
                         obs = Data()
                     )
                 )
@@ -116,15 +116,15 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
             ),
             plate_Year = Plate(
                 year_latents = Group(
-                    beta = Normal(QEMParam(0.), QEMParam(1/1000)),
+                    beta = Normal(QEMParam(0.), QEMParam(1.)),
 
                     sigma_alpha = Normal(QEMParam(0.), QEMParam(1.)),
                 ),
                 plate_Borough = Plate(
                     alpha = Normal(QEMParam(0.), QEMParam(1.)),
                     plate_ID = Plate(
-                        alph = Normal(QEMParam(0.), QEMParam(1.)),
-                        log_delay = Normal(QEMParam(0.), QEMParam(1.)),
+                        alph = Normal(QEMParam(0.), QEMParam(1/10)),
+                        log_delay = Normal(QEMParam(0.), QEMParam(1/1000)),
 
                         obs = Data()
                     )
@@ -152,7 +152,7 @@ if __name__ == "__main__":
                      methods = ['vi', 'rws', 'qem'],
                      K = 10,
                      num_runs = 1,
-                     num_iters = 50,
+                     num_iters = 10,
                      lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1},
                      fake_data = False,
                      device = 'cpu')

@@ -5,7 +5,6 @@ from alan import Normal, Bernoulli, HalfNormal, Plate, BoundPlate, Problem, Data
 import numpy as np
 from pathlib import Path
 import os
-from posteriordb import PosteriorDatabase
 
 t.manual_seed(123)
 

@@ -9,6 +9,8 @@ def safe_time(device):
         t.cuda.synchronize()
     return time.time()
 
+
+
 Q_PARAM_TYPES = {'vi': 'opt', 'rws': 'opt', 'qem': 'qem',
                  'global_vi': 'opt', 'global_rws': 'opt', 'global_qem': 'qem'}
 
@@ -28,6 +30,7 @@ def run(model_name,
         device = 'cpu',
         split = None):
 
+    t.manual_seed(0)
     # ensure device is set correctly
     if device == 'cuda':
         device = t.device('cuda' if t.cuda.is_available() else 'cpu')
@@ -62,7 +65,7 @@ def run(model_name,
 
         for method in methods:
             print(method.upper())
-            t.manual_seed(num_run)
+            
             prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, Q_PARAM_TYPES[method])
 
             for key in all_data.keys():
