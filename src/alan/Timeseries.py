@@ -3,7 +3,7 @@ from .dist import _Dist, sample_gdt
 from .utils import *
 from .Sampler import Sampler
 
-
+from typing import Optional
 
 
 
@@ -121,6 +121,50 @@ class Timeseries(nn.Module):
 
         return t.stack(sample_timesteps, 0)[T_dim]
 
+    def sample_extended(self,
+            sample:Tensor,
+            name:Optional[str],
+            scope:dict[str, Tensor],
+            inputs_params:dict,
+            original_platedims:dict[str, Dim],
+            extended_platedims:dict[str, Dim],
+            active_extended_platedims:list[Dim],
+            Ndim:Dim,
+            reparam:bool,
+            original_data:dict):
+        
+        (extended_platedims, extended_T_dim) = (active_extended_platedims[:-1], active_extended_platedims[-1])
+        original_T_dim = original_platedims[str(extended_T_dim)]
+        #Number of timesteps to roll forward:
+        timesteps = extended_T_dim.size - original_T_dim.size
+
+        #set prev state to last timestep of sample
+        prev_state = sample.order(Ndim)[-1]
+        
+        #Don't need to check prev_state has right dims...
+        
+        extended_sample_timesteps = []
+        
+        for time in range(timesteps):
+            
+            timeseries_scope = {}
+            for k, v in scope.items():
+                if extended_T_dim in set(generic_dims(v)):
+                    v = v.order(extended_T_dim)[time]
+                timeseries_scope[k] = v
+                
+            timeseries_scope['prev'] = prev_state
+            
+            #sample the next timestep
+            sample_timestep = self.trans.sample(timeseries_scope, reparam, extended_platedims, Ndim, None)
+            extended_sample_timesteps.append(sample_timestep)
+            
+            prev_state = sample_timestep
+            
+        #stack old and new timesteps
+        return t.cat([sample[original_T_dim], t.stack(extended_sample_timesteps, 0)], Ndim)[extended_T_dim]
+
+        
     def log_prob(self, sample, scope:dict, T_dim:Dim, K_dim:Dim):
 
         assert isinstance(scope, dict)

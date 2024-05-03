@@ -67,8 +67,9 @@ def get_P(platesizes, covariates):
             #Initial number of infected in each region
             InitialSize_log = Normal(lambda InitialSize_log_mean: InitialSize_log_mean, 0.5),
             log_infected_noise = Normal(lambda log_infected_noise_mean: log_infected_noise_mean, 0.25),
-            psi = Normal(math.log(1000), 1),
+            psi = Normal(0, 1),
             nDs = Plate(
+                
                 log_infected = Timeseries('InitialSize_log', Normal(Expected_Log_Rs, lambda log_infected_noise: log_infected_noise.exp())),
                 obs = NegativeBinomial(total_count=lambda psi: t.exp(psi), probs=lambda log_infected, psi: 1/((t.exp(psi)/ t.exp(log_infected)) + 1 + 1e-7) ),
             ),
@@ -98,9 +99,10 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                     a = Group(
                         InitialSize_log = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                         log_infected_noise = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-                        psi = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                        psi = Normal(OptParam(0.), OptParam(0., transformation=t.exp)), 
                     ),
                 nDs = Plate(
+                    
                     log_infected = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                     obs = Data()
                 ),
@@ -128,6 +130,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                         psi = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                 ),
                 nDs = Plate(
+                    
                     log_infected = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                     obs = Data()
                 ),
@@ -146,99 +149,16 @@ def _load_and_generate_problem(device, Q_param_type, run=0, data_dir='data/', fa
     return problem, all_data, all_covariates, all_platesizes
 
 if __name__ == "__main__":
-    K = 3
-    NUM_RUNS = 1
-    NUM_ITERS = 100
-    vi_lr = 0.1
-    rws_lr = 0.03
-    qem_lr = 0.1
+    import os, sys
+    sys.path.insert(1, os.path.join(sys.path[0], '..'))
+    import basic_runner
 
-    device = t.device('cuda' if t.cuda.is_available() else 'cpu')
-    # device='cpu'
-
-    elbos = {'vi' : t.zeros((NUM_RUNS, NUM_ITERS)).to(device),
-             'rws': t.zeros((NUM_RUNS, NUM_ITERS)).to(device),
-             'qem': t.zeros((NUM_RUNS, NUM_ITERS)).to(device)}
-    
-    lls   = {'vi' : t.zeros((NUM_RUNS, NUM_ITERS)).to(device),
-             'rws': t.zeros((NUM_RUNS, NUM_ITERS)).to(device),
-             'qem': t.zeros((NUM_RUNS, NUM_ITERS)).to(device)}
-
-    print(f"Device: {device}")
-
-    for num_run in range(NUM_RUNS):
-        print(f"Run {num_run}")
-        print()
-        print(f"VI")
-        t.manual_seed(num_run)
-        prob, all_data, all_covariates, all_platesizes = _load_and_generate_problem(device, 'opt')
-
-        for key in all_data.keys():
-            all_data[key] = all_data[key].to(device)
-        for key in all_covariates.keys():
-            all_covariates[key] = all_covariates[key].to(device)
-
-        opt = t.optim.Adam(prob.Q.parameters(), lr=vi_lr)
-
-
-        for i in range(NUM_ITERS):
-            opt.zero_grad()
-
-            sample = prob.sample(K, True)
-            elbo = sample.elbo_vi()
-            elbos['vi'][num_run, i] = elbo.detach()
-
-            print(f"Iter {i}. Elbo: {elbo:.3f}")
-
-            (-elbo).backward()
-            opt.step()
-
-        print()
-        print(f"RWS")
-        t.manual_seed(num_run)
-
-        prob, all_data, all_covariates, all_platesizes = _load_and_generate_problem(device, 'opt')
-
-        for key in all_data.keys():
-            all_data[key] = all_data[key].to(device)
-        for key in all_covariates.keys():
-            all_covariates[key] = all_covariates[key].to(device)
-
-        opt = t.optim.Adam(prob.Q.parameters(), lr=rws_lr)
-        for i in range(NUM_ITERS):
-            opt.zero_grad()
-
-            sample = prob.sample(K, True)
-            elbo = sample.elbo_rws()
-            elbos['rws'][num_run, i] = elbo.detach()
-
-            print(f"Iter {i}. Elbo: {elbo:.3f}")
-
-            (-elbo).backward()
-            opt.step()
-            
-        print()
-        print(f"QEM")
-        t.manual_seed(num_run)
-        
-        prob, all_data, all_covariates, all_platesizes = _load_and_generate_problem(device, 'qem')
-        
-        for key in all_data.keys():
-            all_data[key] = all_data[key].to(device)
-        for key in all_covariates.keys():
-            all_covariates[key] = all_covariates[key].to(device)
-            
-
-        for i in range(NUM_ITERS):
-            opt.zero_grad()
-
-            sample = prob.sample(K, True)
-            elbo = sample.elbo_nograd()
-            elbos['qem'][num_run, i] = elbo.detach()
-            
-            sample.update_qem_params(qem_lr)
-
-
-
-            print(f"Iter {i}. Elbo: {elbo:.3f}")
-
+    basic_runner.run('covid',
+                     methods = ['vi', 'rws', 'qem'],
+                     K = 3,
+                     num_runs = 1,
+                     num_iters = 50,
+                     lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1},
+                     fake_data = False,
+                     device = 'cpu',
+                     do_predll=True)

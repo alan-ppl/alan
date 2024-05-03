@@ -99,6 +99,7 @@ def sample_Ks_timeseries(lps, Ks_to_sum, ts_init_Ks, N_dim, num_samples, T_dim, 
 
         lp = sum(lps)
 
+
         assert K_dim in set(generic_dims(lp))
         assert T_dim in set(generic_dims(lp))
         assert init_K_dim in set(generic_dims(lp))
@@ -109,7 +110,12 @@ def sample_Ks_timeseries(lps, Ks_to_sum, ts_init_Ks, N_dim, num_samples, T_dim, 
         for dim in list(set(generic_dims(lp)).intersection(set(indices.keys())).difference(set(ts_init_Ks))):
             lp = lp.order(dim)[indices[dim]]
 
-        ts_indices = t.zeros((num_samples, T_dim.size), dtype=t.int64)[N_dim]
+        #get plate_dims
+        plate_dims = list(set(generic_dims(lp)).difference(set(indices.keys()) | set(ts_init_Ks)).difference(set([N_dim, K_dim, T_dim])))
+        plate_dim_sizes = [dim.size for dim in plate_dims]
+
+        ts_indices = t.zeros((num_samples, *plate_dim_sizes, T_dim.size, ), dtype=t.int64)[N_dim, plate_dims]
+
 
         filtered_t_plus_one = None
         smoothed_t_plus_one = None
@@ -197,7 +203,7 @@ def sample_Ks_timeseries(lps, Ks_to_sum, ts_init_Ks, N_dim, num_samples, T_dim, 
             # filtered_t_plus_one = filtered_t
             # smoothed_t_plus_one = smoothed_t
 
-            print(smoothed_t)
+            # print(smoothed_t)
             # shift lps up by the max value in each kdim_to_sample to avoid numerical issues
             lp_max = smoothed_t.amax(kdims_to_sample)
             
@@ -206,12 +212,14 @@ def sample_Ks_timeseries(lps, Ks_to_sum, ts_init_Ks, N_dim, num_samples, T_dim, 
             # ts_indices[t_idx] = sampled_flat_idx#[N_dim]
 
             sampled_flat_idx = t.multinomial(t.exp(smoothed_t.order(K_dim) - lp_max).ravel(), num_samples, replacement=True)
+            # print(ts_indices[t_idx])
+            # print(sampled_flat_idx[N_dim])
             ts_indices[t_idx] = sampled_flat_idx[N_dim]
 
-            print(ts_indices)
+            # print(ts_indices)
 
         # breakpoint()
-        print([ts_indices.order(N_dim)[:,i].unique().shape[0] for i in range(T_dim.size)])
+        # print([ts_indices.order(N_dim)[:,i].unique().shape[0] for i in range(T_dim.size)])
 
         indices[K_dim] = ts_indices[T_dim] # TODO: try just the final timestep (as we were doing before)
         
