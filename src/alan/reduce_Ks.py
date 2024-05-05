@@ -120,7 +120,10 @@ def sample_Ks_timeseries(lps, Ks_to_sum, ts_init_Ks, N_dim, num_samples, T_dim, 
         plate_dims = list(set(generic_dims(lp)).difference(set(indices.keys()) | set(ts_init_Ks)).difference(set([N_dim, K_dim, T_dim])))
         plate_dim_sizes = [dim.size for dim in plate_dims]
 
-        ts_indices = t.zeros((num_samples, *plate_dim_sizes, T_dim.size, ), dtype=t.int64)[N_dim, plate_dims]
+        if len(plate_dims) == 0:
+            ts_indices = t.zeros((num_samples, T_dim.size, ), dtype=t.int64)[N_dim, ...]
+        else:
+            ts_indices = t.zeros((num_samples, *plate_dim_sizes, T_dim.size, ), dtype=t.int64)[N_dim, plate_dims, ...]
 
 
         filtered_t_plus_one = None
