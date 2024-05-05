@@ -5,7 +5,7 @@ from .Plate import Plate, tree_values, update_scope
 from .BoundPlate import BoundPlate
 from .Group import Group
 from .utils import *
-from .reduce_Ks import reduce_Ks, sample_Ks
+from .reduce_Ks import reduce_Ks, sample_Ks, sample_Ks_timeseries
 from .Split import Split
 from .Sampler import Sampler
 from .dist import Dist
@@ -50,7 +50,7 @@ def logPQ_sample(
     scope = update_scope(scope, sample)
     
     #all_Ks doesn't include Ks from timeseries.
-    lps, non_ts_Ks, ts_Ks, _ = lp_getter(
+    lps, non_ts_Ks, ts_Ks, ts_init_Ks = lp_getter(
         name=name,
         P=P, 
         Q=Q, 
@@ -65,6 +65,11 @@ def logPQ_sample(
         varname2groupvarname=varname2groupvarname,
         sampler=sampler,
         computation_strategy=computation_strategy)
+    
+    # sample timeseries Ks before indexing into the lps so that we can access all ts_init_Ks 
+    if len(ts_Ks) > 0:
+        #need a new version of the function here
+        indices = {**indices, **sample_Ks_timeseries(lps, ts_Ks, ts_init_Ks, N_dim, num_samples, all_platedims[name], indices)}        
 
     # Index into each lp with the indices we've collected so far
     for i in range(len(lps)):
@@ -73,12 +78,7 @@ def logPQ_sample(
 
 
     if len(non_ts_Ks) > 0:
-        indices = {**indices, **sample_Ks(lps, non_ts_Ks,N_dim, num_samples)}
-        
-    if len(ts_Ks) > 0:
-        #need a new version of the function here
-        indices = {**indices, **sample_Ks(lps, ts_Ks, N_dim, num_samples)}
-        
+        indices = {**indices, **sample_Ks(lps, non_ts_Ks, N_dim, num_samples)}
     for childname, childQ in Q.grouped_prog.items():
         if isinstance(childQ, Plate):
             childP = P.flat_prog[childname]

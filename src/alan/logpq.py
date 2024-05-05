@@ -242,12 +242,15 @@ def logPQ_gdt(
         Knon_timeseries = ()
         Ktimeseries = (Kdim,)
         Kinits = (Kinit0,)
+
+        # print("at end of logPQ_gdt for timeseries")
+        # breakpoint()
     else:
         #No timeseries in the group.
         Knon_timeseries = (Kdim,)
         Ktimeseries = ()
         Kinit = ()
-        
+
     return lp, Knon_timeseries, Ktimeseries, Kinits
 
 

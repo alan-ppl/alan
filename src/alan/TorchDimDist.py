@@ -100,6 +100,9 @@ class TorchDimDist():
             sample (torchdim Tensor): sample with correct dimensions
         """
         #Check that all the torchdims on the arguments are in sample_dims.
+        # print(sample_dims)
+        # print('hi')
+        # print(self.set_all_arg_dims)
         assert set(self.set_all_arg_dims).issubset(sample_dims)
 
         if reparam and not self.dist.has_rsample:

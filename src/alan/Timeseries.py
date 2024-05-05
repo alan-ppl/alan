@@ -3,7 +3,7 @@ from .dist import _Dist, sample_gdt
 from .utils import *
 from .Sampler import Sampler
 
-
+from typing import Optional
 
 
 
@@ -109,6 +109,7 @@ class Timeseries(nn.Module):
             #Put previous timestep for self into scope
             timeseries_scope['prev'] = prev_state
 
+
             #sample the next timestep
             sample_timestep = self.trans.sample(timeseries_scope, reparam, other_platedims, K_dim, None)
             sample_timesteps.append(sample_timestep)
@@ -121,6 +122,84 @@ class Timeseries(nn.Module):
 
         return t.stack(sample_timesteps, 0)[T_dim]
 
+    def sample_extended(self,
+            sample:Tensor,
+            name:Optional[str],
+            scope:dict[str, Tensor],
+            inputs_params:dict,
+            original_platedims:dict[str, Dim],
+            extended_platedims:dict[str, Dim],
+            active_extended_platedims:list[Dim],
+            Ndim:Dim,
+            reparam:bool,
+            original_data:dict):
+        
+        (active_extended_platedims, extended_T_dim) = (active_extended_platedims[:-1], active_extended_platedims[-1])
+        
+        original_T_dim = original_platedims[str(extended_T_dim)]
+        #Number of timesteps to roll forward:
+        timesteps = extended_T_dim.size - original_T_dim.size
+
+        original_platedims = [original_platedims[str(dim)] for dim in active_extended_platedims]
+        #set prev state to last timestep of sample
+        prev_state = sample.order(original_T_dim)[-1].order(*original_platedims)[active_extended_platedims]
+        
+        #Don't need to check prev_state has right dims...
+        
+        extended_sample_timesteps = []
+        
+
+        for time in range(timesteps):
+            
+            timeseries_scope = {}
+            for k, v in scope.items():
+                if extended_T_dim in set(generic_dims(v)):
+                    v = v.order(extended_T_dim)[time]
+                timeseries_scope[k] = v
+                
+            timeseries_scope['prev'] = prev_state
+            
+            #sample the next timestep
+            sample_timestep = self.trans.sample(timeseries_scope, reparam, active_extended_platedims, Ndim, None)
+            extended_sample_timesteps.append(sample_timestep)
+            
+            prev_state = sample_timestep
+            
+        #stack old and new timesteps
+        # print(sample.order(original_T_dim))
+        # print(t.stack(extended_sample_timesteps, 0))
+        
+        original_sample = sample.order(original_T_dim)
+        original_sample_new_platedims = original_sample.order(*original_platedims)[active_extended_platedims]
+        
+        return t.cat([original_sample_new_platedims, t.stack(extended_sample_timesteps, 0)], 0)[extended_T_dim]
+
+    def predictive_ll(
+            self,
+            sample:dict,
+            name:Optional[str],
+            scope:dict[str, Tensor],
+            inputs_params:dict,
+            original_platedims:dict[str, Dim],
+            extended_platedims:dict[str, Dim],
+            original_data:dict[str, Tensor],
+            extended_data:dict[str, Tensor]):
+        
+        original_ll, extended_ll = {}, {}
+
+        if name in extended_data.keys():
+            extended_ll[name], _ = self.log_prob(extended_data[name], scope, None, None)
+
+            original_dims, extended_dims = corresponding_plates(original_platedims, extended_platedims, original_data[name], extended_data[name]) 
+
+            # Take the logprob of the original data from the extended logprob tensor
+            original_idxs = [slice(0, dim.size) for dim in original_dims]
+            original_ll[name] = generic_getitem(generic_order(extended_ll[name], extended_dims), original_idxs)
+            original_ll[name] = generic_getitem(original_ll[name], original_dims)
+
+        return original_ll, extended_ll
+    
+        
     def log_prob(self, sample, scope:dict, T_dim:Dim, K_dim:Dim):
 
         assert isinstance(scope, dict)
