@@ -16,11 +16,16 @@ def get_model(data, covariates):
         psi_z = pm.Normal('psi_z', mu=0, sigma=1, shape=d_z)
 
         # z = pm.MvNormal('z', mu=mu_z, cov=np.eye(d_z)*psi_z.exp(), shape=(M, d_z))
-        z = pm.Normal('z', mu=mu_z, sigma=psi_z.exp(), shape=(M, d_z))
+        z_non_cent = np.random.normal(loc=0, scale=1, size=(M, d_z))
+        
+        z = pm.Deterministic('z', mu_z + z_non_cent * psi_z.exp())
 
         x = pm.MutableData('x', covariates['x'])
 
         logits = pm.Deterministic('logits', (z @ x.transpose(0,2,1)).diagonal().transpose())
+
+        
+        
         # ^^ equivalent to:
         # logits = pm.Deterministic('logits', np.einsum('ij,ikj->ik', z, x))
         # but pymc doesn't like einsums in Deterministic nodes
@@ -37,3 +42,28 @@ def get_test_data_cov_dict(all_data, all_covariates, platesizes):
     test_covariates['x'] = test_covariates['x'][:,platesizes['plate_2']:]
 
     return {**test_data, **test_covariates}
+
+if __name__ == '__main__':
+    #Test model without jax
+    import pickle
+    
+    with open(f'data/real_data.pkl', 'rb') as f:
+        platesizes, all_platesizes, data, all_data, covariates, all_covariates, latent_names = pickle.load(f)
+    
+    model = get_model(data, covariates)
+    with model:
+        # trace = pm.sample(1, tune=1, chains=1)
+        prior = pm.sample_prior_predictive(samples=2000)
+        
+        moments_collection = {}
+        print(prior)
+        # compute moments for each latent
+        for name in latent_names:
+            print(name)
+            print(prior.prior[name].mean(("chain", "draw")))
+            print(prior.prior[name].std(("chain", "draw")))
+            
+        for name in ['obs']:
+            print(name)
+            print(prior.prior_predictive[name].mean(("chain", "draw")))
+            print(prior.prior_predictive[name].std(("chain", "draw")))

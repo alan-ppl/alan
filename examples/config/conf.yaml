@@ -1,15 +1,15 @@
 ---
   model: ???
+  model_name: ''
   method: ???
   num_runs: 5
   num_iters: 1000
-  Ks: [3,10,30] #,100]
+  Ks_lrs: {3: [0.001], 10: [0.001], 30: [0.1, 0.03], 100: [0.1]}
   reparam: True
-  num_moments_to_save: 200
+  save_moments: False
   predll:
     do_predll: True
     N_predll: 100
-  lrs: [0.3,0.1,0.03,0.01]
   dataset_seed: 0
   write_job_status: True
   split:

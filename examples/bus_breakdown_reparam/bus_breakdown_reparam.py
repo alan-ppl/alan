@@ -1,9 +1,10 @@
 import torch as t
-from alan import Normal, Binomial, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
-import math 
+from alan import Normal, Exponential, NegativeBinomial, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
+import math
+
 M, J, I = 3, 3, 30
 
-def load_data_covariates(device, run=0, data_dir='data/', fake_data=False):
+def load_data_covariates(device, run=0, data_dir='data/', fake_data=False, return_fake_latents=False):
     platesizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
     all_platesizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':2*I}
 
@@ -21,9 +22,16 @@ def load_data_covariates(device, run=0, data_dir='data/', fake_data=False):
 
     else:
         P = get_P(all_platesizes, all_covariates)
-        all_data = {'obs': P.sample()['obs'].align_to('plate_Year', 'plate_Borough', 'plate_ID')}
+        sample = P.sample()
+        all_data = {'obs': sample.pop('obs').align_to('plate_Year', 'plate_Borough', 'plate_ID')}
 
         data = {'obs': all_data['obs'][:,:,:I]}
+
+        all_latents = sample
+        latents = sample 
+
+        if return_fake_latents:
+            return platesizes, all_platesizes, data, all_data, covariates, all_covariates, latents, all_latents
 
     return platesizes, all_platesizes, data, all_data, covariates, all_covariates
 
@@ -32,8 +40,6 @@ def get_P(platesizes, covariates):
     run_type_dim = covariates['run_type'].shape[-1]
 
     P = Plate(
-        log_sigma_phi_psi = Normal(0, 1),
-
         psi = Normal(t.zeros((run_type_dim,)), t.ones((run_type_dim,))),
         phi = Normal(t.zeros((bus_company_name_dim,)), t.ones((bus_company_name_dim,))),
 
@@ -41,19 +47,21 @@ def get_P(platesizes, covariates):
         mu_beta = Normal(0, 1),
 
         plate_Year = Plate(
-            beta = Normal(lambda mu_beta: mu_beta / 100, lambda sigma_beta: (sigma_beta).exp() / 100),
+            beta = Normal(lambda mu_beta: mu_beta, lambda sigma_beta: sigma_beta.exp()),
 
             sigma_alpha = Normal(0, 1),
 
             plate_Borough = Plate(
-                alpha = Normal(lambda beta: 100 * beta, lambda sigma_alpha: (sigma_alpha).exp()),
-        
+                alpha = Normal(lambda beta: beta, lambda sigma_alpha: sigma_alpha.exp()),
+
                 plate_ID = Plate(
-                    obs = Binomial(total_count=131, logits = lambda alpha, phi, psi, run_type, bus_company_name: alpha + phi @ bus_company_name + psi @ run_type),
+                    alph = Normal(0, 1/10.),
+                    log_delay = Normal(lambda alpha, phi, psi, run_type, bus_company_name: (alpha + phi @ bus_company_name + psi @ run_type)/1000, 1/1000.),
+
+                    obs = NegativeBinomial(total_count=lambda alph: (alph*10).exp(), logits = 'log_delay')
                 )
             )
         )
-
     )
 
     P = BoundPlate(P, platesizes, inputs = covariates)
@@ -69,23 +77,24 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
     if Q_param_type == "opt":
 
         Q = Plate(
-            log_sigma_phi_psi = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+            global_latents = Group(
+                psi = Normal(OptParam(t.zeros(run_type_dim)), OptParam(t.zeros(run_type_dim), transformation=t.exp)),
+                phi = Normal(OptParam(t.zeros(bus_company_name_dim)), OptParam(t.zeros(bus_company_name_dim), transformation=t.exp)),
 
-            psi = Normal(OptParam(t.zeros(run_type_dim)), OptParam(t.zeros(run_type_dim), transformation=t.exp)),
-            phi = Normal(OptParam(t.zeros(bus_company_name_dim)), OptParam(t.zeros(bus_company_name_dim), transformation=t.exp)),
-
-            sigma_beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-            mu_beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-
+                sigma_beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                mu_beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+            ),
             plate_Year = Plate(
-                beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                year_latents = Group(
+                    beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
 
-                sigma_alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-
+                    sigma_alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                ),
                 plate_Borough = Plate(
                     alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-
                     plate_ID = Plate(
+                        alph = Normal(OptParam(0.), OptParam(-math.log(10), transformation=t.exp)),
+                        log_delay = Normal(OptParam(0.), OptParam(-math.log(1000), transformation=t.exp)),
                         obs = Data()
                     )
                 )
@@ -98,23 +107,25 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
         assert Q_param_type == "qem"
 
         Q = Plate(
-            log_sigma_phi_psi = Normal(QEMParam(0.), QEMParam(1.)),
+            global_latents = Group(
+                psi = Normal(QEMParam(t.zeros((run_type_dim,))), QEMParam(t.ones((run_type_dim,)))),
+                phi = Normal(QEMParam(t.zeros((bus_company_name_dim,))), QEMParam(t.ones((bus_company_name_dim,)))),
 
-            psi = Normal(QEMParam(t.zeros((run_type_dim,))), QEMParam(t.ones((run_type_dim,)))),
-            phi = Normal(QEMParam(t.zeros((bus_company_name_dim,))), QEMParam(t.ones((bus_company_name_dim,)))),
-
-            sigma_beta = Normal(QEMParam(0.), QEMParam(1.)),
-            mu_beta = Normal(QEMParam(0.), QEMParam(1.)),
-
+                sigma_beta = Normal(QEMParam(0.), QEMParam(1.)),
+                mu_beta = Normal(QEMParam(0.), QEMParam(1.)),
+            ),
             plate_Year = Plate(
-                beta = Normal(QEMParam(0.), QEMParam(1.)),
+                year_latents = Group(
+                    beta = Normal(QEMParam(0.), QEMParam(1.)),
 
-                sigma_alpha = Normal(QEMParam(0.), QEMParam(1.)),
-
+                    sigma_alpha = Normal(QEMParam(0.), QEMParam(1.)),
+                ),
                 plate_Borough = Plate(
                     alpha = Normal(QEMParam(0.), QEMParam(1.)),
-
                     plate_ID = Plate(
+                        alph = Normal(QEMParam(0.), QEMParam(1/10)),
+                        log_delay = Normal(QEMParam(0.), QEMParam(1/1000)),
+
                         obs = Data()
                     )
                 )
@@ -137,11 +148,11 @@ if __name__ == "__main__":
     sys.path.insert(1, os.path.join(sys.path[0], '..'))
     import basic_runner
 
-    basic_runner.run('bus_breakdown',
+    basic_runner.run('bus_breakdown_reparam',
                      methods = ['vi', 'rws', 'qem'],
-                     K = 3,
+                     K = 10,
                      num_runs = 1,
                      num_iters = 10,
                      lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1},
                      fake_data = False,
-                     device = 'cuda')
+                     device = 'cpu')

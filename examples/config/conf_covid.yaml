@@ -2,10 +2,10 @@
   model: ???
   method: ???
   num_runs: 1
-  num_iters: 2000
+  num_iters: 500
   Ks: [3,10, 30] #,100]
   reparam: True
-  num_moments_to_save: 200
+  num_moments_to_save: 500
   predll:
     do_predll: False
     N_predll: 100
@@ -15,3 +15,4 @@
   split:
     plate: nRs
     size: 20
+  non_mp: False

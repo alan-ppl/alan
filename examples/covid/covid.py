@@ -69,7 +69,6 @@ def get_P(platesizes, covariates):
             log_infected_noise = Normal(lambda log_infected_noise_mean: log_infected_noise_mean, 0.25),
             psi = Normal(0, 1),
             nDs = Plate(
-                
                 log_infected = Timeseries('InitialSize_log', Normal(Expected_Log_Rs, lambda log_infected_noise: log_infected_noise.exp())),
                 obs = NegativeBinomial(total_count=lambda psi: t.exp(psi), probs=lambda log_infected, psi: 1/((t.exp(psi)/ t.exp(log_infected)) + 1 + 1e-7) ),
             ),
@@ -102,7 +101,6 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                         psi = Normal(OptParam(0.), OptParam(0., transformation=t.exp)), 
                     ),
                 nDs = Plate(
-                    
                     log_infected = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                     obs = Data()
                 ),
@@ -127,10 +125,9 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                 a = Group(
                         InitialSize_log = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                         log_infected_noise = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
-                        psi = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+                        psi = Normal(OptParam(0.), OptParam(0., transformation=t.exp)), 
                 ),
                 nDs = Plate(
-                    
                     log_infected = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                     obs = Data()
                 ),
@@ -154,7 +151,7 @@ if __name__ == "__main__":
     import basic_runner
 
     basic_runner.run('covid',
-                     methods = ['qem'],
+                     methods = ['vi', 'rws', 'qem'],
                      K = 3,
                      num_runs = 1,
                      num_iters = 50,

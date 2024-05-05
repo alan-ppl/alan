@@ -17,11 +17,14 @@ def get_model(data, covariates):
 
         num_repeats_plate = pm.MutableData('num_repeats_plate', num_repeats)
 
-        pre_sigma_block = pm.Cauchy("pre_sigma_block", alpha=0, beta=1)
-        pre_sigma_actor = pm.Cauchy("pre_sigma_actor", alpha=0, beta=1)
+        # pre_sigma_block = pm.Cauchy("pre_sigma_block", alpha=0, beta=1)
+        # pre_sigma_actor = pm.Cauchy("pre_sigma_actor", alpha=0, beta=1)
 
-        sigma_block = pm.Deterministic('sigma_block', pm.math.abs(pre_sigma_block))
-        sigma_actor = pm.Deterministic('sigma_actor', pm.math.abs(pre_sigma_actor))
+        pre_sigma_block = pm.Normal("pre_sigma_block", mu=0, sigma=1)
+        pre_sigma_actor = pm.Normal("pre_sigma_actor", mu=0, sigma=1)
+
+        sigma_block = pm.Deterministic('sigma_block', pm.math.exp(pre_sigma_block))
+        sigma_actor = pm.Deterministic('sigma_actor', pm.math.exp(pre_sigma_actor))
 
         # sigma_block = pm.HalfCauchy("sigma_block", beta=1),
         # sigma_actor = pm.HalfCauchy("sigma_actor", beta=1),

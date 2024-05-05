@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import torch as t
 import numpy as np
 
+from pathlib import Path
 def smooth(x, window):
     # result = np.convolve(x, np.ones(window)/window, mode='valid')
     
@@ -23,6 +24,10 @@ def plot(model_name, method_names=['qem', 'rws', 'vi'], window_sizes=[1, 5, 10, 
 
     elbos, p_lls, iter_times, lrs = {}, {}, {}, {}
     Ks = None
+    
+    #make sure the plots folder exists
+    Path(f'{model_name}/plots/{results_subfolder}').mkdir(parents=True, exist_ok=True)
+    
 
     for method_name in method_names:
         for x in [elbos, p_lls, iter_times]:
@@ -204,7 +209,7 @@ if __name__ == '__main__':
                         'occupancy':     {3: (-70000, None), 5: (-55000, None), 10: (-50000, None)},
                         'radon':         {3: (-800, -450), 10: (-580, -480), 30: (-500, -480)},
                         'chimpanzees':   {5: (-500, -240),  15: (-500, -240)},
-                        'covid':         {3: (-1000000, 20000), 10: (-200000, 20000), 30: (-50000, 20000)}}
+                        'covid':         {3: (-1000000, 20000), 10: (-200000, 20000), 30: (-100000, 20000)}}
 
     pll_ylims_per_K  = {'movielens':     {3: (-1150, -940), 10: (-1100, -940), 30: (-1060, -940)},
                         'bus_breakdown': {3: (-7000, None), 10: (-3500, None), 30: (-2800, -1750)},
@@ -213,12 +218,13 @@ if __name__ == '__main__':
                         'chimpanzees':   {5: (-50, -40),    15: (-50, -40)}}
 
 
-    for K in [30]:
-        plot('covid', Ks_to_plot=[K], method_lrs_to_ignore={'qem': [0.001, 0.0001], 'rws': [0.001, 0.0001], 'vi': [0.001, 0.0001]},
-             elbo_ylims=elbo_ylims_per_K['covid'][K], results_subfolder='covid/')
+    for K in [3,10,30]:
+        
         plot('covid', Ks_to_plot=[K], method_lrs_to_ignore={'qem': [0.001, 0.0001], 'rws': [0.001, 0.0001], 'vi': [0.001, 0.0001]},
              elbo_ylims=elbo_ylims_per_K['covid'][K], results_subfolder='covid_only_npis_wearing/')
         plot('covid', Ks_to_plot=[K], method_lrs_to_ignore={'qem': [0.001, 0.0001], 'rws': [0.001, 0.0001], 'vi': [0.001, 0.0001]},
              elbo_ylims=elbo_ylims_per_K['covid'][K], results_subfolder='covid_only_wearing_mobility/')
+        plot('covid', Ks_to_plot=[K], method_lrs_to_ignore={'qem': [0.001, 0.0001], 'rws': [0.001, 0.0001], 'vi': [0.001, 0.0001]},
+             elbo_ylims=elbo_ylims_per_K['covid'][K], results_subfolder='covid/')
 
 

@@ -50,8 +50,8 @@ def load_data_covariates(device, run=0, data_dir='data/', fake_data=False, retur
 
 def get_P(platesizes, covariates):
     P = Plate(
-        sigma_block = HalfCauchy(1.),
-        sigma_actor = HalfCauchy(1.),
+        sigma_block = Normal(0., 1.),
+        sigma_actor = Normal(0., 1.),
 
         beta_PC = Normal(0., 10.),
         beta_P = Normal(0., 10.),
@@ -59,10 +59,10 @@ def get_P(platesizes, covariates):
         alpha = Normal(0., 10.),
 
         plate_actors = Plate(
-            alpha_actor = Normal(0., 'sigma_actor'),
+            alpha_actor = Normal(0., lambda sigma_actor: sigma_actor.exp()),
 
             plate_blocks = Plate(
-                alpha_block = Normal(0., 'sigma_block'),
+                alpha_block = Normal(0., lambda sigma_block: sigma_block.exp()),
 
                 plate_repeats = Plate(
                     obs = Bernoulli(logits=lambda alpha, alpha_block, alpha_actor, beta_PC, beta_P, condition, prosoc_left: alpha + alpha_actor + alpha_block + (beta_P + beta_PC*condition)*prosoc_left),
@@ -81,17 +81,15 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
 
     if Q_param_type == "opt":
         Q = Plate(
-            sigma_block = HalfCauchy(OptParam(1.)),
-            sigma_actor = HalfCauchy(OptParam(1.)),
+            global_latents = Group(
+                sigma_block = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                sigma_actor = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
 
-            # sigma_block = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-            # sigma_actor = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                beta_PC = Normal(OptParam(0.), OptParam(t.tensor(10.).log(), transformation=t.exp)),
+                beta_P = Normal(OptParam(0.), OptParam(t.tensor(10.).log(), transformation=t.exp)),
 
-            beta_PC = Normal(OptParam(0.), OptParam(t.tensor(10.).log(), transformation=t.exp)),
-            beta_P = Normal(OptParam(0.), OptParam(t.tensor(10.).log(), transformation=t.exp)),
-
-            alpha = Normal(OptParam(0.), OptParam(t.tensor(10.).log(), transformation=t.exp)),
-
+                alpha = Normal(OptParam(0.), OptParam(t.tensor(10.).log(), transformation=t.exp)),
+            ),
             plate_actors = Plate(
                 alpha_actor = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
 
@@ -111,14 +109,15 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
         assert Q_param_type == 'qem'
 
         Q = Plate(
-            sigma_block = HalfCauchy(OptParam(1.)),
-            sigma_actor = HalfCauchy(OptParam(1.)),
+            global_latents = Group(
+                sigma_block = Normal(QEMParam(0.), QEMParam(1.)),
+                sigma_actor = Normal(QEMParam(0.), QEMParam(1.)),
 
-            beta_PC = Normal(QEMParam(0.), QEMParam(t.tensor(10.))),
-            beta_P = Normal(QEMParam(0.), QEMParam(t.tensor(10.))),
+                beta_PC = Normal(QEMParam(0.), QEMParam(t.tensor(10.))),
+                beta_P = Normal(QEMParam(0.), QEMParam(t.tensor(10.))),
 
-            alpha = Normal(QEMParam(0.), QEMParam(t.tensor(10.))),
-
+                alpha = Normal(QEMParam(0.), QEMParam(t.tensor(10.))),
+            ),
             plate_actors = Plate(
                 alpha_actor = Normal(QEMParam(0.), QEMParam(1.)),
 
@@ -151,10 +150,10 @@ if __name__ == "__main__":
     import basic_runner
 
     basic_runner.run('chimpanzees',
-                     methods = ['vi', 'rws', 'qem'],
-                     K = 3,
+                     methods = ['vi', 'rws', 'qem', 'global_qem'],
+                     K = 70,
                      num_runs = 1,
-                     num_iters = 10,
-                     lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1},
+                     num_iters = 100,
+                     lrs = {'vi': 0.5, 'rws': 0.5, 'qem': 0.75, 'global_qem': 0.3},
                      fake_data = False,
                      device = 'cuda')

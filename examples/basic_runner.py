@@ -2,17 +2,20 @@ import torch as t
 import importlib.util
 import sys
 import time
-
+import alan
+from alan import mean
 def safe_time(device):
-    if device == 'cuda':
+    if device.type == 'cuda':
         t.cuda.synchronize()
     return time.time()
 
+
+
 Q_PARAM_TYPES = {'vi': 'opt', 'rws': 'opt', 'qem': 'qem',
-                 'global_vi': 'opt', 'global_rws': 'opt'}
+                 'global_vi': 'opt', 'global_rws': 'opt', 'global_qem': 'qem'}
 
 def run(model_name, 
-        methods = ['vi', 'rws', 'qem', 'global_vi', 'global_rws'],
+        methods = ['vi', 'rws', 'qem', 'global_vi', 'global_rws', 'global_qem'],
         K = 3, 
         num_runs = 1, 
         num_iters = 100, 
@@ -27,12 +30,15 @@ def run(model_name,
         device = 'cpu',
         split = None):
 
-    start_time = safe_time(device)
-
+    t.manual_seed(0)
     # ensure device is set correctly
     if device == 'cuda':
         device = t.device('cuda' if t.cuda.is_available() else 'cpu')
+    else:
+        device = t.device('cpu')
     print("Device:", device)
+
+    start_time = safe_time(device)
 
     # import the model
     spec = importlib.util.spec_from_file_location(model_name, f"{model_name}.py")
@@ -59,7 +65,7 @@ def run(model_name,
 
         for method in methods:
             print(method.upper())
-            t.manual_seed(num_run)
+            
             prob, all_data, all_covariates, all_platesizes = load_and_generate_problem(device, Q_PARAM_TYPES[method])
 
             for key in all_data.keys():
@@ -73,7 +79,7 @@ def run(model_name,
                 opt = t.optim.Adam(prob.Q.parameters(), lr=lrs[method], maximize=True)
             
             for i in range(num_iters):
-                if method != 'qem':
+                if 'qem' not in method:
                     opt.zero_grad()
                 
                 if 'global' in method:
@@ -85,7 +91,7 @@ def run(model_name,
                     elbo = sample.elbo_vi() if split is None else sample.elbo_vi(computation_strategy = split)
                 elif method in ['rws', 'global_rws']:
                     elbo = sample.elbo_rws() if split is None else sample.elbo_rws(computation_strategy = split)
-                elif method == 'qem':
+                elif method in ['qem', 'global_qem']:
                     elbo = sample.elbo_nograd() if split is None else sample.elbo_nograd(computation_strategy = split)
 
                 elbos[method][num_run, i] = elbo.detach()
@@ -99,7 +105,7 @@ def run(model_name,
                 else:
                     print(f"Iter {i}. Elbo: {elbo:.3f}")
 
-                if method != 'qem':
+                if method not in ['qem', 'global_qem']:
                     (-elbo).backward()
                     opt.step()
                 else:

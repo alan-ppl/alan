@@ -1,0 +1,11 @@
+---
+  model: ???
+  model_name: ''
+  num_iters: 100
+  num_samples: 100
+  K: 30
+  lr: 0.1
+  reparam: True
+  split:
+    plate: null
+    size: null

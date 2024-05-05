@@ -52,6 +52,8 @@ def run_experiment(cfg):
     for folder in ['results', 'job_status', 'plots']:
         Path(f"covid/{folder}/{cfg.model}").mkdir(parents=True, exist_ok=True)
 
+    non_mp_string = '_nonmp' if cfg.non_mp else ''
+    
     platesizes, all_platesizes, data, all_data, covariates, all_covariates = model.load_data_covariates(device, cfg.dataset_seed, 'covid/data/')
 
     # Put extended data and covariates on device
@@ -74,7 +76,7 @@ def run_experiment(cfg):
     iter_times = t.zeros((len(Ks), len(lrs), num_iters+1, num_runs))
 
     if cfg.write_job_status:
-        with open(f"covid/job_status/{cfg.model}/{cfg.method}_status.txt", "w") as f:
+        with open(f"{cfg.model}/job_status/{cfg.method}{non_mp_string}_status.txt", "w") as f:
             f.write(f"Starting job.\n")
 
     for num_run in range(num_runs):
@@ -100,21 +102,36 @@ def run_experiment(cfg):
                         if cfg.method == 'vi' or cfg.method == 'rws':
                             opt.zero_grad()
 
-                        sample = prob.sample(K, reparam)
-
-                        if cfg.method == 'vi':
-                            elbo = sample.elbo_vi() if split is None else sample.elbo_vi(computation_strategy = split)
-                        elif cfg.method == 'rws':
-                            elbo = sample.elbo_rws() if split is None else sample.elbo_rws(computation_strategy = split)
-                        elif cfg.method == 'qem':
-                            elbo = sample.elbo_nograd() if split is None else sample.elbo_nograd(computation_strategy = split)
+                        if cfg.non_mp: 
+                            sample = prob.sample_nonmp(K, reparam)
+                        else:
+                            sample = prob.sample(K, reparam)
+                            
+                        if cfg.non_mp:
+                            #Non-mp doesn't take computation_strategy
+                            if cfg.method == 'vi':
+                                elbo = sample.elbo_vi()
+                            elif cfg.method == 'rws':
+                                elbo = sample.elbo_rws()
+                            elif cfg.method == 'qem':
+                                elbo = sample.elbo_nograd()
+                        else:
+                            if cfg.method == 'vi':
+                                elbo = sample.elbo_vi() if split is None else sample.elbo_vi(computation_strategy = split)
+                            elif cfg.method == 'rws':
+                                elbo = sample.elbo_rws() if split is None else sample.elbo_rws(computation_strategy = split)
+                            elif cfg.method == 'qem':
+                                elbo = sample.elbo_nograd() if split is None else sample.elbo_nograd(computation_strategy = split) 
 
                         elbo_end_time = safe_time(device)
 
                         elbos[K_idx, lr_idx, i, num_run] = elbo.item()
 
                         if do_predll:
-                            importance_sample = sample.importance_sample(N=N_predll) if split is None else sample.importance_sample(N=N_predll, computation_strategy = split)
+                            if cfg.non_mp:
+                                importance_sample = sample.importance_sample(N=N_predll)
+                            else:
+                                importance_sample = sample.importance_sample(N=N_predll) if split is None else sample.importance_sample(N=N_predll, computation_strategy = split)
                             extended_importance_sample = importance_sample.extend(all_platesizes, all_covariates)
                             ll = extended_importance_sample.predictive_ll(all_data)
                             
@@ -138,7 +155,7 @@ def run_experiment(cfg):
 
                         iter_times[K_idx, lr_idx, i, num_run] = elbo_end_time - elbo_start_time + update_end_time - update_start_time
                         
-                        t.save(prob.state_dict(), f"covid/results/{cfg.model}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}.pth")
+                        t.save(prob.state_dict(), f"covid/results/{cfg.model}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_{non_mp_string}.pth")
                         
                         if len(means) == cfg.num_moments_to_save:
                             del means[-cfg.num_moments_to_save]
@@ -168,9 +185,11 @@ def run_experiment(cfg):
 
                         moments = {'means': means, 'means2': means2}
                         #save moments to file
-                        with open(f"covid/results/{cfg.model}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_moments.pkl", "wb") as f:
+                        with open(f"covid/results/{cfg.model}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_moments_{non_mp_string}.pkl", "wb") as f:
                             pickle.dump(moments, f)
-                            
+                        
+                        
+                        
                         # predictive samples
                         names = ['log_infected', 'log_infected_ex2', 'psi', 'psi_ex2']
                         desired_moments = (('log_infected', mean), ('log_infected', mean2), ('psi', mean), ('psi', mean2))
@@ -180,11 +199,11 @@ def run_experiment(cfg):
                         log_infected = saving_moments['log_infected'].rename(None)
                         psi = saving_moments['psi'].rename(None)
                         
-                        with open(f'covid/results/{cfg.model}/{cfg.method}_log_infected_{K}_{lr}.pkl', 'wb') as f:
-                            pickle.dump(log_infected.detach().cpu().numpy(), f)
+                        # with open(f'covid/results/{cfg.model}/{cfg.method}_log_infected_{K}_{lr}.pkl', 'wb') as f:
+                        #     pickle.dump(log_infected.detach().cpu().numpy(), f)
                             
-                        with open(f'covid/results/{cfg.model}/{cfg.method}_psi_{K}_{lr}.pkl', 'wb') as f:
-                            pickle.dump(psi.detach().cpu().numpy(), f)
+                        # with open(f'covid/results/{cfg.model}/{cfg.method}_psi_{K}_{lr}.pkl', 'wb') as f:
+                        #     pickle.dump(psi.detach().cpu().numpy(), f)
 
 
                         predicted_obs = {'obs':NegativeBinomial(total_count = t.exp(psi).unsqueeze(1), probs=1/((t.exp(psi).unsqueeze(1)/ t.exp(log_infected)) + 1 + 1e-7)).sample(t.Size([100]))}
@@ -199,20 +218,20 @@ def run_experiment(cfg):
                         predicted_obs['obs'] = predicted_obs['obs'].detach().cpu().numpy()
 
                         #save predictive samples to file
-                        with open(f'covid/results/{cfg.model}/{cfg.method}_predictive_samples_{K}_{lr}.pkl', 'wb') as f:
+                        with open(f'covid/results/{cfg.model}/{cfg.method}_predictive_samples_{K}_{lr}_{non_mp_string}.pkl', 'wb') as f:
                             pickle.dump(predicted_obs, f)
                         
                 except Exception as e:
                     print(f"num_run: {num_run} K: {K} lr: {lr} failed at iteration {i} with exception {e}.")
                     if cfg.write_job_status:
-                        with open(f"covid/job_status/{cfg.model}/{cfg.method}_status.txt", "a") as f:
+                        with open(f"covid/job_status/{cfg.model}/{cfg.method}_{non_mp_string}_status.txt", "a") as f:
                             f.write(f"num_run: {num_run} K: {K} lr: {lr} failed at iteration {i} with exception {e}.\n")
                     continue
 
                 
             
             if cfg.write_job_status:
-                with open(f"covid/job_status/{cfg.model}/{cfg.method}_status.txt", "a") as f:
+                with open(f"covid/job_status/{cfg.model}/{cfg.method}_{non_mp_string}_status.txt", "a") as f:
                     f.write(f"num_run: {num_run} K: {K} done in {safe_time(device)-K_start_time}s.\n")
 
 
@@ -233,7 +252,7 @@ def run_experiment(cfg):
             print()
 
     # breakpoint()
-    with open(f'covid/results/{cfg.model}/{cfg.method}{cfg.dataset_seed}.pkl', 'wb') as f:
+    with open(f'covid/results/{cfg.model}/{cfg.method}{non_mp_string}{cfg.dataset_seed}.pkl', 'wb') as f:
         pickle.dump(to_pickle, f)
 
 
