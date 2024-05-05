@@ -56,9 +56,9 @@ def get_P(platesizes, covariates):
 
                 plate_ID = Plate(
                     alph = Normal(0, 1/10.),
-                    log_delay = Normal(lambda alpha, phi, psi, run_type, bus_company_name: (alpha + phi @ bus_company_name + psi @ run_type)/1000, 1/1000.),
+                    log_delay = Normal(lambda alpha, phi, psi, run_type, bus_company_name: (alpha + phi @ bus_company_name + psi @ run_type)/1000, 1/1000),
 
-                    obs = NegativeBinomial(total_count=lambda alph: (alph*10).exp(), logits = 'log_delay')
+                    obs = NegativeBinomial(total_count=lambda alph: (alph*10).exp(), logits = lambda log_delay: log_delay * 1000)
                 )
             )
         )
@@ -152,7 +152,7 @@ if __name__ == "__main__":
                      methods = ['vi', 'rws', 'qem'],
                      K = 10,
                      num_runs = 1,
-                     num_iters = 10,
+                     num_iters = 30,
                      lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1},
                      fake_data = False,
                      device = 'cpu')

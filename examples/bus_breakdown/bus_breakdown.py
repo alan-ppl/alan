@@ -148,7 +148,7 @@ if __name__ == "__main__":
     sys.path.insert(1, os.path.join(sys.path[0], '..'))
     import basic_runner
 
-    basic_runner.run('bus_breakdown_reparam',
+    basic_runner.run('bus_breakdown',
                      methods = ['vi', 'rws', 'qem'],
                      K = 10,
                      num_runs = 1,
