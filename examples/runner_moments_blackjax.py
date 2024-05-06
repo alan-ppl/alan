@@ -122,10 +122,11 @@ def run_experiment(cfg):
 
                 return states
             
+            sampling_start_time = safe_time(device)
             rng_key, warmup_key, sample_key = jax.random.split(rng_key, 3)
             kernel = blackjax.nuts(training_joint_logdensity, **parameters).step
             states = inference_loop(sample_key, kernel, state, num_samples)
-
+            times['p_ll'][:, num_run] = np.linspace(0,safe_time(device)-sampling_start_time,num_samples+1)[1:]
 
             states_dict = states.position._asdict()
             #HMC means
@@ -186,11 +187,11 @@ def run_experiment(cfg):
                 'num_samples': num_samples, 'num_tuning_samples': num_tuning_samples, 'target_accept': target_accept}
 
 
-    with open(f'{cfg.model}/results/moments/blackjax{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
-        pickle.dump(to_pickle, f)
+    # with open(f'{cfg.model}/results/moments/blackjax{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
+    #     pickle.dump(to_pickle, f)
 
-    with open(f'{cfg.model}/results/moments/blackjax_moments{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
-        pickle.dump(moments_collection, f)
+    # with open(f'{cfg.model}/results/moments/blackjax_moments{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
+    #     pickle.dump(moments_collection, f)
         
     print()
 

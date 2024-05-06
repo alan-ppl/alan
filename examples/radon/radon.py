@@ -71,9 +71,9 @@ def get_P(platesizes, covariates):
                 County_mean = Normal('State_mean', lambda State_log_sigma: State_log_sigma.exp()),
                 County_log_sigma = Normal(0., 1.),
                 Beta_u = Normal(0., 1.),
-                Beta_basement = Normal(0., 10.),
+                Beta_basement = Normal(0., 1.),
                 Zips = Plate( 
-                    obs = Normal(lambda County_mean, basement, log_uranium, Beta_basement, Beta_u: 1000*County_mean + 10*basement*Beta_basement + log_uranium * Beta_u, lambda County_log_sigma: County_log_sigma.exp()),
+                    obs = Normal(lambda County_mean, basement, log_uranium, Beta_basement, Beta_u: County_mean + basement*Beta_basement + log_uranium * Beta_u, lambda County_log_sigma: County_log_sigma.exp()),
                 ),
             ),
         ),
