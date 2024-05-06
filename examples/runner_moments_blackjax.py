@@ -187,11 +187,11 @@ def run_experiment(cfg):
                 'num_samples': num_samples, 'num_tuning_samples': num_tuning_samples, 'target_accept': target_accept}
 
 
-    # with open(f'{cfg.model}/results/moments/blackjax{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
-    #     pickle.dump(to_pickle, f)
+    with open(f'{cfg.model}/results/moments/blackjax{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
+        pickle.dump(to_pickle, f)
 
-    # with open(f'{cfg.model}/results/moments/blackjax_moments{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
-    #     pickle.dump(moments_collection, f)
+    with open(f'{cfg.model}/results/moments/blackjax_moments{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
+        pickle.dump(moments_collection, f)
         
     print()
 
