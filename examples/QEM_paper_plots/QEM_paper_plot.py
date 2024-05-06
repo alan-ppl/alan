@@ -482,7 +482,7 @@ if __name__ == "__main__":
     plot_HMC = False
     plot_global_QEM = False
 
-    using_new_bus = False
+    using_new_bus = True
 
     basic_methods = ['qem', 'rws', 'vi']
     if plot_global_QEM:
