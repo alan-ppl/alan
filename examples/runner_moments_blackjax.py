@@ -13,6 +13,8 @@ import jax.scipy.stats as stats
 
 import blackjax
 
+from collections import namedtuple
+
 import logging
 logger = logging.getLogger('pymc')
 logger.setLevel(logging.ERROR)
@@ -23,8 +25,17 @@ def safe_time(device):
     return time.time()
 
 def get_predll(model, samples, rng_key):
-    vectorized_apply = jax.vmap(model, in_axes=0, out_axes=0)
-    probs = vectorized_apply(samples)
+    samples = samples._asdict()
+    names = list(samples.keys())
+    probs = np.zeros(samples[names[0]].shape[0])
+    for i in range(samples[names[0]].shape[0]):
+        temp_samples = {}
+        for name in names:
+            temp_samples[name] = np.array(samples[name][i,...])
+        temp_samples = namedtuple("model_params", temp_samples.keys())(*temp_samples.values())
+        probs[i] = model(temp_samples)
+    # vectorized_apply = jax.vmap(model, in_axes=0, out_axes=0)
+    # probs = vectorized_apply(samples)
 
 
     return probs
