@@ -9,6 +9,7 @@ from pathlib import Path
 
 from itertools import product
 
+import numpy as np
 def safe_time(device):
     if device.type == 'cuda':
         t.cuda.synchronize()
@@ -99,19 +100,28 @@ def run_experiment(cfg):
             f.write(f"{start_time}\n{cfg}\n\n")
             f.write(f"Starting job.\n")
 
+    moments_collection = {'means':{}, 'means2':{}}
     
-    for num_run in range(num_runs):
-        means = []
-        means2 = []
-        for K_idx, K in enumerate(Ks):
-            lrs = Ks_lrs[K]
-            K_start_time = safe_time(device)
-            for lr_idx, lr in enumerate(lrs):
+    
+    for K_idx, K in enumerate(Ks):
+        lrs = Ks_lrs[K]
+        K_start_time = safe_time(device)
+        for lr_idx, lr in enumerate(lrs):
+            for num_run in range(num_runs):
                 t.manual_seed(num_run)
                 print(f"K: {K}, lr: {lr}, num_run: {num_run}")
 
                 prob = model.generate_problem(device, platesizes, data, covariates, Q_param_type='qem' if cfg.method == 'qem' else 'opt')
 
+                moments_collection = {'means':{}, 'means2':{}}
+                sample = prob.sample(3, reparam=False)
+                m = sample.moments(moment_list)
+                temp_means = [m[i] for i in range(0,len(latent_names)*2,2)]
+                for j, k in enumerate(latent_names):
+                    latent_shape = temp_means[j].shape
+                    moments_collection['means'][k] = np.zeros((num_iters, num_runs, *latent_shape))
+                    moments_collection['means2'][k] = np.zeros((num_iters, num_runs, *latent_shape))
+        
                 if cfg.method == 'vi': 
                     opt = t.optim.Adam(prob.Q.parameters(), lr=lr)
                 elif cfg.method == 'rws':
@@ -181,33 +191,23 @@ def run_experiment(cfg):
                         
                         if cfg.save_moments:
                             
-                            means.append({name:[] for name in latent_names})
-                            means2.append({name:[] for name in latent_names})
-                            for _ in range(10):
-                                sample = prob.sample(K, reparam=False)
-                                
-                                
-                                m = sample.moments(moment_list)
-                                temp_means = [m[i] for i in range(0,len(latent_names)*2,2)]
-                                temp_means2 = [m[i] for i in range(1,len(latent_names)*2,2)]
-                                for j, k in enumerate(latent_names):
-                                    means[-1][k].append(temp_means[j].rename(None))
-                                    means2[-1][k].append(temp_means2[j].rename(None))
+                            sample = prob.sample(K, reparam=False)
+                            
+                            
+                            m = sample.moments(moment_list)
+                            temp_means = [m[i] for i in range(0,len(latent_names)*2,2)]
+                            temp_means2 = [m[i] for i in range(1,len(latent_names)*2,2)]
+                            for j, k in enumerate(latent_names):
+                                moments_collection['means'][k][i, num_run, ...] = temp_means[j]
+                                moments_collection['means2'][k][i, num_run, ...] = temp_means2[j]
                                     
-                                #convert moments to numpy
                             
-                            for k,v in means[-1].items():
-                                means[-1][k] = t.stack(v).detach().mean(0).cpu().numpy()
-                                
-                            for k,v in means2[-1].items():
-                                means2[-1][k] = t.stack(v).detach().mean(0).cpu().numpy()
-                            
-                            #save moments to file
-                            moments = {'means': means, 'means2': means2}
-                            with open(f"{cfg.model}/results/{model_name}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_moments{non_mp_string}.pkl", "wb") as f:
-                                pickle.dump(moments, f)
-                        
-                        
+ 
+                        #save moments to file
+                        with open(f"{cfg.model}/results/{model_name}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_moments{non_mp_string}.pkl", "wb") as f:
+                            pickle.dump(moments_collection, f)
+                    
+                    
                 except Exception as e:
                     print(f"num_run: {num_run} K: {K} lr: {lr} failed at iteration {i} with exception {e}.")
                     if cfg.write_job_status:
@@ -215,9 +215,9 @@ def run_experiment(cfg):
                             f.write(f"num_run: {num_run} K: {K} lr: {lr} failed at iteration {i} with exception {e}.\n")
                     continue
 
-            if cfg.write_job_status:
-                with open(f"{cfg.model}/job_status/{model_name}/{cfg.method}{non_mp_string}_status.txt", "a") as f:
-                    f.write(f"num_run: {num_run} K: {K} done in {safe_time(device)-K_start_time}s.\n")
+        if cfg.write_job_status:
+            with open(f"{cfg.model}/job_status/{model_name}/{cfg.method}{non_mp_string}_status.txt", "a") as f:
+                f.write(f"num_run: {num_run} K: {K} done in {safe_time(device)-K_start_time}s.\n")
 
     to_pickle = {'elbos': elbos.cpu(), 'p_lls': p_lls.cpu(), 'iter_times': iter_times,
                  'Ks': Ks, 'lrs': lrs, 'num_runs': num_runs, 'num_iters': num_iters}
