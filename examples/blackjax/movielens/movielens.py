@@ -10,14 +10,15 @@ M, N = 300, 5
 
 def get_model(data, covariates):
 
-    params = namedtuple("model_params", ["mu_z", "psi_z", "z"])
+    params = namedtuple("model_params", ["mu_z", "psi_z", "z_non_cent"])
     def joint_logdensity(params, data, covariates):
         mu_z = stats.norm.logpdf(params.mu_z, 0., 1.).sum()
         psi_z = stats.norm.logpdf(params.psi_z, 0., 1.).sum()
-        z = stats.norm.logpdf(params.z, params.mu_z, jnp.exp(params.psi_z)).sum()
-        obs = stats.bernoulli.logpmf(data, jax.nn.sigmoid((params.z @ (covariates['x'].reshape(300,18,5))))).sum()
+        z_non_cent = stats.norm.logpdf(params.z_non_cent, 0., 1.).sum()
+        z = params.mu_z + params.z_non_cent * jnp.exp(params.psi_z)
+        obs = stats.bernoulli.logpmf(data, jax.nn.sigmoid((z @ (covariates['x'].reshape(300,18,5))))).sum()
         
-        return mu_z + psi_z + z + obs
+        return mu_z + psi_z + z_non_cent + obs
     
     def init_param_fn(seed):
         """
@@ -27,10 +28,14 @@ def get_model(data, covariates):
         return params(
             mu_z=jax.random.normal(key1),
             psi_z=jax.random.normal(key2),
-            z=jax.random.normal(key3, shape=(M,d_z)),
+            z_non_cent=jax.random.normal(key3, shape=(M,d_z)),
         )
     
-    return joint_logdensity, params, init_param_fn
+    def transform_non_cent_to_cent(params, covariates=None):
+        params['z'] = params['mu_z'][:,jnp.newaxis] + params['z'] * jnp.exp(params['psi_z'][:,jnp.newaxis])
+        return params
+    
+    return joint_logdensity, params, init_param_fn, transform_non_cent_to_cent
 
 def get_test_data_cov_dict(all_data, all_covariates, platesizes):
     test_data = all_data

@@ -79,8 +79,9 @@ def get_model(data, covariates):
         
         
     #     # obs = pm.Bernoulli("obs", logit_p=logits, shape=(num_actors, num_blocks, num_repeats_plate), observed=true_obs)
-    params = namedtuple("model_params", ["CM_alpha", "Wearing_alpha", "Mobility_alpha", "RegionR", "InitialSize_log_mean", "log_infected_noise_mean", "InitialSize_log", "log_infected_noise", "psi"] + [f'log_infected_{i}' for i in range(nDs)])     
+    params = namedtuple("model_params", ["CM_alpha", "Wearing_alpha", "Mobility_alpha", "RegionR", "InitialSize_log_mean", "log_infected_noise_mean", "InitialSize_log_non_cent", "log_infected_noise", "psi"])     
     def joint_logdensity(params, data, covariates):
+        nDs = data.shape[1]
         #Global
         CM_alpha = stats.norm.logpdf(params.CM_alpha, 0., cm_prior_scale).sum()
         Wearing_alpha = stats.norm.logpdf(params.Wearing_alpha, wearing_mean, wearing_sigma).sum()
@@ -90,22 +91,36 @@ def get_model(data, covariates):
         log_infected_noise_mean = stats.norm.logpdf(params.log_infected_noise_mean, 0, 0.25).sum()
         
         #Region level
-        InitialSize_log = stats.norm.logpdf(params.InitialSize_log, params.InitialSize_log_mean, 0.5).sum()
+        InitialSize_log_non_cent = stats.norm.logpdf(params.InitialSize_log_non_cent, 0., 1.).sum()
+        InitialSize_log = params.InitialSize_log_mean + params.InitialSize_log_non_cent * 0.5
         log_infected_noise = stats.norm.logpdf(params.log_infected_noise, 0, 0.25).sum()
+        psi = stats.norm.logpdf(params.psi, 0., 1).sum()
         
         #Day level
-        psi = stats.norm.logpdf(params.psi, 0., 1).sum()
-        Expected_Log_Rs = params.RegionR + (covariates['ActiveCMs_NPIs']@params.CM_alpha.reshape(9,1)).reshape(92,109) + params.Wearing_alpha*covariates['ActiveCMs_wearing'] + params.Mobility_alpha*covariates['ActiveCMs_mobility'] 
+        Expected_Log_Rs = params.RegionR + (covariates['ActiveCMs_NPIs']@params.CM_alpha.reshape(9,1)).squeeze() + (params.Wearing_alpha*covariates['ActiveCMs_wearing']) + (params.Mobility_alpha*covariates['ActiveCMs_mobility']) 
         
-        log_infecteds = [InitialSize_log]
+        #log_infecteds = [InitialSize_log]
         
-        for i in range(nDs):
-            log_infected = stats.norm.logpdf(getattr(params,f'log_infected_{i}'), log_infecteds[i] + Expected_Log_Rs[:,i], params.log_infected_noise).sum()
-            log_infecteds.append(log_infected)
+        # for i in range(nDs):
+        #     log_infected = stats.norm.logpdf(getattr(params,f'log_infected_{i}'), log_infecteds[i] + Expected_Log_Rs[:,i], params.log_infected_noise).sum()
+        #     log_infecteds.append(log_infected)
         
-        obs = stats.nbinom.logpmf(data, jnp.exp(params.psi), jax.nn.sigmoid(jnp.stack([getattr(params,f'log_infected_{i}') for i in range(nDs)]).reshape(92,109))).sum()
+        expanded_r_walk_noise = jnp.tile(
+                jnp.cumsum(params.log_infected_noise, axis=-1),
+                1,
+            )[:nRs, :nDs]
         
-        return CM_alpha + Wearing_alpha + Mobility_alpha + RegionR + InitialSize_log_mean + log_infected_noise_mean + InitialSize_log + log_infected_noise + psi + obs
+        growth = Expected_Log_Rs + expanded_r_walk_noise
+        log_infected = jnp.reshape(InitialSize_log, (nRs,1)) + jnp.cumsum(growth, axis=1)
+        
+        obs = stats.nbinom.logpmf(data, jnp.exp(params.psi).reshape(nRs,-1), jax.nn.sigmoid(log_infected)).sum()
+        
+        return CM_alpha + Wearing_alpha + Mobility_alpha + RegionR + InitialSize_log_mean + log_infected_noise_mean + InitialSize_log_non_cent + log_infected_noise + psi + obs
+    
+    def transform_non_cent_to_cent(params, covariates=None):
+        params['InitialSize_log'] = params['InitialSize_log_mean'][:,jnp.newaxis] + params['InitialSize_log_non_cent'][:,jnp.newaxis] * 0.5
+        
+        return params
     
     def init_param_fn(seed):
         """
@@ -120,13 +135,12 @@ def get_model(data, covariates):
             RegionR = jax.random.normal(key4),
             InitialSize_log_mean = jax.random.normal(key5),
             log_infected_noise_mean = jax.random.normal(key6),
-            InitialSize_log = jax.random.normal(key7, shape=(nRs,)),
-            log_infected_noise = jax.random.normal(key8, shape=(nRs,)),
-            psi = jax.random.normal(key9, shape=(nRs,nDs)),
-            **{f'log_infected_{i}':jax.random.normal(log_infected_keys[i], shape=(nRs,)) for i in range(nDs)},
+            InitialSize_log_non_cent = jax.random.normal(key7, shape=(nRs,)),
+            log_infected_noise = jax.random.normal(key8, shape=(nRs,nDs)),
+            psi = jax.random.normal(key9, shape=(nRs,)),
         )
         
-    return joint_logdensity, params, init_param_fn
+    return joint_logdensity, params, init_param_fn, transform_non_cent_to_cent
         
         
         

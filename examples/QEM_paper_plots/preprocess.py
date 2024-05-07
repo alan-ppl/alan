@@ -100,23 +100,23 @@ def get_best_results(model_name, validation_iter_number=200, method_names=['qem'
                 
                 if model_name == 'bus_breakdown' and using_new_bus:
                     if 'qem' not in method_name:
-                        lr_order = np.array([[2,1,0]])
+                        lr_order = np.array([1,0])
                     else:
-                        lr_order = np.array([[0,1,2]])
+                        lr_order = np.array([0,1])
                 # breakpoint()
 
                 # for bus and movielens results, we know what learning rates were used but they are saved incorrectly in results[method_name][dataset_seed]['lrs']
-                if 'bus' in model_name or 'movielens' in model_name:
-                    if model_name == 'bus_breakdown' and using_new_bus:# and 'qem' not in method_name:
-                        #deal with bus K=100 weird case of 3 lrs (should only be 1?)
-                        # if 'qem' in method_name:
-                        #     results[method_name][dataset_seeds[0]]['lrs'] = {3: [0.001, None], 10: [0.001, None], 30: [0.01, None], 100: [0.1, None, None]}[K]
-                        # else:
-                        #     # breakpoint()
-                        #     results[method_name][dataset_seeds[0]]['lrs'] = [0.1,0.03,0.01]
-                        results[method_name][dataset_seeds[0]]['lrs'] = [0.1,0.03,0.01]
-                    else:
-                        results[method_name][dataset_seeds[0]]['lrs'] = {3: [0.001, None], 10: [0.001, None], 30: [0.1, 0.03], 100: [0.1, None]}[K]
+                #if 'bus' in model_name or 'movielens' in model_name:
+                    # if model_name == 'bus_breakdown' and using_new_bus:# and 'qem' not in method_name:
+                    #     #deal with bus K=100 weird case of 3 lrs (should only be 1?)
+                    #     # if 'qem' in method_name:
+                    #     #     results[method_name][dataset_seeds[0]]['lrs'] = {3: [0.001, None], 10: [0.001, None], 30: [0.01, None], 100: [0.1, None, None]}[K]
+                    #     # else:
+                    #     #     # breakpoint()
+                    #     #     results[method_name][dataset_seeds[0]]['lrs'] = [0.1,0.03,0.01]
+                    #     results[method_name][dataset_seeds[0]]['lrs'] = [0.1,0.03,0.01]
+                    # else:
+                results[method_name][dataset_seeds[0]]['lrs'] = {3: [0.001, None], 10: [0.001, None], 30: [0.1, 0.03], 100: [0.1, None]}[K]
                 lrs = np.array(results[method_name][dataset_seeds[0]]['lrs'])[lr_order]
 
                 print(f"{method_name} K: {K}, lr_order: {lr_order} ({lrs})")
@@ -178,7 +178,7 @@ if __name__ == "__main__":
     get_best_results('bus_breakdown', method_names=method_names)
     get_best_results('bus_breakdown_reparam', method_names=method_names)
 
-    get_best_results('chimpanzees', method_names=method_names)
+    # get_best_results('chimpanzees', method_names=method_names)
 
     get_best_results('movielens', method_names=method_names)
     get_best_results('movielens_reparam', method_names=method_names)

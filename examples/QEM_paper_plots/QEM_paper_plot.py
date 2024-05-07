@@ -484,17 +484,17 @@ if __name__ == "__main__":
 
     using_new_bus = True
 
-    basic_methods = ['qem', 'rws', 'vi']
+    basic_methods = ['qem', 'rws', 'vi', 'qem_nonmp']
     if plot_global_QEM:
         basic_methods.append('qem_nonmp')
 
-    model2method = {'bus_breakdown': ['qem', 'rws', 'vi'],
-                    'bus_breakdown_reparam': ['qem', 'rws', 'vi'],
-                    'chimpanzees': ['qem', 'rws', 'vi'],
-                    'movielens': ['qem', 'rws', 'vi'],
-                    'movielens_reparam': ['qem', 'rws', 'vi'],
-                    'occupancy': ['qem', 'rws'],
-                    'radon': ['qem', 'rws', 'vi']}
+    model2method = {'bus_breakdown': ['qem', 'rws', 'vi', 'qem_nonmp'],
+                    'bus_breakdown_reparam': ['qem', 'rws', 'vi', 'qem_nonmp'],
+                    'chimpanzees': ['qem', 'rws', 'vi', 'qem_nonmp'],
+                    'movielens': ['qem', 'rws', 'vi', 'qem_nonmp'],
+                    'movielens_reparam': ['qem', 'rws', 'vi', 'qem_nonmp'],
+                    'occupancy': ['qem', 'rws', 'qem_nonmp'],
+                    'radon': ['qem', 'rws', 'vi', 'qem_nonmp']}
     
     for model_name, methods in model2method.items():
         if plot_HMC and model_name not in ('occupancy', 'radon'):
@@ -520,27 +520,27 @@ if __name__ == "__main__":
     short_labels = False
 
     # YLIMS FOCUSING ON END OF TRAINING (WILL OFTEN IGNORE GLOBAL QEM) #
-    ylims = {'elbo': {'bus_breakdown': (-1400,  -1280),
+    ylims = {'elbo': {'bus_breakdown': (-1400,  -1250),
                       'chimpanzees':   (-255,   -244),
                       'movielens':     (-1060,  -980),
-                      'occupancy':     (-49600, -49390),
-                      'radon':         (-2300, -500), #(-494,   -484)},
-                      'bus_breakdown_reparam': (-1450,  -1280),
-                      'movielens_reparam':     (-1180,  -980),},
+                      'occupancy':     (-50000, -20000),
+                      'radon':         (-360,-275), #(-494,   -484)},
+                      'bus_breakdown_reparam': (-1400,  -1250),
+                      'movielens_reparam':     (-2000,  -980),},
              'p_ll': {'bus_breakdown': (-1800,  -1450),
                       'chimpanzees':   (-45,    -39.5),
                       'movielens':     (-965,  -940),
-                      'occupancy':     (-24764, -24756),
-                      'radon':         (-10000000, 0),#(-170,   -120)},
+                      'occupancy':     (-60000, -20000),
+                      'radon':         (-1000, -500),#(-170,   -120)},
                       'bus_breakdown_reparam': (-1800,  -1450),
-                      'movielens_reparam':     (-1060,  -940),}
+                      'movielens_reparam':     (-2000,  -940),}
             }
     
-    if using_new_bus:
-        ylims['elbo']['bus_breakdown'] = (-2600,  -2000)
-        ylims['p_ll']['bus_breakdown'] = (-4300,  -3980)
-        ylims['elbo']['bus_breakdown_reparam'] = (-3000,  -2000)
-        ylims['p_ll']['bus_breakdown_reparam'] = (-5000,  -3980)
+    # if using_new_bus:
+    #     ylims['elbo']['bus_breakdown'] = (-2600,  -2000)
+    #     ylims['p_ll']['bus_breakdown'] = (-4300,  -3980)
+    #     ylims['elbo']['bus_breakdown_reparam'] = (-3000,  -2000)
+    #     ylims['p_ll']['bus_breakdown_reparam'] = (-5000,  -3980)
 
     for x_axis_iters in [True, False]:
         x_axis_str = 'ITER' if x_axis_iters else 'TIME'

@@ -110,7 +110,7 @@ def run_experiment(cfg):
 
             print(f"num_run: {num_run}")
             num_run_start_time = safe_time(device)
-            joint_logdensity, params, init_param_fn = model.get_model(data, covariates)
+            joint_logdensity, params, init_param_fn, transform_non_cent_to_cent = model.get_model(data, covariates)
             training_joint_logdensity = lambda params: joint_logdensity(params, data['obs'], covariates)
             
             warmup = blackjax.window_adaptation(blackjax.nuts, training_joint_logdensity)
@@ -137,11 +137,11 @@ def run_experiment(cfg):
             rng_key, warmup_key, sample_key = jax.random.split(rng_key, 3)
             kernel = blackjax.nuts(training_joint_logdensity, **parameters).step
             states = inference_loop(sample_key, kernel, state, num_samples)
-            times['p_ll'][:, num_run] = np.linspace(0,safe_time(device)-sampling_start_time,num_samples+1)[1:]
+            times['moments'][:, num_run] = np.linspace(0,safe_time(device)-sampling_start_time,num_samples+1)[1:]
 
             states_dict = states.position._asdict()
             #HMC means
-            HMC_means = {key: np.mean(states_dict[key], axis=0) for key in states_dict}
+            # HMC_means = {key: np.mean(states_dict[key], axis=0) for key in states_dict}
 
             if cfg.do_predll:
                 print("Sampling predictive log likelihood with JAX")
@@ -153,9 +153,11 @@ def run_experiment(cfg):
                 p_lls[:, num_run] = pred_ll
                 times['p_ll'][:, num_run] = np.linspace(0,safe_time(device)-p_ll_start_time,num_samples+1)[1:] + times['moments'][:, num_run]
             # compute moments for each latent
-            for name in latent_names:
+            
+            states_dict = transform_non_cent_to_cent(states_dict, covariates)
+            for name in states_dict.keys():
                 if num_run == 0:
-                    latent_shape = HMC_means[name].shape
+                    latent_shape = states_dict[name].shape[1:]
                     moments_collection[name] = np.zeros((num_samples, num_runs, *latent_shape))
                 
                 moments_collection[name][:, num_run, ...] = np.array([states_dict[name][j,...] for j in range(1, num_samples+1)])
@@ -178,21 +180,7 @@ def run_experiment(cfg):
         if num_failed >= 10:
             print(f"Failed to complete num_run: {num_run} after 10 attempts (using seeds {seed-num_failed}-{seed}).")
             break
-
-    for i, name in enumerate(latent_names):
-        if fake_data:
-            ground_truth = fake_latents[name]
-            latent_ndim = ground_truth.ndim # no need for -1 since we haven't yet added the iteration dimension
-
-            # if (None, None, *ground_truth.names) != moments_collection[name].names:
-            #     ground_truth = ground_truth.align_as(moments_collection[name]).mean(1)
-            #     latent_ndim = ground_truth.ndim - 1
-        else:
-            ground_truth = moments_collection[name].mean(1)
-            latent_ndim = ground_truth.ndim - 1
         
-        
-
 
     to_pickle = {'times': times, 'num_runs': num_runs, 
                 'num_samples': num_samples, 'num_tuning_samples': num_tuning_samples, 'target_accept': target_accept}
