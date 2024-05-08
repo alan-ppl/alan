@@ -125,7 +125,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                 a = Group(
                         InitialSize_log = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                         log_infected_noise = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
-                        psi = Normal(OptParam(0.), OptParam(0., transformation=t.exp)), 
+                        psi = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))
                 ),
                 nDs = Plate(
                     log_infected = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
