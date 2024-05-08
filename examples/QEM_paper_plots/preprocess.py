@@ -98,7 +98,7 @@ def get_best_results(model_name, validation_iter_number=200, method_names=['qem'
                 lr_order = np.concatenate([lr_order[~np.isnan(elbos[method_name][k, lr_order, validation_iter_number])],
                                         lr_order[np.isnan(elbos[method_name][k, lr_order, validation_iter_number])]])
                 
-                if model_name == 'bus_breakdown' or model_name == 'occupancy' and using_new_bus:
+                if model_name == 'bus_breakdown' or model_name == 'occupancy' or model_name == 'bus_breakdown_reparam' and using_new_bus:
                     if 'qem' not in method_name:
                         lr_order = np.array([1,0])
                     else:

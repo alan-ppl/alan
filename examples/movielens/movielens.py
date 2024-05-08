@@ -115,7 +115,7 @@ if __name__ == "__main__":
                      K = 10,
                      num_runs = 1,
                      num_iters = 100,
-                     lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.3},
+                     lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1},
                      fake_data = False,
                      device = 'cpu')
     

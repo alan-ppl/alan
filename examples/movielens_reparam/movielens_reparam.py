@@ -1,45 +1,52 @@
 import torch as t
-import math
-from alan import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam, Split, mean, mean2
-import numpy as np
+from alan import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam, mean, mean2
+
 d_z = 18
 M, N = 300, 5
 
-def load_data_covariates(device, run=0, data_dir='data/', fake_data=False):
+def load_data_covariates(device, run=0, data_dir='data/', fake_data=False, return_fake_latents=False):
     platesizes = {'plate_1': M, 'plate_2': N}
     all_platesizes = {'plate_1': M, 'plate_2': 2*N}
 
-    covariates = {'x':t.load(f'{data_dir}weights_{N}_{M}_{run}.pt')}
-    test_covariates = {'x':t.load(f'{data_dir}test_weights_{N}_{M}_{run}.pt')}
+    covariates = {'x':t.load(f'{data_dir}weights_{N}_{M}.pt')}
+    test_covariates = {'x':t.load(f'{data_dir}test_weights_{N}_{M}.pt')}
     all_covariates = {'x': t.cat([covariates['x'],test_covariates['x']],-2).rename('plate_1','plate_2',...)}
     covariates['x'] = covariates['x'].rename('plate_1','plate_2',...)
     all_covariates['x'] = all_covariates['x'].rename('plate_1','plate_2',...)
 
     if not fake_data:
-        data = {'obs':t.load(f'{data_dir}data_y_{N}_{M}_{run}.pt')}
-        test_data = {'obs':t.load(f'{data_dir}test_data_y_{N}_{M}_{run}.pt')}
+        data = {'obs':t.load(f'{data_dir}data_y_{N}_{M}.pt')}
+        test_data = {'obs':t.load(f'{data_dir}test_data_y_{N}_{M}.pt')}
         all_data = {'obs': t.cat([data['obs'],test_data['obs']], -1).rename('plate_1','plate_2')}
         data['obs'] = data['obs'].rename('plate_1','plate_2')
         all_data['obs'] = all_data['obs'].rename('plate_1','plate_2')
 
     else:
         P = get_P(all_platesizes, all_covariates)
-        all_data = {'obs': P.sample()['obs'].align_to('plate_1', 'plate_2')}
+        sample = P.sample()
+        all_data = {'obs': sample.pop('obs').align_to('plate_1', 'plate_2')}
 
         data = {'obs': all_data['obs'][:,:N]}
+
+        all_latents = sample
+        latents = sample 
+
+        if return_fake_latents:
+            return platesizes, all_platesizes, data, all_data, covariates, all_covariates, latents, all_latents
 
     return platesizes, all_platesizes, data, all_data, covariates, all_covariates
 
 def get_P(platesizes, covariates):
+    logits = lambda z, x: (100*z) @ x
     P = Plate(
         mu_z = Normal(t.zeros((d_z,)), t.ones((d_z,))),
         psi_z = Normal(t.zeros((d_z,)), t.ones((d_z,))),
 
         plate_1 = Plate(
-            z = Normal(lambda mu_z: mu_z / 100, lambda psi_z: (psi_z).exp() / 100),
+            z = Normal(lambda mu_z: 1/100 * mu_z, lambda psi_z:1/100 * psi_z.exp()),
 
             plate_2 = Plate(
-                obs = Bernoulli(logits = lambda z, x: (z*100) @ x),
+                obs = Bernoulli(logits = logits),
             )
         ),
     )
@@ -54,12 +61,11 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
 
     if Q_param_type == "opt":
         Q = Plate(
-
             mu_z = Normal(OptParam(t.zeros((d_z,))), OptParam(t.zeros((d_z,)), transformation=t.exp)),
             psi_z = Normal(OptParam(t.zeros((d_z,))), OptParam(t.zeros((d_z,)), transformation=t.exp)),
 
             plate_1 = Plate(
-                z = Normal(OptParam(t.zeros((d_z,))), OptParam((-np.log(100)) * t.ones((d_z,)), transformation=t.exp)),
+                z = Normal(OptParam(t.zeros((d_z,))), OptParam(-math.log(100) * t.zeros((d_z,)), transformation=t.exp)),
 
                 plate_2 = Plate(
                     obs = Data()
@@ -109,20 +115,19 @@ if __name__ == "__main__":
                      K = 10,
                      num_runs = 1,
                      num_iters = 100,
-                     lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.3},
+                     lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1},
                      fake_data = False,
                      device = 'cpu')
-    
     
     # platesizes, all_platesizes, data, all_data, covariates, all_covariates = load_data_covariates('cpu', fake_data=False)
     
     # P = get_P(platesizes, covariates)
     
-    # # prior_samples = P.sample(1000)
-    # # # for name, sample in prior_samples.items():
-    # # #     print(name, sample.mean(0), sample.std(0))
+    # prior_samples = P.sample(1000)
     # # for name, sample in prior_samples.items():
-    # #     print(name, sample.mean('N'), sample.std('N'))
+    # #     print(name, sample.mean(0), sample.std(0))
+    # for name, sample in prior_samples.items():
+    #     print(name, sample.mean('N'), sample.std('N'))
         
     # problem, all_data, all_covariates, all_platesizes = _load_and_generate_problem('cpu', 'qem', run=0, data_dir='data/', fake_data=False)
     
@@ -147,5 +152,8 @@ if __name__ == "__main__":
     # print(t.stack(psi_means).mean(0))
     # print(t.stack(psi_vars).mean(0))
     # print('z')
-    # print(t.stack(z_means).mean(0) * 10)
-    # print(t.stack(z_vars).mean(0) * 100)
+    # print(t.stack(z_means).mean(0))
+    # print(t.stack(z_vars).mean(0))
+    
+    
+
