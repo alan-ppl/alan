@@ -98,11 +98,11 @@ def get_best_results(model_name, validation_iter_number=200, method_names=['qem'
                 lr_order = np.concatenate([lr_order[~np.isnan(elbos[method_name][k, lr_order, validation_iter_number])],
                                         lr_order[np.isnan(elbos[method_name][k, lr_order, validation_iter_number])]])
                 
-                if model_name == 'bus_breakdown' or model_name == 'occupancy' or model_name == 'bus_breakdown_reparam' and using_new_bus:
-                    if 'qem' not in method_name:
-                        lr_order = np.array([1,0])
-                    else:
-                        lr_order = np.array([0,1])
+                # if model_name == 'bus_breakdown' or model_name == 'occupancy' or model_name == 'bus_breakdown_reparam' or model_name == 'movielens_reparam' or model_name == 'movielens' and using_new_bus:
+                #     if 'qem' not in method_name:
+                #         lr_order = np.array([1,0])
+                #     else:
+                #         lr_order = np.array([0,1])
                 # breakpoint()
 
                 # for bus and movielens results, we know what learning rates were used but they are saved incorrectly in results[method_name][dataset_seed]['lrs']
@@ -117,7 +117,7 @@ def get_best_results(model_name, validation_iter_number=200, method_names=['qem'
                     #     results[method_name][dataset_seeds[0]]['lrs'] = [0.1,0.03,0.01]
                     # else:
                 results[method_name][dataset_seeds[0]]['lrs'] = {3: [0.001, None], 10: [0.001, None], 30: [0.1, 0.03], 100: [0.1, None]}[K]
-                lrs = np.array(results[method_name][dataset_seeds[0]]['lrs'])[lr_order]
+                lrs = np.array(results[method_name][dataset_seeds[0]]['lrs'])[lr_order[::-1]]
 
                 print(f"{method_name} K: {K}, lr_order: {lr_order} ({lrs})")
 

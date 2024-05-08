@@ -58,10 +58,12 @@ def get_model(data, covariates):
         )
     
     def transform_non_cent_to_cent(params, covariates):
+        num_samples = params['log_delay_non_cent'].shape[0]
         params['beta'] = params['mu_beta'][:,jnp.newaxis] + params['beta_non_cent'] * jnp.exp(params['sigma_beta'][:,jnp.newaxis])
         params['alpha'] = params['beta'][:,jnp.newaxis] + params['alpha_non_cent'] * jnp.exp(params['sigma_alpha'][:,jnp.newaxis])
-        params['log_delay'] = params['alpha'].reshape(3,3,1,-1) + ((covariates['bus_company_name'] @ params['phi'].transpose()) + (covariates['run_type'] @ params['psi'].transpose())) + params['log_delay_non_cent'].reshape(3,3,30,-1)
+        params['log_delay'] = params['alpha'].reshape(num_samples, 3,3,1) + ((covariates['bus_company_name'] @ params['phi'].transpose()) + (covariates['run_type'] @ params['psi'].transpose())) + params['log_delay_non_cent'].reshape(3,3,30,-1)
         
+
         del params['beta_non_cent']
         del params['alpha_non_cent']
         del params['log_delay_non_cent']

@@ -526,14 +526,14 @@ if __name__ == "__main__":
                       'occupancy':     (-50000, -49000),
                       'radon':         (-360,-275), #(-494,   -484)},
                       'bus_breakdown_reparam': (-1400,  -1250),
-                      'movielens_reparam':     (-2000,  -980),},
+                      'movielens_reparam':     (-1060,  -980),},
              'p_ll': {'bus_breakdown': (-1800,  -1450),
                       'chimpanzees':   (-45,    -39.5),
                       'movielens':     (-965,  -940),
                       'occupancy':     (-24800, -24500),
                       'radon':         (-1000, -500),#(-170,   -120)},
                       'bus_breakdown_reparam': (-1800,  -1450),
-                      'movielens_reparam':     (-2000,  -940),}
+                      'movielens_reparam':     (-965,  -940),}
             }
     
     # if using_new_bus:
@@ -546,7 +546,7 @@ if __name__ == "__main__":
         x_axis_str = 'ITER' if x_axis_iters else 'TIME'
         plot_all_2row(model_names=ALL_MODEL_NAMES,
                     Ks_to_plot=best_Ks,
-                    num_lrs = 1,
+                    num_lrs = 2,
                     filename_end = f"K30_SMOOTH{smoothing_window}_{x_axis_str}",
                     x_axis_iters = x_axis_iters, 
                     x_lim = iteration_x_lim, 
