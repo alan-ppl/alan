@@ -182,7 +182,7 @@ def run_experiment(cfg):
             break
         
 
-    to_pickle = {'times': times, 'num_runs': num_runs, 
+    to_pickle = {'p_lls': p_lls, 'times': times, 'num_runs': num_runs, 
                 'num_samples': num_samples, 'num_tuning_samples': num_tuning_samples, 'target_accept': target_accept}
 
 
