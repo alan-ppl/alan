@@ -1,6 +1,7 @@
 import torch as t
 from alan import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam, mean, mean2
 
+import math
 d_z = 18
 M, N = 300, 5
 
