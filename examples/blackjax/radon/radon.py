@@ -13,7 +13,7 @@ Zips = 5
 
 def get_model(data, covariates):
 
-    params = namedtuple("model_params", ["global_mean", "global_log_sigma", "State_mean", "State_log_sigma", "County_mean", "Beta_u", "Beta_basement", "County_log_sigma"])
+    params = namedtuple("model_params", ["global_mean", "global_log_sigma", "State_mean_non_cent", "State_log_sigma", "County_mean_non_cent", "Beta_u", "Beta_basement", "County_log_sigma"])
     def joint_logdensity(params, data, covariates):
         #Global level
         global_mean = stats.norm.logpdf(params.global_mean, 0., 1.).sum()
