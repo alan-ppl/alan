@@ -53,7 +53,7 @@ def get_model(data, covariates):
         params['County_mean'] = params['State_mean'][...,jnp.newaxis] + params['County_mean_non_cent'] * jnp.exp(params['State_log_sigma'][...,jnp.newaxis])
         
         del params['State_mean_non_cent']
-        del params['State_log_sigma']
+        del params['County_mean_non_cent']
         return params
 
     return joint_logdensity, params, init_param_fn, transform_non_cent_to_cent
