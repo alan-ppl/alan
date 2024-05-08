@@ -32,7 +32,7 @@ def get_model(data, covariates):
         )
     
     def transform_non_cent_to_cent(params, covariates=None):
-        params['z'] = params['mu_z'][:,jnp.newaxis] + params['z_non_cent'] * jnp.exp(params['psi_z'][:,jnp.newaxis])
+        params['z'] = params['mu_z'][:,jnp.newaxis, jnp.newaxis] + params['z_non_cent'] * jnp.exp(params['psi_z'][:,jnp.newaxis, jnp.newaxis])
         return params
     
     return joint_logdensity, params, init_param_fn, transform_non_cent_to_cent

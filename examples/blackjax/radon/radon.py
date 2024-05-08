@@ -24,7 +24,7 @@ def get_model(data, covariates):
         State_log_sigma = stats.norm.logpdf(params.State_log_sigma, 0., 1.).sum()
         #County level
         County_mean_non_cent = stats.norm.logpdf(params.County_mean_non_cent.transpose(), 0., 1.).sum()
-        County_mean = State_mean + params.County_mean_non_cent * jnp.exp(params.State_log_sigma)
+        County_mean = State_mean[:,jnp.newaxis] + params.County_mean_non_cent * jnp.exp(params.State_log_sigma)[...,jnp.newaxis]
         Beta_u = stats.norm.logpdf(params.Beta_u, 0., 1.).sum()
         Beta_basement = stats.norm.logpdf(params.Beta_basement, 0., 1.).sum()
         County_log_sigma = stats.norm.logpdf(params.County_log_sigma, 0., 1.).sum()
@@ -50,7 +50,7 @@ def get_model(data, covariates):
         
     def transform_non_cent_to_cent(params, covariates=None):
         params['State_mean'] = params['global_mean'][:,jnp.newaxis] + params['State_mean_non_cent'] * jnp.exp(params['global_log_sigma'][:,jnp.newaxis])
-        params['County_mean'] = params['State_mean'][:,jnp.newaxis] + params['County_mean_non_cent'] * jnp.exp(params['State_log_sigma'][:,jnp.newaxis])
+        params['County_mean'] = params['State_mean'][...,jnp.newaxis] + params['County_mean_non_cent'] * jnp.exp(params['State_log_sigma'][...,jnp.newaxis])
         return params
 
     return joint_logdensity, params, init_param_fn, transform_non_cent_to_cent
