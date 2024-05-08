@@ -51,6 +51,9 @@ def get_model(data, covariates):
     def transform_non_cent_to_cent(params, covariates=None):
         params['State_mean'] = params['global_mean'][:,jnp.newaxis] + params['State_mean_non_cent'] * jnp.exp(params['global_log_sigma'][:,jnp.newaxis])
         params['County_mean'] = params['State_mean'][...,jnp.newaxis] + params['County_mean_non_cent'] * jnp.exp(params['State_log_sigma'][...,jnp.newaxis])
+        
+        del params['State_mean_non_cent']
+        del params['State_log_sigma']
         return params
 
     return joint_logdensity, params, init_param_fn, transform_non_cent_to_cent

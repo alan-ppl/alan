@@ -120,6 +120,7 @@ def get_model(data, covariates):
     def transform_non_cent_to_cent(params, covariates=None):
         params['InitialSize_log'] = params['InitialSize_log_mean'][:,jnp.newaxis] + params['InitialSize_log_non_cent'][:,jnp.newaxis] * 0.5
         
+        del params['InitialSize_log_mean']
         return params
     
     def init_param_fn(seed):

@@ -209,7 +209,12 @@ def run_experiment(cfg):
                             f.write(f"num_run: {num_run} K: {K} lr: {lr} failed at iteration {i} with exception {e}.\n")
                     continue
                 
-
+            
+            #Average over runs
+            for j, k in enumerate(latent_names):
+                moments_collection['means'][k] = moments_collection['means'][k].mean(axis=1)
+                moments_collection['means2'][k] = moments_collection['means2'][k].mean(axis=1)
+                
             #save moments to file
             with open(f"{cfg.model}/results/{model_name}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_moments{non_mp_string}.pkl", "wb") as f:
                 pickle.dump(moments_collection, f)
