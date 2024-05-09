@@ -42,7 +42,7 @@ def run_experiment(cfg):
         
     target_accept = cfg.target_accept
 
-    spec = importlib.util.spec_from_file_location(cfg.model, f"HMC/{cfg.model}/{cfg.model}.py")
+    spec = importlib.util.spec_from_file_location(cfg.model, f"models/HMC/{cfg.model}/{cfg.model}.py")
     pymc_model = importlib.util.module_from_spec(spec)
     sys.modules[cfg.model] = pymc_model
     spec.loader.exec_module(pymc_model)
@@ -54,10 +54,10 @@ def run_experiment(cfg):
     # t.manual_seed(0)
     if not fake_data:
         # platesizes, all_platesizes, data, all_data, covariates, all_covariates = alan_model.load_data_covariates(device, dataset_seed, f'{cfg.model}/data/', False)
-        with open(f'HMC/{cfg.model}/data/real_data.pkl', 'rb') as f:
+        with open(f'models/HMC/{cfg.model}/data/real_data.pkl', 'rb') as f:
             platesizes, all_platesizes, data, all_data, covariates, all_covariates, latent_names = pickle.load(f)
     else:
-        with open(f'HMC/{cfg.model}/data/fake_data.pkl', 'rb') as f:
+        with open(f'models/HMC/{cfg.model}/data/fake_data.pkl', 'rb') as f:
             platesizes, all_platesizes, data, all_data, covariates, all_covariates, fake_latents, latent_names = pickle.load(f)
         # platesizes, all_platesizes, data, all_data, covariates, all_covariates, fake_latents, _ = alan_model.load_data_covariates(device, dataset_seed, f'{cfg.model}/data/', True, return_fake_latents=True)
 
@@ -100,10 +100,10 @@ def run_experiment(cfg):
                 seed += 1
 
                 if not fake_data:
-                    with open(f'HMC/{cfg.model}/data/real_data.pkl', 'rb') as f:
+                    with open(f'models/HMC/{cfg.model}/data/real_data.pkl', 'rb') as f:
                         platesizes, all_platesizes, data, all_data, covariates, all_covariates, latent_names = pickle.load(f)
                 else:
-                    with open(f'HMC/{cfg.model}/data/fake_data.pkl', 'rb') as f:
+                    with open(f'models/HMC/{cfg.model}/data/fake_data.pkl', 'rb') as f:
                         platesizes, all_platesizes, data, all_data, covariates, all_covariates, fake_latents, latent_names = pickle.load(f)
 
                 print(f"num_run: {num_run}")

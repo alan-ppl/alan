@@ -60,7 +60,7 @@ def run_experiment(cfg):
         
     target_accept = cfg.target_accept
 
-    spec = importlib.util.spec_from_file_location(cfg.model, f"blackjax/{cfg.model}/{cfg.model}.py")
+    spec = importlib.util.spec_from_file_location(cfg.model, f"models/blackjax/{cfg.model}/{cfg.model}.py")
     model = importlib.util.module_from_spec(spec)
     sys.modules[cfg.model] = model
     spec.loader.exec_module(model)
@@ -71,10 +71,10 @@ def run_experiment(cfg):
     # t.manual_seed(0)
     if not fake_data:
         # platesizes, all_platesizes, data, all_data, covariates, all_covariates = alan_model.load_data_covariates(device, dataset_seed, f'{cfg.model}/data/', False)
-        with open(f'blackjax/{cfg.model}/data/real_data.pkl', 'rb') as f:
+        with open(f'models/blackjax/{cfg.model}/data/real_data.pkl', 'rb') as f:
             platesizes, all_platesizes, data, test_data, covariates, test_covariates, latent_names = pickle.load(f)
     else:
-        with open(f'blackjax/{cfg.model}/data/fake_data.pkl', 'rb') as f:
+        with open(f'models/blackjax/{cfg.model}/data/fake_data.pkl', 'rb') as f:
             platesizes, all_platesizes, data, test_data, covariates, test_covariates, fake_latents, latent_names = pickle.load(f)
         # platesizes, all_platesizes, data, all_data, covariates, all_covariates, fake_latents, _ = alan_model.load_data_covariates(device, dataset_seed, f'{cfg.model}/data/', True, return_fake_latents=True)
 
@@ -101,10 +101,10 @@ def run_experiment(cfg):
             seed += 1
 
             if not fake_data:
-                with open(f'blackjax/{cfg.model}/data/real_data.pkl', 'rb') as f:
+                with open(f'models/blackjax/{cfg.model}/data/real_data.pkl', 'rb') as f:
                     platesizes, all_platesizes, data, all_data, covariates, all_covariates, latent_names = pickle.load(f)
             else:
-                with open(f'blackjax/{cfg.model}/data/fake_data.pkl', 'rb') as f:
+                with open(f'models/blackjax/{cfg.model}/data/fake_data.pkl', 'rb') as f:
                     platesizes, all_platesizes, data, all_data, covariates, all_covariates, fake_latents, latent_names = pickle.load(f)
 
             print(f"num_run: {num_run}")

@@ -58,7 +58,7 @@ def run_experiment(cfg):
 
     non_mp_string = '_nonmp' if cfg.non_mp else ''
 
-    spec = importlib.util.spec_from_file_location(cfg.model, f"{cfg.model}/{model_name}.py")
+    spec = importlib.util.spec_from_file_location(cfg.model, f"models/{cfg.model}/{model_name}.py")
     model = importlib.util.module_from_spec(spec)
     sys.modules[cfg.model] = model
     spec.loader.exec_module(model)
@@ -72,7 +72,7 @@ def run_experiment(cfg):
     with open(f"experiments/results/{model_name}/Ks_lrs.pkl", "wb") as f:
         pickle.dump(Ks_lrs, f)
         
-    platesizes, all_platesizes, data, all_data, covariates, all_covariates = model.load_data_covariates(device, cfg.dataset_seed, f'{cfg.model}/data/')
+    platesizes, all_platesizes, data, all_data, covariates, all_covariates = model.load_data_covariates(device, cfg.dataset_seed, f'models/{cfg.model}/data/')
 
     # Put extended data and covariates on device
     for key in all_data:
