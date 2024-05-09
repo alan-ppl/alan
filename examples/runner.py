@@ -55,9 +55,6 @@ def run_experiment(cfg):
         assert split_plate is None and split_size is None
         split = None
 
-    results_subfolder = cfg.results_subfolder
-    if results_subfolder != '':
-        results_subfolder = f"/{results_subfolder}"
 
     non_mp_string = '_nonmp' if cfg.non_mp else ''
 
@@ -67,11 +64,12 @@ def run_experiment(cfg):
     spec.loader.exec_module(model)
 
     # Make sure all the required folders exist for this model
-    for folder in ['results', 'job_status', 'plots']:
-        Path(f"{cfg.model}/{folder}/{model_name}").mkdir(parents=True, exist_ok=True)
-    Path(f"{cfg.model}/results/{model_name}{results_subfolder}").mkdir(parents=True, exist_ok=True)
+    for folder in ['results', 'job_status', 'plots', 'moments']:
+        Path(f"experiments/{folder}/{model_name}").mkdir(parents=True, exist_ok=True)
+        
+    
 
-    with open(f"{cfg.model}/results/{cfg.model_name}/Ks_lrs.pkl", "wb") as f:
+    with open(f"experiments/results/{model_name}/Ks_lrs.pkl", "wb") as f:
         pickle.dump(Ks_lrs, f)
         
     platesizes, all_platesizes, data, all_data, covariates, all_covariates = model.load_data_covariates(device, cfg.dataset_seed, f'{cfg.model}/data/')
@@ -96,7 +94,7 @@ def run_experiment(cfg):
     iter_times = t.zeros((len(Ks), num_lrs, num_iters+1, num_runs))
 
     if cfg.write_job_status:
-        with open(f"{cfg.model}/job_status/{model_name}/{cfg.method}{non_mp_string}_status.txt", "w") as f:
+        with open(f"experiments/job_status/{model_name}/{cfg.method}{non_mp_string}_status.txt", "w") as f:
             f.write(f"{start_time}\n{cfg}\n\n")
             f.write(f"Starting job.\n")
 
@@ -187,7 +185,7 @@ def run_experiment(cfg):
 
                         iter_times[K_idx, lr_idx, i, num_run] = elbo_end_time - elbo_start_time + update_end_time - update_start_time
                 
-                        t.save(prob.state_dict(), f"{cfg.model}/results/{model_name}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}{non_mp_string}.pth")
+                        t.save(prob.state_dict(), f"results/{model_name}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}{non_mp_string}.pth")
                         
                         if cfg.save_moments:
                             
@@ -205,7 +203,7 @@ def run_experiment(cfg):
                 except Exception as e:
                     print(f"num_run: {num_run} K: {K} lr: {lr} failed at iteration {i} with exception {e}.")
                     if cfg.write_job_status:
-                        with open(f"{cfg.model}/job_status/{model_name}/{cfg.method}{non_mp_string}_status.txt", "a") as f:
+                        with open(f"experiments/job_status/{cfg.model}/{model_name}/{cfg.method}{non_mp_string}_status.txt", "a") as f:
                             f.write(f"num_run: {num_run} K: {K} lr: {lr} failed at iteration {i} with exception {e}.\n")
                     continue
                 
@@ -216,11 +214,11 @@ def run_experiment(cfg):
                 moments_collection['means2'][k] = moments_collection['means2'][k].mean(axis=1)
                 
             #save moments to file
-            with open(f"{cfg.model}/results/{model_name}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_moments{non_mp_string}.pkl", "wb") as f:
+            with open(f"experiments/moments/{model_name}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_moments{non_mp_string}.pkl", "wb") as f:
                 pickle.dump(moments_collection, f)
 
         if cfg.write_job_status:
-            with open(f"{cfg.model}/job_status/{model_name}/{cfg.method}{non_mp_string}_status.txt", "a") as f:
+            with open(f"experiments/job_status/{model_name}/{cfg.method}{non_mp_string}_status.txt", "a") as f:
                 f.write(f"num_run: {num_run} K: {K} done in {safe_time(device)-K_start_time}s.\n")
 
     to_pickle = {'elbos': elbos.cpu(), 'p_lls': p_lls.cpu(), 'iter_times': iter_times,
@@ -240,11 +238,11 @@ def run_experiment(cfg):
         print(cuda_mem_summary)
 
         if cfg.write_job_status:
-            with open(f"{cfg.model}/job_status/{model_name}/{cfg.method}{non_mp_string}_status.txt", "a") as f:
+            with open(f"experiments/job_status/{model_name}/{cfg.method}{non_mp_string}_status.txt", "a") as f:
                 f.write(f"\n{cuda_mem_summary}\n")
 
     # breakpoint()
-    with open(f'{cfg.model}/results/{model_name}{results_subfolder}/{cfg.method}{non_mp_string}{cfg.dataset_seed}.pkl', 'wb') as f:
+    with open(f'experiments/results/{model_name}/{cfg.method}{non_mp_string}{cfg.dataset_seed}.pkl', 'wb') as f:
         pickle.dump(to_pickle, f)
 
 
