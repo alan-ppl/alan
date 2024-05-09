@@ -185,7 +185,7 @@ def run_experiment(cfg):
 
                         iter_times[K_idx, lr_idx, i, num_run] = elbo_end_time - elbo_start_time + update_end_time - update_start_time
                 
-                        t.save(prob.state_dict(), f"results/{model_name}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}{non_mp_string}.pth")
+                        t.save(prob.state_dict(), f"experiments/results/{model_name}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}{non_mp_string}.pth")
                         
                         if cfg.save_moments:
                             
