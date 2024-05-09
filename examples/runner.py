@@ -203,7 +203,7 @@ def run_experiment(cfg):
                 except Exception as e:
                     print(f"num_run: {num_run} K: {K} lr: {lr} failed at iteration {i} with exception {e}.")
                     if cfg.write_job_status:
-                        with open(f"experiments/job_status/{cfg.model}/{model_name}/{cfg.method}{non_mp_string}_status.txt", "a") as f:
+                        with open(f"experiments/job_status/{cfg.model}/{cfg.method}{non_mp_string}_status.txt", "a") as f:
                             f.write(f"num_run: {num_run} K: {K} lr: {lr} failed at iteration {i} with exception {e}.\n")
                     continue
                 
