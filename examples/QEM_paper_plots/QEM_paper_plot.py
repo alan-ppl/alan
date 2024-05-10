@@ -8,7 +8,7 @@ import preprocess
 
 # ALL_MODEL_NAMES = ['bus_breakdown', 'chimpanzees', 'movielens', 'occupancy', 'radon']
 # ALL_MODEL_NAMES = ['bus_breakdown', 'bus_breakdown_reparam', 'chimpanzees', 'movielens', 'movielens_reparam', 'occupancy', 'radon']
-ALL_MODEL_NAMES = ['bus_breakdown', 'bus_breakdown_reparam', 'movielens', 'movielens_reparam', 'occupancy', 'radon']
+ALL_MODEL_NAMES = ['bus_breakdown', 'bus_breakdown_reparam', 'movielens', 'movielens_reparam', 'occupancy', 'radon', 'covid']
 
 SHORT_LABEL_DICT = {'qem': 'QEM', 'rws': 'MP RWS', 'vi': 'MP VI', 'qem_nonmp': 'Global QEM', 'global_rws': 'Global RWS', 'global_vi': 'IWAE', 'HMC': 'HMC'}
 
@@ -20,7 +20,7 @@ DEFAULT_COLOURS = {'qem': '#e7298a', 'qem_nonmp' : '#7570b3',
                    'HMC': '#000000'}
 
 def load_results(model_name):
-    with open(f'{model_name}_results/best.pkl', 'rb') as f:
+    with open(f'results/{model_name}/best.pkl', 'rb') as f:
         return pickle.load(f)
     
 def smooth(x, window):
@@ -494,7 +494,8 @@ if __name__ == "__main__":
                     'movielens': ['qem', 'rws', 'vi', 'qem_nonmp'],
                     'movielens_reparam': ['qem', 'rws', 'vi', 'qem_nonmp'],
                     'occupancy': ['qem', 'rws', 'qem_nonmp'],
-                    'radon': ['qem', 'rws', 'vi', 'qem_nonmp']}
+                    'radon': ['qem', 'rws', 'vi', 'qem_nonmp'],
+                    'covid': ['qem', 'rws', 'vi', 'qem_nonmp']}
     
     for model_name, methods in model2method.items():
         if plot_HMC and model_name not in ('occupancy', 'radon'):
@@ -504,9 +505,9 @@ if __name__ == "__main__":
             
 
     for model_name in ALL_MODEL_NAMES:
-        preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=model2method[model_name], ignore_nans=ignore_nans, using_new_bus=using_new_bus)
+        preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=model2method[model_name], ignore_nans=ignore_nans)
     
-    sub_model_collections = {'standard': ['bus_breakdown', 'movielens', 'occupancy', 'radon'],
+    sub_model_collections = {'standard': ['bus_breakdown', 'movielens', 'occupancy', 'radon', 'covid'],
                              'reparams': ['bus_breakdown_reparam', 'movielens_reparam']}
     
     ##################### TIME-PER-ITERATION PLOTS #####################
@@ -515,25 +516,27 @@ if __name__ == "__main__":
 
 
     #####################     ELBO/P_LL PLOTS      #####################
-    best_Ks = {'bus_breakdown': [30], 'bus_breakdown_reparam': [30], 'chimpanzees': [30], 'movielens': [30], 'movielens_reparam': [30], 'occupancy': [30], 'radon': [30]}
+    best_Ks = {'bus_breakdown': [30], 'bus_breakdown_reparam': [30], 'chimpanzees': [30], 'movielens': [30], 'movielens_reparam': [30], 'occupancy': [30], 'radon': [30], 'covid': [10]}
     smoothing_window = 8
     short_labels = False
 
     # YLIMS FOCUSING ON END OF TRAINING (WILL OFTEN IGNORE GLOBAL QEM) #
-    ylims = {'elbo': {'bus_breakdown': (-1400,  -1250),
+    ylims = {'elbo': {'bus_breakdown': (-1300,  -1150),
                       'chimpanzees':   (-255,   -244),
                       'movielens':     (-1060,  -980),
                       'occupancy':     (-50000, -49000),
                       'radon':         (-360,-275), #(-494,   -484)},
-                      'bus_breakdown_reparam': (-1400,  -1250),
-                      'movielens_reparam':     (-1060,  -980),},
-             'p_ll': {'bus_breakdown': (-1800,  -1450),
+                      'bus_breakdown_reparam': (-1300,  -1150),
+                      'movielens_reparam':     (-1060,  -980),
+                      'covid': (None, None)},
+             'p_ll': {'bus_breakdown': (-1500,  -1150),
                       'chimpanzees':   (-45,    -39.5),
                       'movielens':     (-965,  -940),
                       'occupancy':     (-24800, -24500),
                       'radon':         (-1000, -500),#(-170,   -120)},
-                      'bus_breakdown_reparam': (-1800,  -1450),
-                      'movielens_reparam':     (-965,  -940),}
+                      'bus_breakdown_reparam':  (-1500,  -1150),
+                      'movielens_reparam':     (-965,  -940),
+                      'covid': (None, None)}
             }
     
     # if using_new_bus:
