@@ -159,7 +159,7 @@ def run_experiment(cfg):
                     latent_shape = states_dict[name].shape[1:]
                     moments_collection[name] = np.zeros((num_samples, num_runs, *latent_shape))
                 
-                moments_collection[name][:, num_run, ...] = np.array([states_dict[name][:j,...].mean(0) for j in range(1, num_samples+1)])
+                moments_collection[name][:, num_run, ...] = np.array([states_dict[name][j,...] for j in range(1, num_samples+1)])
                     
             if cfg.write_job_status:
                 with open(job_status_file, "a") as f:
