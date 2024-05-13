@@ -1,5 +1,6 @@
 import torch as t
 from alan import Normal, Binomial, Bernoulli, ContinuousBernoulli, Uniform, Beta, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
+import math 
 
 t.manual_seed(123)
 
@@ -71,11 +72,11 @@ def get_P(platesizes, covariates):
             beta = Normal('beta_mean', lambda beta_log_var: beta_log_var.exp()), # how much does weather affect this bird?
 
             plate_Years = Plate(
-                bird_year_mean = Normal('bird_mean', 1.), # how common is this bird this year?
+                bird_year_mean = Normal(lambda bird_mean: 1/100 * bird_mean, 1/100 * 1.), # how common is this bird this year?
 
                 plate_Ids = Plate(
                     
-                    z = Bernoulli(logits=lambda weather, bird_year_mean, beta: bird_year_mean*weather*beta), # was this bird actually present?
+                    z = Bernoulli(logits=lambda weather, bird_year_mean, beta: 100*bird_year_mean*weather*beta), # was this bird actually present?
 
                     plate_Replicate = Plate(
                         obs = Bernoulli(logits=lambda alpha, quality, z: alpha * quality * z + (1-z)*(-10)) # did we actually see this bird?
@@ -115,11 +116,11 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                     beta = Normal(OptParam(0.), OptParam(0., transformation=t.exp),), # how much does weather affect this bird?
                 ),
                 plate_Years = Plate(
-                    bird_year_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp),), # how common is this bird this year?
+                    bird_year_mean = Normal(OptParam(0.), OptParam(-math.log(100), transformation=t.exp),), # how common is this bird this year?
 
                     plate_Ids = Plate(
                         
-                        z = Bernoulli(logits=lambda weather, bird_year_mean, beta: bird_year_mean*weather*beta), # was this bird actually present?
+                        z = Bernoulli(logits=lambda weather, bird_year_mean, beta: 100*bird_year_mean*weather*beta), # was this bird actually present?
 
                         plate_Replicate = Plate(
                             obs = Data()
@@ -153,11 +154,11 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                     beta = Normal(QEMParam(0.), QEMParam(1.),), # how much does weather affect this bird?
                 ),
                 plate_Years = Plate(
-                    bird_year_mean = Normal(QEMParam(0.), QEMParam(1.),), # how common is this bird this year?
+                    bird_year_mean = Normal(QEMParam(0.), QEMParam(1/100),), # how common is this bird this year?
 
                     plate_Ids = Plate(
                         
-                        z = Bernoulli(logits=lambda weather, bird_year_mean, beta: bird_year_mean*weather*beta), # was this bird actually present?
+                        z = Bernoulli(logits=lambda weather, bird_year_mean, beta: 100*bird_year_mean*weather*beta), # was this bird actually present?
 
                         plate_Replicate = Plate(
                             obs = Data()
@@ -187,7 +188,7 @@ if __name__ == "__main__":
     sys.path.insert(1, os.path.join(sys.path[0], '../..'))
     import basic_runner
 
-    basic_runner.run('occupancy',
+    basic_runner.run('occupancy_reparam',
                      methods = ['rws', 'qem'],
                      K = 3,
                      num_runs = 1,

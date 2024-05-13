@@ -5,6 +5,7 @@ from alan import Normal, Bernoulli, HalfNormal, Plate, BoundPlate, Problem, Data
 import numpy as np
 from pathlib import Path
 import os
+import math
 
 t.manual_seed(123)
 
@@ -68,12 +69,12 @@ def get_P(platesizes, covariates):
             State_mean = Normal('global_mean', lambda global_log_sigma: global_log_sigma.exp()),
             State_log_sigma = Normal(0., 1.),
             Counties = Plate(
-                County_mean = Normal('State_mean', lambda State_log_sigma: State_log_sigma.exp()),
+                County_mean = Normal(lambda State_mean: 1/10 * State_mean, lambda State_log_sigma: 1/10 * State_log_sigma.exp()),
                 County_log_sigma = Normal(0., 1.),
-                Beta_u = Normal(0., 1.),
-                Beta_basement = Normal(0., 1.),
+                Beta_u = Normal(0., 1/10),
+                Beta_basement = Normal(0., 1/10),
                 Zips = Plate( 
-                    obs = Normal(lambda County_mean, basement, log_uranium, Beta_basement, Beta_u: County_mean + basement*Beta_basement + log_uranium * Beta_u, lambda County_log_sigma: County_log_sigma.exp()),
+                    obs = Normal(lambda County_mean, basement, log_uranium, Beta_basement, Beta_u: 10*County_mean + basement*Beta_basement*10 + log_uranium * Beta_u*10, lambda County_log_sigma: County_log_sigma.exp()),
                 ),
             ),
         ),
@@ -100,10 +101,10 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                 ),
                 Counties = Plate(
                     county_latents = Group(
-                        County_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                        County_mean = Normal(OptParam(0.), OptParam(-math.log(10), transformation=t.exp)),
                         County_log_sigma = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-                        Beta_u = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-                        Beta_basement = Normal(OptParam(0.), OptParam(t.tensor(10.).log(), transformation=t.exp)),
+                        Beta_u = Normal(OptParam(0.), OptParam(-math.log(10), transformation=t.exp)),
+                        Beta_basement = Normal(OptParam(0.), OptParam(-math.log(1), transformation=t.exp)),
                     ),
                     Zips = Plate(
                         obs = Data(),
@@ -124,10 +125,10 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                 ),
                 Counties = Plate(
                     county_latents = Group(
-                        County_mean = Normal(QEMParam(0.), QEMParam(1.)),
+                        County_mean = Normal(QEMParam(0.), QEMParam(1/10)),
                         County_log_sigma = Normal(QEMParam(0.), QEMParam(1.)),
-                        Beta_u = Normal(QEMParam(0.), QEMParam(1.)),
-                        Beta_basement = Normal(QEMParam(0.), QEMParam(10.)),
+                        Beta_u = Normal(QEMParam(0.), QEMParam(1/10)),
+                        Beta_basement = Normal(QEMParam(0.), QEMParam(10./10)),
                     ),
                     Zips = Plate(
                         obs = Data(),
@@ -156,7 +157,7 @@ if __name__ == "__main__":
     sys.path.insert(1, os.path.join(sys.path[0], '../..'))
     import basic_runner
 
-    basic_runner.run('radon',
+    basic_runner.run('radon_reparam',
                      K = 10,
                      methods=['vi', 'rws', 'qem'],
                      num_runs = 1,
