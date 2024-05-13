@@ -41,7 +41,7 @@ def run(model_name,
     start_time = safe_time(device)
 
     # import the model
-    spec = importlib.util.spec_from_file_location(model_name, f"{model_name}.py")
+    spec = importlib.util.spec_from_file_location(f"models/{model_name}", f"{model_name}.py")
     model = importlib.util.module_from_spec(spec)
     sys.modules[model_name] = model
     spec.loader.exec_module(model)
@@ -131,7 +131,7 @@ def run(model_name,
         plt.xlabel('Iteration')
         plt.ylabel('ELBO')
         plt.title(f'{model_name.upper()} ({"FAKE" if fake_data else "REAL"} data)')
-        plt.savefig('plots/quick_elbos.png')
+        plt.savefig(f'../../experiments/plots/{model_name}/quick_elbos.png')
 
         if do_predll:
             plt.figure()
@@ -141,4 +141,4 @@ def run(model_name,
             plt.xlabel('Iteration')
             plt.ylabel('PredLL')
             plt.title(f'{model_name.upper()} ({"FAKE" if fake_data else "REAL"} data)')
-            plt.savefig('plots/quick_predlls.png')
+            plt.savefig(f'../../experiments/plots/{model_name}/quick_predlls.png')

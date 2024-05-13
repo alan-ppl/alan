@@ -48,8 +48,8 @@ def run_experiment(cfg):
     spec.loader.exec_module(pymc_model)
 
     # Make sure all the required folders exist for this model
-    for folder in ['results/moments', 'job_status/moments', 'plots/moments']:
-        Path(f"{cfg.model}/{folder}").mkdir(parents=True, exist_ok=True)
+    for folder in ['results', 'job_status', 'plots', 'moments']:
+        Path(f"experiments/{folder}/{cfg.model}").mkdir(parents=True, exist_ok=True)
 
     # t.manual_seed(0)
     if not fake_data:
@@ -82,7 +82,7 @@ def run_experiment(cfg):
     times = {"moments": np.zeros((num_samples, num_runs)),
              "p_ll":   np.zeros((num_samples, num_runs))}
 
-    job_status_file = f"{cfg.model}/job_status/moments/HMC{'_FAKE_DATA' if fake_data else ''}_status.txt"
+    job_status_file = f"experiments/job_status/{cfg.model}/HMC{'_FAKE_DATA' if fake_data else ''}_status.txt"
     if cfg.write_job_status:
         with open(job_status_file, "w") as f:
             f.write(f"Starting job.\n")
@@ -187,10 +187,10 @@ def run_experiment(cfg):
                 'num_samples': num_samples, 'num_tuning_samples': num_tuning_samples, 'target_accept': target_accept}
 
 
-    with open(f'{cfg.model}/results/moments/HMC{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
+    with open(f'experiments/results/{cfg.model}/HMC{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
         pickle.dump(to_pickle, f)
 
-    with open(f'{cfg.model}/results/moments/HMC_moments{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
+    with open(f'experiments/results/{cfg.model}/HMC_moments{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
         pickle.dump(moments_collection, f)
         
     print()
