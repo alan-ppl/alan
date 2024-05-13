@@ -41,6 +41,6 @@ def write_data(model, fake_data=True, dataset_seed=0):
             pickle.dump((platesizes, all_platesizes, data, all_data, covariates, all_covariates, fake_latents, latent_names), f)
 
 if __name__ == '__main__':
-    for model in ['bus_breakdown', 'movielens', 'chimpanzees', 'covid', 'radon']:
+    for model in ['bus_breakdown', 'movielens', 'chimpanzees', 'covid', 'radon', 'synthetic_model']:
         for fake_data in [True, False]:
             write_data(model, fake_data=fake_data)

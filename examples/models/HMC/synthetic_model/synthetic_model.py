@@ -12,13 +12,13 @@ def get_model(data, covariates):
         
         mean = pm.Normal('mean', mu=z_mean, sigma=z_var)
         
-        obs = pm.Normal('obs', mean = mean, sigma=obs_var, observed=true_obs, shape=(N,))
+        obs = pm.Normal('obs',  mu=mean, sigma=obs_var, observed=true_obs, shape=(N,))
 
     return model
 
 def get_test_data_cov_dict(all_data, all_covariates, platesizes):
     test_data = all_data
-    test_data = {'true_obs': all_data['obs'][platesizes['plate_obs']:]}
+    test_data = {'true_obs': all_data['obs'][platesizes['plate_1']:]}
 
     test_covariates = all_covariates
 
