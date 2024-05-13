@@ -159,7 +159,7 @@ def run_experiment(cfg):
                     latent_shape = states_dict[name].shape[1:]
                     moments_collection[name] = np.zeros((num_samples, num_runs, *latent_shape))
                 
-                moments_collection[name][:, num_run, ...] = np.array([states_dict[name][j,...] for j in range(1, num_samples+1)])
+                moments_collection[name][:, num_run, ...] = np.array([states_dict[name][:j,...].mean(0) for j in range(1, num_samples+1)])
                     
             if cfg.write_job_status:
                 with open(job_status_file, "a") as f:
@@ -189,8 +189,8 @@ def run_experiment(cfg):
         pickle.dump(to_pickle, f)
 
     # average over runs
-    for name in moments_collection.keys():
-        moments_collection[name] = np.mean(moments_collection[name], axis=1)
+    # for name in moments_collection.keys():
+    #     moments_collection[name] = np.mean(moments_collection[name], axis=1)
         
     with open(f'experiments/results/{cfg.model}/blackjax_moments{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
         pickle.dump(moments_collection, f)
