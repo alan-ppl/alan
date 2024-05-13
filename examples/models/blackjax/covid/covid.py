@@ -79,7 +79,7 @@ def get_model(data, covariates):
         
         
     #     # obs = pm.Bernoulli("obs", logit_p=logits, shape=(num_actors, num_blocks, num_repeats_plate), observed=true_obs)
-    params = namedtuple("model_params", ["CM_alpha", "Wearing_alpha", "Mobility_alpha", "RegionR", "InitialSize_log_mean", "log_infected_noise_mean", "InitialSize_log_non_cent", "log_infected_noise", "psi"])     
+    params = namedtuple("model_params", ["CM_alpha", "Wearing_alpha", "Mobility_alpha", "RegionR"])# "InitialSize_log_mean", "log_infected_noise_mean", "InitialSize_log_non_cent", "log_infected_noise", "psi"])     
     def joint_logdensity(params, data, covariates):
         nDs = data.shape[1]
         #Global
@@ -110,10 +110,15 @@ def get_model(data, covariates):
                 1,
             )[:nRs, :nDs]
         
-        growth = Expected_Log_Rs + expanded_r_walk_noise
-        log_infected = jnp.reshape(InitialSize_log, (nRs,1)) + jnp.cumsum(growth, axis=1)
         
-        obs = stats.nbinom.logpmf(data, jnp.exp(params.psi).reshape(nRs,-1), jax.nn.sigmoid(log_infected)).sum()
+        growth = Expected_Log_Rs + expanded_r_walk_noise
+        
+        log_infected = jnp.reshape(InitialSize_log, (nRs,1)) + jnp.cumsum(growth, axis=1)
+        print(log_infected)
+        
+        
+        
+        obs = stats.nbinom.logpmf(data, jnp.exp(params.psi).reshape(nRs,-1), jax.nn.softmax(log_infected)).sum()
         
         return CM_alpha + Wearing_alpha + Mobility_alpha + RegionR + InitialSize_log_mean + log_infected_noise_mean + InitialSize_log_non_cent + log_infected_noise + psi + obs
     
@@ -128,7 +133,6 @@ def get_model(data, covariates):
         initialize a, b & thetas
         """
         key1, key2, key3, key4, key5, key6, key7, key8, key9 = jax.random.split(seed, 9)
-        log_infected_keys = jax.random.split(key8, nDs)
         return params(
             CM_alpha = jax.random.normal(key1, shape=(nCMs-2,)),
             Wearing_alpha = jax.random.normal(key2),

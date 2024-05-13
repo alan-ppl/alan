@@ -35,7 +35,7 @@ def get_model(data, covariates):
 
         log_delay_non_cent = stats.norm.logpdf(params.log_delay_non_cent, 0., 1.).sum()
         log_delay = alpha.reshape(3,3,1) + ((covariates['bus_company_name'] @ params.phi.transpose()) + (covariates['run_type'] @ params.psi.transpose())) + params.log_delay_non_cent 
-        obs = stats.nbinom.logpmf(data, jnp.exp(params.alph), jax.nn.sigmoid(log_delay)).sum()
+        obs = stats.nbinom.logpmf(data, jnp.exp(params.alph), jax.nn.softmax(log_delay)).sum()
         
         return psi + phi + sigma_beta + mu_beta + beta_non_cent + sigma_alpha + alpha_non_cent + alph + log_delay_non_cent + obs
 
@@ -61,7 +61,8 @@ def get_model(data, covariates):
         num_samples = params['log_delay_non_cent'].shape[0]
         params['beta'] = params['mu_beta'][:,jnp.newaxis] + params['beta_non_cent'] * jnp.exp(params['sigma_beta'][:,jnp.newaxis])
         params['alpha'] = params['beta'][:,jnp.newaxis] + params['alpha_non_cent'] * jnp.exp(params['sigma_alpha'][:,jnp.newaxis])
-        params['log_delay'] = params['alpha'].reshape(num_samples, 3,3,1) + ((covariates['bus_company_name'] @ params['phi'].transpose()) + (covariates['run_type'] @ params['psi'].transpose())) + params['log_delay_non_cent'].reshape(3,3,30,-1)
+
+        params['log_delay'] = params['alpha'].reshape(num_samples,3,3,1) + ((covariates['bus_company_name'] @ params['phi'].transpose()) + (covariates['run_type'] @ params['psi'].transpose())).reshape(num_samples,3,3,30) + params['log_delay_non_cent']
         
 
         del params['beta_non_cent']

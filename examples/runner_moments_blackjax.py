@@ -39,6 +39,31 @@ def get_predll(model, samples, rng_key):
 
 
     return probs
+
+# def transform(transform_fn, samples, covariates):
+    
+#     names = list(samples.keys())
+#     shapes = [samples[name].shape for name in names]
+#     temp_samples = {}
+#     for name in names:
+#         temp_samples[name] = np.array(samples[name][0,...])
+#     temp_transformed_samples = transform_fn(temp_samples, covariates)
+#     transformed_names = list(temp_transformed_samples.keys())
+#     transformed_samples = {transformed_names[i]: np.zeros(shapes[i]) for i in range(len(transformed_names))}
+#     for name in temp_transformed_samples.keys():
+#         print(name)
+#         transformed_samples[name][0,...] = temp_transformed_samples[name]
+            
+#     for i in range(1,samples[names[0]].shape[0]):
+#         for name in names:
+#             temp_samples[name] = np.array(samples[name][i,...])
+#         temp_transformed_samples = transform_fn(temp_samples, covariates)
+#         for name in transformed_names:
+#             transformed_samples[name][i,...] = temp_transformed_samples[name]
+    
+#     for name in transformed_names:
+#         print(name, transformed_samples[name].shape)
+#     return transformed_samples
                 
 @hydra.main(version_base=None, config_path='config', config_name='moments_blackjax_conf')
 def run_experiment(cfg):
@@ -124,23 +149,31 @@ def run_experiment(cfg):
             def inference_loop(rng_key, kernel, initial_state, num_samples):
                 @jax.jit
                 def one_step(state, rng_key):
-                    state, _ = kernel(rng_key, state)
-                    return state, state
+                    state, info = kernel(rng_key, state)
+                    return state, (state, info)
 
                 keys = jax.random.split(rng_key, num_samples)
-                _, states = jax.lax.scan(one_step, initial_state, keys)
+                _, (states, infos) = jax.lax.scan(one_step, initial_state, keys)
 
-                return states
+                return states, (
+                        infos.acceptance_rate,
+                        infos.is_divergent,
+                        infos.num_integration_steps,
+                    )
             
             sampling_start_time = safe_time(device)
             rng_key, warmup_key, sample_key = jax.random.split(rng_key, 3)
             kernel = blackjax.nuts(training_joint_logdensity, **parameters).step
-            states = inference_loop(sample_key, kernel, state, num_samples)
+            states, infos = inference_loop(sample_key, kernel, state, num_samples)
             times['moments'][:, num_run] = np.linspace(0,safe_time(device)-sampling_start_time,num_samples+1)[1:]
 
             states_dict = states.position._asdict()
-            #HMC means
-            # HMC_means = {key: np.mean(states_dict[key], axis=0) for key in states_dict}
+            
+            acceptance_rate = np.mean(infos[0])
+            num_divergent = np.mean(infos[1])
+
+            print(f"Average acceptance rate: {acceptance_rate:.2f}")
+            print(f"There were {100*num_divergent:.2f}% divergent transitions")
 
             if cfg.do_predll:
                 print("Sampling predictive log likelihood with JAX")
@@ -153,13 +186,14 @@ def run_experiment(cfg):
                 times['p_ll'][:, num_run] = np.linspace(0,safe_time(device)-p_ll_start_time,num_samples+1)[1:] + times['moments'][:, num_run]
             # compute moments for each latent
             
+            # states_dict = transform(transform_non_cent_to_cent, states_dict, covariates)
             states_dict = transform_non_cent_to_cent(states_dict, covariates)
             for name in states_dict.keys():
                 if num_run == 0:
                     latent_shape = states_dict[name].shape[1:]
                     moments_collection[name] = np.zeros((num_samples, num_runs, *latent_shape))
                 
-                moments_collection[name][:, num_run, ...] = np.array([states_dict[name][j,...] for j in range(1, num_samples+1)])
+                moments_collection[name][:, num_run, ...] = np.array([states_dict[name][j,...] for j in range(num_samples)])
                     
             if cfg.write_job_status:
                 with open(job_status_file, "a") as f:
@@ -189,8 +223,8 @@ def run_experiment(cfg):
         pickle.dump(to_pickle, f)
 
     # average over runs
-    # for name in moments_collection.keys():
-    #     moments_collection[name] = np.mean(moments_collection[name], axis=1)
+    for name in moments_collection.keys():
+        moments_collection[name] = np.mean(moments_collection[name], axis=1)
         
     with open(f'experiments/results/{cfg.model}/blackjax_moments{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
         pickle.dump(moments_collection, f)
