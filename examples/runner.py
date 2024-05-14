@@ -103,9 +103,10 @@ def run_experiment(cfg):
     
     for K_idx, K in enumerate(Ks):
         lrs = Ks_lrs[K]
-        K_start_time = safe_time(device)
         for lr_idx, lr in enumerate(lrs):
             for num_run in range(num_runs):
+                run_start_time = safe_time(device)
+
                 t.manual_seed(num_run)
                 print(f"K: {K}, lr: {lr}, num_run: {num_run}")
 
@@ -207,6 +208,9 @@ def run_experiment(cfg):
                             f.write(f"num_run: {num_run} K: {K} lr: {lr} failed at iteration {i} with exception {e}.\n")
                     continue
                 
+                if cfg.write_job_status:
+                    with open(f"experiments/job_status/{model_name}/{cfg.method}{non_mp_string}_status.txt", "a") as f:
+                        f.write(f"K: {K} lr: {lr} num_run: {num_run} done in {safe_time(device)-run_start_time}s.\n")
             
             #Average over runs
             for j, k in enumerate(latent_names):
@@ -216,10 +220,6 @@ def run_experiment(cfg):
             #save moments to file
             with open(f"experiments/moments/{model_name}/{cfg.method}_{cfg.dataset_seed}_{K}_{lr}_moments{non_mp_string}.pkl", "wb") as f:
                 pickle.dump(moments_collection, f)
-
-        if cfg.write_job_status:
-            with open(f"experiments/job_status/{model_name}/{cfg.method}{non_mp_string}_status.txt", "a") as f:
-                f.write(f"num_run: {num_run} K: {K} done in {safe_time(device)-K_start_time}s.\n")
 
     to_pickle = {'elbos': elbos.cpu(), 'p_lls': p_lls.cpu(), 'iter_times': iter_times,
                  'Ks': Ks, 'lrs': lrs, 'num_runs': num_runs, 'num_iters': num_iters}
@@ -244,6 +244,9 @@ def run_experiment(cfg):
     # breakpoint()
     with open(f'experiments/results/{model_name}/{cfg.method}{non_mp_string}{cfg.dataset_seed}.pkl', 'wb') as f:
         pickle.dump(to_pickle, f)
+
+    end_time = time.asctime()
+    print(end_time)
 
 
 if __name__ == "__main__":
