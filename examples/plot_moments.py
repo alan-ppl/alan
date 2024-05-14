@@ -177,20 +177,20 @@ for model in models:
     VI_diff = sum(VI_diffs.values())
     
     #apply some smoothing to the differences
-    QEM_diff = smooth(QEM_diff, 10)
-    RWS_diff = smooth(RWS_diff, 10)
-    VI_diff = smooth(VI_diff, 10)
+    QEM_diff = smooth(QEM_diff, 100)
+    RWS_diff = smooth(RWS_diff, 100)
+    VI_diff = smooth(VI_diff, 100)
     # for key in QEM_diffs.keys():
     ax[0,models.index(model)].plot(QEM_times, QEM_diff, label=f'QEM', color=colours[0])
     ax[0,models.index(model)].plot(RWS_times, RWS_diff, label=f'RWS', color=colours[1])
     ax[0,models.index(model)].plot(VI_times, VI_diff, label=f'VI', color=colours[2])
     
     #ylim
-    ax[0,models.index(model)].set_ylim([min(QEM_diff) - 2*np.var(QEM_diff), max(QEM_diff)+2*np.var(QEM_diff)])
+    ax[0,models.index(model)].set_ylim([min(QEM_diff), max(QEM_diff)])
 
     
     ax[0,models.index(model)].set_title(model)
-    ax[0,0].set_ylabel('MSD')
+    ax[0,0].set_ylabel('Mean squared error')
     ax[1,models.index(model)].set_xlabel('Time (s)')
     #plot time bar charts
     ax[1,models.index(model)].bar(methods, [QEM_times[-1], RWS_times[-1], VI_times[-1], HMC_times[-1]], color=colours)

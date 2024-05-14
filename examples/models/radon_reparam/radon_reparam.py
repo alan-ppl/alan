@@ -104,7 +104,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                         County_mean = Normal(OptParam(0.), OptParam(-math.log(100), transformation=t.exp)),
                         County_log_sigma = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                         Beta_u = Normal(OptParam(0.), OptParam(-math.log(10), transformation=t.exp)),
-                        Beta_basement = Normal(OptParam(0.), OptParam(-math.log(1/1000), transformation=t.exp)),
+                        Beta_basement = Normal(OptParam(0.), OptParam(-math.log(1000), transformation=t.exp)),
                     ),
                     Zips = Plate(
                         obs = Data(),
