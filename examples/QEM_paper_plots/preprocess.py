@@ -29,7 +29,8 @@ def get_best_results(model_name, validation_iter_number=200, method_names=['qem'
         for dataset_seed in dataset_seeds:
             if 'global' not in method_name:
                 results_folder = f'results_with_{"new" if using_new_bus else "old"}_bus'
-                with open(f'results/{model_name}/{method_name}{dataset_seed}.pkl', 'rb') as f:
+                # with open(f'results/{model_name}/{method_name}{dataset_seed}.pkl', 'rb') as f:
+                with open(f'../experiments/results/{model_name}/{method_name}{dataset_seed}.pkl', 'rb') as f:
                     results[method_name][dataset_seed] = pickle.load(f)
 
                     # Extract the elbos, p_lls and iter_times
@@ -166,7 +167,7 @@ def get_best_results(model_name, validation_iter_number=200, method_names=['qem'
                                              'lrs': []}
             
     # Save the results
-    with open(f'results/{model_name}/best.pkl', 'wb') as f:
+    with open(f'../experiments/results/{model_name}/best.pkl', 'wb') as f:
         pickle.dump(output_to_pickle, f)
 
     print()

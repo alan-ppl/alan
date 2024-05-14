@@ -8,7 +8,8 @@ import preprocess
 
 # ALL_MODEL_NAMES = ['bus_breakdown', 'chimpanzees', 'movielens', 'occupancy', 'radon']
 # ALL_MODEL_NAMES = ['bus_breakdown', 'bus_breakdown_reparam', 'chimpanzees', 'movielens', 'movielens_reparam', 'occupancy', 'radon']
-ALL_MODEL_NAMES = ['bus_breakdown', 'bus_breakdown_reparam', 'movielens', 'movielens_reparam', 'occupancy', 'radon', 'covid']
+ALL_MODEL_NAMES = ['bus_breakdown', 'bus_breakdown_reparam', 'movielens', 'movielens_reparam',
+                  'occupancy', 'occupancy_reparam', 'radon', 'radon_reparam', 'covid']
 
 SHORT_LABEL_DICT = {'qem': 'QEM', 'rws': 'MP RWS', 'vi': 'MP VI', 'qem_nonmp': 'Global QEM', 'global_rws': 'Global RWS', 'global_vi': 'IWAE', 'HMC': 'HMC'}
 
@@ -20,7 +21,7 @@ DEFAULT_COLOURS = {'qem': '#e7298a', 'qem_nonmp' : '#7570b3',
                    'HMC': '#000000'}
 
 def load_results(model_name):
-    with open(f'results/{model_name}/best.pkl', 'rb') as f:
+    with open(f'../experiments/results/{model_name}/best.pkl', 'rb') as f:
         return pickle.load(f)
     
 def smooth(x, window):
@@ -484,21 +485,25 @@ if __name__ == "__main__":
 
     using_new_bus = True
 
-    basic_methods = ['qem', 'rws', 'vi', 'qem_nonmp']
-    if plot_global_QEM:
-        basic_methods.append('qem_nonmp')
+    basic_methods = ['qem', 'rws']
+    # if plot_global_QEM:
+    #     basic_methods.append('qem_nonmp')
 
-    model2method = {'bus_breakdown': ['qem', 'rws', 'vi', 'qem_nonmp'],
-                    'bus_breakdown_reparam': ['qem', 'rws', 'vi', 'qem_nonmp'],
-                    'chimpanzees': ['qem', 'rws', 'vi', 'qem_nonmp'],
-                    'movielens': ['qem', 'rws', 'vi', 'qem_nonmp'],
-                    'movielens_reparam': ['qem', 'rws', 'vi', 'qem_nonmp'],
-                    'occupancy': ['qem', 'rws', 'qem_nonmp'],
-                    'radon': ['qem', 'rws', 'vi', 'qem_nonmp'],
-                    'covid': ['qem', 'rws', 'vi', 'qem_nonmp']}
+    # model2method = {'bus_breakdown': ['qem', 'rws', 'vi', 'qem_nonmp'],
+    #                 'bus_breakdown_reparam': ['qem', 'rws', 'vi', 'qem_nonmp'],
+    #                 'chimpanzees': ['qem', 'rws', 'vi', 'qem_nonmp'],
+    #                 'movielens': ['qem', 'rws', 'vi', 'qem_nonmp'],
+    #                 'movielens_reparam': ['qem', 'rws', 'vi', 'qem_nonmp'],
+    #                 'occupancy': ['qem', 'rws', 'qem_nonmp'],
+    #                 'radon': ['qem', 'rws', 'vi', 'qem_nonmp'],
+    #                 'covid': ['qem', 'rws', 'vi', 'qem_nonmp']}
+
+    model2method = {model_name: [*basic_methods] for model_name in ALL_MODEL_NAMES}
     
     for model_name, methods in model2method.items():
-        if plot_HMC and model_name not in ('occupancy', 'radon'):
+        if 'occupancy' not in model_name:
+            methods.append('vi')
+        if plot_HMC and model_name not in ('occupancy', 'radon', 'occupancy_reparam', 'radon_reparam'):
             methods.append('HMC')
         if plot_global_QEM:
             methods.append('qem_nonmp')
@@ -508,7 +513,8 @@ if __name__ == "__main__":
         preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=model2method[model_name], ignore_nans=ignore_nans)
     
     sub_model_collections = {'standard': ['bus_breakdown', 'movielens', 'occupancy', 'radon', 'covid'],
-                             'reparams': ['bus_breakdown_reparam', 'movielens_reparam']}
+                             'standard_no_covid': ['bus_breakdown', 'movielens', 'occupancy', 'radon'],
+                             'reparams': ['bus_breakdown_reparam', 'movielens_reparam', 'occupancy_reparam', 'radon_reparam']}
     
     ##################### TIME-PER-ITERATION PLOTS #####################
     plot_avg_iter_time_per_K(save_pdf=True)
@@ -516,7 +522,8 @@ if __name__ == "__main__":
 
 
     #####################     ELBO/P_LL PLOTS      #####################
-    best_Ks = {'bus_breakdown': [30], 'bus_breakdown_reparam': [30], 'chimpanzees': [30], 'movielens': [30], 'movielens_reparam': [30], 'occupancy': [30], 'radon': [30], 'covid': [10]}
+    best_Ks = {'bus_breakdown': [30], 'bus_breakdown_reparam': [30], 'chimpanzees': [30], 'movielens': [30], 'movielens_reparam': [30],
+               'occupancy': [30], 'occupancy_reparam': [30], 'radon': [30], 'radon_reparam': [30], 'covid': [10]}
     smoothing_window = 8
     short_labels = False
 
@@ -528,6 +535,8 @@ if __name__ == "__main__":
                       'radon':         (-360,-275), #(-494,   -484)},
                       'bus_breakdown_reparam': (-1300,  -1150),
                       'movielens_reparam':     (-1060,  -980),
+                      'occupancy_reparam':     (-50000, -49000),
+                      'radon_reparam':         (-360,-275),
                       'covid': (None, None)},
              'p_ll': {'bus_breakdown': (-1500,  -1150),
                       'chimpanzees':   (-45,    -39.5),
@@ -536,6 +545,8 @@ if __name__ == "__main__":
                       'radon':         (-1000, -500),#(-170,   -120)},
                       'bus_breakdown_reparam':  (-1500,  -1150),
                       'movielens_reparam':     (-965,  -940),
+                      'occupancy_reparam':     (-24800, -24500),
+                      'radon_reparam':         (-1000, -500),
                       'covid': (None, None)}
             }
     
