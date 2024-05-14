@@ -157,11 +157,11 @@ if __name__ == "__main__":
     import basic_runner
 
     basic_runner.run('radon',
-                     K = 10,
+                     K = 30,
                      methods=['vi', 'rws', 'qem'],
                      num_runs = 1,
-                     num_iters = 10,
-                     lrs = {'vi': 0.03, 'rws': 0.3, 'qem': 0.3},
+                     num_iters = 20,
+                     lrs = {'vi': 0.1, 'rws': 0.3, 'qem': 0.3},
                      fake_data = False,
                      device = 'cpu')
     

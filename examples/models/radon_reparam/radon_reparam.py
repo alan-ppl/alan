@@ -69,12 +69,12 @@ def get_P(platesizes, covariates):
             State_mean = Normal('global_mean', lambda global_log_sigma: global_log_sigma.exp()),
             State_log_sigma = Normal(0., 1.),
             Counties = Plate(
-                County_mean = Normal(lambda State_mean: 1/10 * State_mean, lambda State_log_sigma: 1/10 * State_log_sigma.exp()),
+                County_mean = Normal(lambda State_mean: 1/100 * State_mean, lambda State_log_sigma: 1/100 * State_log_sigma.exp()),
                 County_log_sigma = Normal(0., 1.),
                 Beta_u = Normal(0., 1/10),
-                Beta_basement = Normal(0., 1/10),
+                Beta_basement = Normal(0., 1/1000),
                 Zips = Plate( 
-                    obs = Normal(lambda County_mean, basement, log_uranium, Beta_basement, Beta_u: 10*County_mean + basement*Beta_basement*10 + log_uranium * Beta_u*10, lambda County_log_sigma: County_log_sigma.exp()),
+                    obs = Normal(lambda County_mean, basement, log_uranium, Beta_basement, Beta_u: 100*County_mean + basement*Beta_basement*1000 + log_uranium * Beta_u*10, lambda County_log_sigma: County_log_sigma.exp()),
                 ),
             ),
         ),
@@ -101,10 +101,10 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                 ),
                 Counties = Plate(
                     county_latents = Group(
-                        County_mean = Normal(OptParam(0.), OptParam(-math.log(10), transformation=t.exp)),
+                        County_mean = Normal(OptParam(0.), OptParam(-math.log(100), transformation=t.exp)),
                         County_log_sigma = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                         Beta_u = Normal(OptParam(0.), OptParam(-math.log(10), transformation=t.exp)),
-                        Beta_basement = Normal(OptParam(0.), OptParam(-math.log(1), transformation=t.exp)),
+                        Beta_basement = Normal(OptParam(0.), OptParam(-math.log(10/1000), transformation=t.exp)),
                     ),
                     Zips = Plate(
                         obs = Data(),
@@ -125,10 +125,10 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                 ),
                 Counties = Plate(
                     county_latents = Group(
-                        County_mean = Normal(QEMParam(0.), QEMParam(1/10)),
+                        County_mean = Normal(QEMParam(0.), QEMParam(1/100)),
                         County_log_sigma = Normal(QEMParam(0.), QEMParam(1.)),
                         Beta_u = Normal(QEMParam(0.), QEMParam(1/10)),
-                        Beta_basement = Normal(QEMParam(0.), QEMParam(10./10)),
+                        Beta_basement = Normal(QEMParam(0.), QEMParam(10./1000)),
                     ),
                     Zips = Plate(
                         obs = Data(),
@@ -158,11 +158,11 @@ if __name__ == "__main__":
     import basic_runner
 
     basic_runner.run('radon_reparam',
-                     K = 10,
+                     K = 30,
                      methods=['vi', 'rws', 'qem'],
                      num_runs = 1,
-                     num_iters = 10,
-                     lrs = {'vi': 0.03, 'rws': 0.3, 'qem': 0.3},
+                     num_iters = 20,
+                     lrs = {'vi': 0.1, 'rws': 0.3, 'qem': 0.3},
                      fake_data = False,
                      device = 'cpu')
     
