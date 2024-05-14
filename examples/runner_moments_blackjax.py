@@ -143,7 +143,7 @@ def run_experiment(cfg):
             rng_key, init_key, warmup_key = jax.random.split(rng_key, 3)
             init_params = init_param_fn(init_key)
 
-            
+            sampling_start_time = safe_time(device)
             (state, parameters), _ = warmup.run(warmup_key, init_params, num_tuning_samples)
 
             def inference_loop(rng_key, kernel, initial_state, num_samples):
@@ -161,7 +161,7 @@ def run_experiment(cfg):
                         infos.num_integration_steps,
                     )
             
-            sampling_start_time = safe_time(device)
+            
             rng_key, warmup_key, sample_key = jax.random.split(rng_key, 3)
             kernel = blackjax.nuts(training_joint_logdensity, **parameters).step
             states, infos = inference_loop(sample_key, kernel, state, num_samples)
