@@ -20,7 +20,7 @@ def smooth(x, window):
 
     return result
 
-models = ['movielens', 'radon', 'bus_breakdown', 'movielens_reparam', 'bus_breakdown_reparam']# 'covid']# 'bus_breakdown']# 'covid']# 'radon', 'chimpanzees']
+models = ['movielens','movielens_reparam', 'radon', 'radon_reparam', 'bus_breakdown', 'bus_breakdown_reparam']# 'covid']# 'bus_breakdown']# 'covid']# 'radon', 'chimpanzees']
 
 paths = {'movielens': ['experiments/moments/movielens/qem_0_30_0.1_moments.pkl', 'experiments/moments/movielens/rws_0_30_0.03_moments.pkl', 'experiments/moments/movielens/vi_0_30_0.03_moments.pkl', 'experiments/results/movielens/blackjax_moments0.pkl', 'experiments/results/movielens/blackjax0.pkl'],
          'bus_breakdown': ['experiments/moments/bus_breakdown/qem_0_30_0.03_moments.pkl', 'experiments/moments/bus_breakdown/rws_0_30_0.1_moments.pkl', 'experiments/moments/bus_breakdown/vi_0_30_0.1_moments.pkl', 'experiments/results/bus_breakdown/blackjax_moments0.pkl', 'experiments/results/bus_breakdown/blackjax0.pkl'],
@@ -28,7 +28,8 @@ paths = {'movielens': ['experiments/moments/movielens/qem_0_30_0.1_moments.pkl',
          'chimpanzees': ['experiments/moments/qem_0_30_0.1_moments.pkl', 'experiments/moments/rws_0_30_0.1_moments.pkl', 'experiments/moments/vi_0_30_0.1_moments.pkl', 'experiments/results/moments/blackjax_moments0.pkl', 'experiments/results/moments/blackjax0.pkl'],
          'covid': ['experiments/moments/covid/qem_0_30_0.1_moments.pkl', 'experiments/moments/covid/rws_0_30_0.1_moments.pkl', 'experiments/moments/covid/vi_0_30_0.1_moments.pkl', 'experiments/results/covid/blackjax_moments0.pkl', 'experiments/results/covid/blackjax0.pkl'],
          'movielens_reparam': ['experiments/moments/movielens_reparam/qem_0_30_0.1_moments.pkl', 'experiments/moments/movielens_reparam/rws_0_30_0.03_moments.pkl', 'experiments/moments/movielens_reparam/vi_0_30_0.03_moments.pkl', 'experiments/results/movielens/blackjax_moments0.pkl', 'experiments/results/movielens/blackjax0.pkl'],
-         'bus_breakdown_reparam': ['experiments/moments/bus_breakdown_reparam/qem_0_30_0.03_moments.pkl', 'experiments/moments/bus_breakdown_reparam/rws_0_30_0.1_moments.pkl', 'experiments/moments/bus_breakdown_reparam/vi_0_30_0.1_moments.pkl', 'experiments/results/bus_breakdown/blackjax_moments0.pkl', 'experiments/results/bus_breakdown/blackjax0.pkl'],}
+         'bus_breakdown_reparam': ['experiments/moments/bus_breakdown_reparam/qem_0_30_0.03_moments.pkl', 'experiments/moments/bus_breakdown_reparam/rws_0_30_0.1_moments.pkl', 'experiments/moments/bus_breakdown_reparam/vi_0_30_0.1_moments.pkl', 'experiments/results/bus_breakdown/blackjax_moments0.pkl', 'experiments/results/bus_breakdown/blackjax0.pkl'],
+         'radon_reparam': ['experiments/moments/radon_reparam/qem_0_30_0.1_moments.pkl', 'experiments/moments/radon_reparam/rws_0_30_0.1_moments.pkl', 'experiments/moments/radon_reparam/vi_0_30_0.1_moments.pkl', 'experiments/results/radon/blackjax_moments0.pkl', 'experiments/results/radon/blackjax0.pkl'],}
 
 #reparam paths 
 # paths = {'movielens': ['experiments/moments/movielens_reparam/qem_0_30_0.1_moments.pkl', 'experiments/moments/movielens_reparam/rws_0_30_0.03_moments.pkl', 'experiments/moments/movielens_reparam/vi_0_30_0.03_moments.pkl', 'experiments/results/movielens/blackjax_moments0.pkl'],
@@ -79,8 +80,7 @@ for model in models:
 
 
     RWS_diffs = {key: [] for key in RWS_moments['means'].keys()}
-    if model == 'bus_breakdown_reparam':
-        print(RWS_moments['means']['alpha'])
+
     for key in RWS_diffs.keys():
         diff = 0
         diff += ((HMC_means[key] - RWS_moments['means'][key])**2).mean(axis=tuple(range(1, RWS_moments['means'][key].ndim)))
@@ -116,7 +116,6 @@ for model in models:
         
     # print(HMC['p_lls'])
     # times
-    print(QEM.keys())
     QEM_times = QEM['iter_times'][0][0].mean(1)
     RWS_times = RWS['iter_times'][0][0].mean(1)
     VI_times = VI['iter_times'][0][0].mean(1)
@@ -153,7 +152,7 @@ for model in models:
     ax[0,models.index(model)].plot(VI_times, VI_diff, label=f'VI', color=colours[2])
     
     #ylim
-    ax[0,models.index(model)].set_ylim([0, QEM_diff[0]+0.5])
+    ax[0,models.index(model)].set_ylim([min(QEM_diff) - 2*np.var(QEM_diff), max(QEM_diff)+2*np.var(QEM_diff)])
 
     
     ax[0,models.index(model)].set_title(model)
