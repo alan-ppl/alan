@@ -13,24 +13,24 @@ Zips = 5
 
 def get_model(data, covariates):
 
-    params = namedtuple("model_params", ["global_mean", "global_log_sigma", "State_mean_non_cent", "State_log_sigma", "County_mean_non_cent", "Beta_u", "Beta_basement", "County_log_sigma"])
+    params = namedtuple("model_params", ["global_mean", "global_log_sigma", "State_mean", "State_log_sigma", "County_mean", "Beta_u", "Beta_basement", "County_log_sigma"])
     def joint_logdensity(params, data, covariates):
         #Global level
         global_mean = stats.norm.logpdf(params.global_mean, 0., 1.).sum()
         global_log_sigma = stats.norm.logpdf(params.global_log_sigma, 0., 1.).sum()
         #State level
-        State_mean_non_cent = stats.norm.logpdf(params.State_mean_non_cent, 0., 1.).sum()
-        State_mean = params.global_mean + params.State_mean_non_cent * jnp.exp(params.global_log_sigma)
+        State_mean = stats.norm.logpdf(params.State_mean, params.global_mean,jnp.exp(params.global_log_sigma)).sum()
+        #State_mean = params.global_mean + params.State_mean_non_cent * jnp.exp(params.global_log_sigma)
         State_log_sigma = stats.norm.logpdf(params.State_log_sigma, 0., 1.).sum()
         #County level
-        County_mean_non_cent = stats.norm.logpdf(params.County_mean_non_cent.transpose(), 0., 1.).sum()
-        County_mean = State_mean[:,jnp.newaxis] + params.County_mean_non_cent * jnp.exp(params.State_log_sigma)[...,jnp.newaxis]
+        County_mean = stats.norm.logpdf(params.County_mean, params.State_mean[:,jnp.newaxis], jnp.exp(params.State_log_sigma)[...,jnp.newaxis]).sum()
+        #County_mean = State_mean[:,jnp.newaxis] + params.County_mean_non_cent * jnp.exp(params.State_log_sigma)[...,jnp.newaxis]
         Beta_u = stats.norm.logpdf(params.Beta_u, 0., 1.).sum()
         Beta_basement = stats.norm.logpdf(params.Beta_basement, 0., 1.).sum()
         County_log_sigma = stats.norm.logpdf(params.County_log_sigma, 0., 1.).sum()
         #Zip level
         obs = stats.norm.logpdf(data.reshape(5,7,5), County_mean + covariates['basement'].reshape(5,7,5)*params.Beta_basement + covariates['log_uranium'].reshape(5,7,5) * params.Beta_u, jnp.exp(params.County_log_sigma)).sum()
-        return global_mean + global_log_sigma + State_mean_non_cent + State_log_sigma + County_mean_non_cent + Beta_u + Beta_basement + County_log_sigma + obs
+        return global_mean + global_log_sigma + State_mean + State_log_sigma + County_mean + Beta_u + Beta_basement + County_log_sigma + obs
     
     def init_param_fn(seed):
         """
@@ -40,20 +40,20 @@ def get_model(data, covariates):
         return params(
             global_mean=jax.random.normal(key1),
             global_log_sigma=jax.random.normal(key2),
-            State_mean_non_cent=jax.random.normal(key3, shape=(States,)),
+            State_mean=jax.random.normal(key3, shape=(States,)),
             State_log_sigma=jax.random.normal(key4, shape=(States,)),
-            County_mean_non_cent=jax.random.normal(key5, shape=(States,Counties)),
+            County_mean=jax.random.normal(key5, shape=(States,Counties)),
             Beta_u=jax.random.normal(key6, shape=(States,Counties)),
             Beta_basement=jax.random.normal(key7, shape=(States,Counties)),
             County_log_sigma=jax.random.normal(key8, shape=(States,Counties)),
         )
         
     def transform_non_cent_to_cent(params, covariates=None):
-        params['State_mean'] = params['global_mean'][:,jnp.newaxis] + params['State_mean_non_cent'] * jnp.exp(params['global_log_sigma'][:,jnp.newaxis])
-        params['County_mean'] = params['State_mean'][...,jnp.newaxis] + params['County_mean_non_cent'] * jnp.exp(params['State_log_sigma'][...,jnp.newaxis])
+        # params['State_mean'] = params['global_mean'][:,jnp.newaxis] + params['State_mean_non_cent'] * jnp.exp(params['global_log_sigma'][:,jnp.newaxis])
+        # params['County_mean'] = params['State_mean'][...,jnp.newaxis] + params['County_mean_non_cent'] * jnp.exp(params['State_log_sigma'][...,jnp.newaxis])
         
-        del params['State_mean_non_cent']
-        del params['County_mean_non_cent']
+        # del params['State_mean_non_cent']
+        # del params['County_mean_non_cent']
         return params
 
     return joint_logdensity, params, init_param_fn, transform_non_cent_to_cent
