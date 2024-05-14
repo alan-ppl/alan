@@ -20,16 +20,16 @@ def smooth(x, window):
 
     return result
 
-models = ['movielens','movielens_reparam', 'radon', 'radon_reparam', 'bus_breakdown', 'bus_breakdown_reparam']# 'covid']# 'bus_breakdown']# 'covid']# 'radon', 'chimpanzees']
+models = ['movielens','movielens_reparam', 'bus_breakdown', 'bus_breakdown_reparam','radon', 'radon_reparam']# 'covid']# 'bus_breakdown']# 'covid']# 'radon', 'chimpanzees']
 
 paths = {'movielens': ['experiments/moments/movielens/qem_0_30_0.1_moments.pkl', 'experiments/moments/movielens/rws_0_30_0.03_moments.pkl', 'experiments/moments/movielens/vi_0_30_0.03_moments.pkl', 'experiments/results/movielens/blackjax_moments0.pkl', 'experiments/results/movielens/blackjax0.pkl'],
          'bus_breakdown': ['experiments/moments/bus_breakdown/qem_0_30_0.03_moments.pkl', 'experiments/moments/bus_breakdown/rws_0_30_0.1_moments.pkl', 'experiments/moments/bus_breakdown/vi_0_30_0.1_moments.pkl', 'experiments/results/bus_breakdown/blackjax_moments0.pkl', 'experiments/results/bus_breakdown/blackjax0.pkl'],
          'radon': ['experiments/moments/radon/qem_0_30_0.1_moments.pkl', 'experiments/moments/radon/rws_0_30_0.1_moments.pkl', 'experiments/moments/radon/vi_0_30_0.1_moments.pkl', 'experiments/results/radon/blackjax_moments0.pkl', 'experiments/results/radon/blackjax0.pkl'],
          'chimpanzees': ['experiments/moments/qem_0_30_0.1_moments.pkl', 'experiments/moments/rws_0_30_0.1_moments.pkl', 'experiments/moments/vi_0_30_0.1_moments.pkl', 'experiments/results/moments/blackjax_moments0.pkl', 'experiments/results/moments/blackjax0.pkl'],
          'covid': ['experiments/moments/covid/qem_0_30_0.1_moments.pkl', 'experiments/moments/covid/rws_0_30_0.1_moments.pkl', 'experiments/moments/covid/vi_0_30_0.1_moments.pkl', 'experiments/results/covid/blackjax_moments0.pkl', 'experiments/results/covid/blackjax0.pkl'],
-         'movielens_reparam': ['experiments/moments/movielens_reparam/qem_0_30_0.1_moments.pkl', 'experiments/moments/movielens_reparam/rws_0_30_0.03_moments.pkl', 'experiments/moments/movielens_reparam/vi_0_30_0.03_moments.pkl', 'experiments/results/movielens/blackjax_moments0.pkl', 'experiments/results/movielens_reparam/blackjax0.pkl'],
-         'bus_breakdown_reparam': ['experiments/moments/bus_breakdown_reparam/qem_0_30_0.03_moments.pkl', 'experiments/moments/bus_breakdown_reparam/rws_0_30_0.1_moments.pkl', 'experiments/moments/bus_breakdown_reparam/vi_0_30_0.1_moments.pkl', 'experiments/results/bus_breakdown/blackjax_moments0.pkl', 'experiments/results/bus_breakdown_reparam/blackjax0.pkl'],
-         'radon_reparam': ['experiments/moments/radon_reparam/qem_0_30_0.1_moments.pkl', 'experiments/moments/radon_reparam/rws_0_30_0.1_moments.pkl', 'experiments/moments/radon_reparam/vi_0_30_0.1_moments.pkl', 'experiments/results/radon/blackjax_moments0.pkl', 'experiments/results/radon_reparam/blackjax0.pkl'],}
+         'movielens_reparam': ['experiments/moments/movielens_reparam/qem_0_30_0.1_moments.pkl', 'experiments/moments/movielens_reparam/rws_0_30_0.03_moments.pkl', 'experiments/moments/movielens_reparam/vi_0_30_0.03_moments.pkl', 'experiments/results/movielens/blackjax_moments0.pkl', 'experiments/results/movielens/blackjax0.pkl'],
+         'bus_breakdown_reparam': ['experiments/moments/bus_breakdown_reparam/qem_0_30_0.03_moments.pkl', 'experiments/moments/bus_breakdown_reparam/rws_0_30_0.1_moments.pkl', 'experiments/moments/bus_breakdown_reparam/vi_0_30_0.1_moments.pkl', 'experiments/results/bus_breakdown/blackjax_moments0.pkl', 'experiments/results/bus_breakdown/blackjax0.pkl'],
+         'radon_reparam': ['experiments/moments/radon_reparam/qem_0_30_0.1_moments.pkl', 'experiments/moments/radon_reparam/rws_0_30_0.1_moments.pkl', 'experiments/moments/radon_reparam/vi_0_30_0.1_moments.pkl', 'experiments/results/radon/blackjax_moments0.pkl', 'experiments/results/radon/blackjax0.pkl'],}
 
 #reparam paths 
 # paths = {'movielens': ['experiments/moments/movielens_reparam/qem_0_30_0.1_moments.pkl', 'experiments/moments/movielens_reparam/rws_0_30_0.03_moments.pkl', 'experiments/moments/movielens_reparam/vi_0_30_0.03_moments.pkl', 'experiments/results/movielens/blackjax_moments0.pkl'],
@@ -39,7 +39,7 @@ paths = {'movielens': ['experiments/moments/movielens/qem_0_30_0.1_moments.pkl',
 #             'covid': ['experiments/moments/covid_reparam/qem_0_30_0.1_moments.pkl', 'experiments/moments/covid_reparam/rws_0_30_0.1_moments.pkl', 'experiments/moments/covid_reparam/vi_0_30_0.1_moments.pkl', 'experiments/results/covid_reparam/blackjax_moments0.pkl']}
          
 # Three colours for each method
-colours = ['b', 'r', 'g']
+colours = ['b', 'r', 'g', 'y']
 
 fig, ax = plt.subplots(2, len(models), figsize=(15, 4*len(models)))
 
@@ -63,10 +63,33 @@ for model in models:
         HMC = pickle.load(f)
 
 
-    # use the first 200 HMC iterations
-    # for key in HMC.keys():
-    #     print(key)
-    #     print(HMC[key].shape)
+    if model == 'movielens_reparam':
+        QEM_moments['means']['z'] = QEM_moments['means']['z'] * 100
+        RWS_moments['means']['z'] = RWS_moments['means']['z'] * 100
+        VI_moments['means']['z'] = VI_moments['means']['z'] * 100
+        
+    if model == 'bus_breakdown_reparam':
+        QEM_moments['means']['log_delay'] = QEM_moments['means']['log_delay'] * 1000
+        RWS_moments['means']['log_delay'] = RWS_moments['means']['log_delay'] * 1000
+        VI_moments['means']['log_delay'] = VI_moments['means']['log_delay'] * 1000
+        
+        QEM_moments['means']['alph'] = QEM_moments['means']['alph'] * 10
+        RWS_moments['means']['alph'] = RWS_moments['means']['alph'] * 10
+        VI_moments['means']['alph'] = VI_moments['means']['alph'] * 10
+    
+    if model == 'radon_reparam':
+        QEM_moments['means']['County_mean'] = QEM_moments['means']['County_mean'] * 100
+        RWS_moments['means']['County_mean'] = RWS_moments['means']['County_mean'] * 100
+        VI_moments['means']['County_mean'] = VI_moments['means']['County_mean'] * 100
+        
+        QEM_moments['means']['Beta_u'] = QEM_moments['means']['Beta_u'] * 10
+        RWS_moments['means']['Beta_u'] = RWS_moments['means']['Beta_u'] * 10
+        VI_moments['means']['Beta_u'] = VI_moments['means']['Beta_u'] * 10
+        
+        QEM_moments['means']['Beta_basement'] = QEM_moments['means']['Beta_basement'] * 1000
+        RWS_moments['means']['Beta_basement'] = RWS_moments['means']['Beta_basement'] * 1000
+        VI_moments['means']['Beta_basement'] = VI_moments['means']['Beta_basement'] * 1000
+        
         
     HMC_short = {key: HMC[key] for key in HMC}
     
@@ -116,17 +139,27 @@ for model in models:
         
     # print(HMC['p_lls'])
     # times
-    QEM_times = QEM['iter_times'][0][0].mean(1)
-    RWS_times = RWS['iter_times'][0][0].mean(1)
-    VI_times = VI['iter_times'][0][0].mean(1)
-    print(HMC['times']['moments'].shape)
-    HMC_times = HMC['times']['moments'].mean(1)
+    if model == 'radon_reparam':
+        QEM_times = QEM['iter_times'].mean(-1)[0][1]
+        RWS_times = RWS['iter_times'].mean(-1)[0][1]
+        VI_times = VI['iter_times'].mean(-1)[0][1]
+        HMC_times = HMC['times']['moments'].mean(1)
+    else:
+        QEM_times = QEM['iter_times'].mean(-1)[2][1]
+        RWS_times = RWS['iter_times'].mean(-1)[2][1]
+        VI_times = VI['iter_times'].mean(-1)[2][1]
+        HMC_times = HMC['times']['moments'].mean(1)
     
     #Cumulative sums
     QEM_times = np.cumsum(QEM_times)
     RWS_times = np.cumsum(RWS_times)
     VI_times = np.cumsum(VI_times)
     HMC_times = HMC_times
+    
+    print('QEM', QEM_times[-1])
+    print('RWS', RWS_times[-1])
+    print('VI', VI_times[-1])
+    print('HMC', HMC_times[-1])
     
     #to lists
     QEM_times = QEM_times.tolist()
@@ -175,9 +208,8 @@ for model in models:
 #add legend
 ax[0, len(models)-1].legend()
 
-plt.suptitle('Mean difference between HMC moment estimates and other methods')
+plt.savefig('moments.pdf', dpi=1200)
 plt.savefig('moments.png')
-    
     
 
 
