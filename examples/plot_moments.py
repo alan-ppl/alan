@@ -228,7 +228,7 @@ for model in models:
     pred_ll_ax[models.index(model)].plot(RWS_times, RWS_plls, label='RWS', color=colours[1])
     pred_ll_ax[models.index(model)].plot(VI_times, VI_plls, label='VI', color=colours[2])
     pred_ll_ax[models.index(model)].plot(HMC_times, HMC_plls, label='HMC', color=colours[3])
-    pred_ll_ax[models.index(model)].set_ylim([min(QEM_plls) - np.var(QEM_plls), max(QEM_plls)+np.var(QEM_plls)])
+    pred_ll_ax[models.index(model)].set_ylim([min(QEM_plls) - 50, max(QEM_plls)+50])
     
     
     
