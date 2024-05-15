@@ -49,9 +49,9 @@ def get_model(data, covariates):
         
         bird_year_mean = stats.norm.logpdf(params.bird_year_mean, params.bird_mean, 1.).sum()
         
-        z = stats.bernoulli.logpmf(params.z, jax.nn.softmax(params.bird_mean * params.beta * covariates['weather'].transpose(2,0,1))).sum()
+        z = stats.bernoulli.logpmf(params.z[:100,:,:], jax.nn.softmax(params.bird_mean * params.beta * covariates['weather'].transpose(2,0,1))).sum()
         
-        obs = stats.bernoulli.logpmf(data.transpose(3,2,0,1), jax.nn.softmax(params.alpha * covariates['quality'].transpose(2,0,1) * params.z + (1-params.z)*(-10))).sum()
+        obs = stats.bernoulli.logpmf(data.transpose(3,2,0,1), jax.nn.softmax(params.alpha * covariates['quality'].transpose(2,0,1) * params.z[:100,:,:] + (1-params.z[:100,:,:])*(-10))).sum()
     
         return obs
     
@@ -85,10 +85,11 @@ def get_model(data, covariates):
 
 def get_test_data_cov_dict(all_data, all_covariates, platesizes):
     test_data = all_data
-    test_data = {'true_obs': all_data['obs'][:,platesizes['plate_2']:]}
+    test_data = {'true_obs': all_data['obs'][:,:, platesizes['plate_Ids']:]}
 
     test_covariates = all_covariates
-    test_covariates['x'] = test_covariates['x'][:,platesizes['plate_2']:]
+    test_covariates['weather'] = test_covariates['weather'][:,:, platesizes['plate_Ids']:]
+    test_covariates['quality'] = test_covariates['quality'][:,:, platesizes['plate_Ids']:]
 
     return test_data, test_covariates
 

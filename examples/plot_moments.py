@@ -39,7 +39,7 @@ paths = {'movielens': ['experiments/moments/movielens/qem_0_30_0.1_moments.pkl',
 #             'covid': ['experiments/moments/covid_reparam/qem_0_30_0.1_moments.pkl', 'experiments/moments/covid_reparam/rws_0_30_0.1_moments.pkl', 'experiments/moments/covid_reparam/vi_0_30_0.1_moments.pkl', 'experiments/results/covid_reparam/blackjax_moments0.pkl']}
          
 # Three colours for each method
-colours = ['b', 'r', 'g', 'y']
+colours = ['b', 'r', 'g', 'orange']
 
 fig, ax = plt.subplots(2, len(models), figsize=(15, 4*len(models)))
 

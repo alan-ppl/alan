@@ -12,6 +12,7 @@ def get_model(data, covariates):
     bus_company_name_dim = covariates['bus_company_name'].shape[-1]
     run_type_dim = covariates['run_type'].shape[-1]
 
+    print(bus_company_name_dim, run_type_dim)
     params = namedtuple("model_params", ["psi", "phi", "sigma_beta", "mu_beta", "beta", "sigma_alpha", "alpha", "alph", "log_delay"])
     def joint_logdensity(params, data, covariates):
         #prior

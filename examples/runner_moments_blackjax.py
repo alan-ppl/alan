@@ -137,15 +137,29 @@ def run_experiment(cfg):
             joint_logdensity, joint_logdensity_pred_ll, params, init_param_fn, transform_non_cent_to_cent = model.get_model(data, covariates)
             training_joint_logdensity = lambda params: joint_logdensity(params, data['obs'], covariates)
             
-            warmup = blackjax.window_adaptation(blackjax.nuts, training_joint_logdensity)
-            # we use 4 chains for sampling
-            rng_key = jax.random.key(num_run)
-            rng_key, init_key, warmup_key = jax.random.split(rng_key, 3)
-            init_params = init_param_fn(init_key)
+            if cfg.model == 'occupancy':
+                # we use 4 chains for sampling
+                rng_key = jax.random.key(num_run)
+                rng_key, init_key, warmup_key = jax.random.split(rng_key, 3)
+                init_params = init_param_fn(init_key)
+            
+                random_walk = blackjax.additive_step_random_walk(training_joint_logdensity, blackjax.mcmc.random_walk.normal(0.5))
+                state = random_walk.init(init_params)
+                sampling_start_time = safe_time(device)
+                for _ in range(1000):
+                    state, info = random_walk.step(rng_key, state)
+                
+                warmup_time = safe_time(device) - sampling_start_time
+            else:
+                warmup = blackjax.window_adaptation(blackjax.nuts, training_joint_logdensity)
+                # we use 4 chains for sampling
+                rng_key = jax.random.key(num_run)
+                rng_key, init_key, warmup_key = jax.random.split(rng_key, 3)
+                init_params = init_param_fn(init_key)
 
-            sampling_start_time = safe_time(device)
-            (state, parameters), _ = warmup.run(warmup_key, init_params, num_tuning_samples)
-            warmup_time = safe_time(device) - sampling_start_time
+                sampling_start_time = safe_time(device)
+                (state, parameters), _ = warmup.run(warmup_key, init_params, num_tuning_samples)
+                warmup_time = safe_time(device) - sampling_start_time
 
             def inference_loop(rng_key, kernel, initial_state, num_samples):
                 @jax.jit
@@ -156,26 +170,33 @@ def run_experiment(cfg):
                 keys = jax.random.split(rng_key, num_samples)
                 _, (states, infos) = jax.lax.scan(one_step, initial_state, keys)
 
-                return states, (
-                        infos.acceptance_rate,
-                        infos.is_divergent,
-                        infos.num_integration_steps,
-                    )
+                if cfg.model == 'occupancy':
+                    return states, (infos.acceptance_rate,)
+                else:
+                    return states, (
+                            infos.acceptance_rate,
+                            infos.is_divergent,
+                            infos.num_integration_steps,
+                        )
             
             
             rng_key, warmup_key, sample_key = jax.random.split(rng_key, 3)
-            
-            kernel = blackjax.nuts(training_joint_logdensity, **parameters).step
+            if cfg.model == 'occupancy':
+                kernel = blackjax.additive_step_random_walk(training_joint_logdensity, blackjax.mcmc.random_walk.normal(0.5)).step
+            else:
+                kernel = blackjax.nuts(training_joint_logdensity, **parameters).step
             states, infos = inference_loop(sample_key, kernel, state, num_samples)
             times['moments'][:, num_run] = np.linspace(warmup_time,safe_time(device)-sampling_start_time,num_samples+1)[1:]
 
             states_dict = states.position._asdict()
             
             acceptance_rate = np.mean(infos[0])
-            num_divergent = np.mean(infos[1])
-
             print(f"Average acceptance rate: {acceptance_rate:.2f}")
-            print(f"There were {100*num_divergent:.2f}% divergent transitions")
+            
+            if not cfg.model == 'occupancy':
+                
+                num_divergent = np.mean(infos[1])
+                print(f"There were {100*num_divergent:.2f}% divergent transitions")
 
             if cfg.do_predll:
                 print("Sampling predictive log likelihood with JAX")
