@@ -1,9 +1,7 @@
 import pickle
 import numpy as np
 
-USING_NEW_BUS = True
-
-def get_best_results(model_name, validation_iter_number=200, method_names=['qem', 'rws', 'vi', 'qem_nonmp', 'global_vi', 'global_rws'], global_K = 10, dataset_seeds=[0], ignore_nans=True, using_new_bus=USING_NEW_BUS):
+def get_best_results(model_name, validation_iter_number=200, method_names=['qem', 'rws', 'vi', 'qem_nonmp', 'global_vi', 'global_rws'], global_K = 10, dataset_seeds=[0], ignore_nans=True):
     print(f"Getting best results for {model_name}.")
 
     results = {method_name: {} for method_name in method_names}
@@ -23,13 +21,18 @@ def get_best_results(model_name, validation_iter_number=200, method_names=['qem'
     mean_func = np.nanmean if ignore_nans else np.mean
     std_func = np.nanstd if ignore_nans else np.std
 
+    with open(f'../experiments/results/{model_name}/Ks_lrs.pkl', 'rb') as f:
+        Ks_lrs = pickle.load(f)
+    # pad Ks_lrs with None for the missing Ks
+    max_num_lrs = max([len(lrs) for lrs in Ks_lrs.values()])
+    for K in Ks_lrs:
+        Ks_lrs[K] = Ks_lrs[K] + [None] * (max_num_lrs - len(Ks_lrs[K]))
+
     for method_name in method_names:
 
         # Load the results
         for dataset_seed in dataset_seeds:
             if 'global' not in method_name:
-                results_folder = f'results_with_{"new" if using_new_bus else "old"}_bus'
-                # with open(f'results/{model_name}/{method_name}{dataset_seed}.pkl', 'rb') as f:
                 with open(f'../experiments/results/{model_name}/{method_name}{dataset_seed}.pkl', 'rb') as f:
                     results[method_name][dataset_seed] = pickle.load(f)
 
@@ -98,26 +101,8 @@ def get_best_results(model_name, validation_iter_number=200, method_names=['qem'
                 # move lr idxs corresponding to NaNs to the end of lr_order
                 lr_order = np.concatenate([lr_order[~np.isnan(elbos[method_name][k, lr_order, validation_iter_number])],
                                         lr_order[np.isnan(elbos[method_name][k, lr_order, validation_iter_number])]])
-                
-                # if model_name == 'bus_breakdown' or model_name == 'occupancy' or model_name == 'bus_breakdown_reparam' or model_name == 'movielens_reparam' or model_name == 'movielens' and using_new_bus:
-                #     if 'qem' not in method_name:
-                #         lr_order = np.array([1,0])
-                #     else:
-                #         lr_order = np.array([0,1])
-                # breakpoint()
 
-                # for bus and movielens results, we know what learning rates were used but they are saved incorrectly in results[method_name][dataset_seed]['lrs']
-                #if 'bus' in model_name or 'movielens' in model_name:
-                    # if model_name == 'bus_breakdown' and using_new_bus:# and 'qem' not in method_name:
-                    #     #deal with bus K=100 weird case of 3 lrs (should only be 1?)
-                    #     # if 'qem' in method_name:
-                    #     #     results[method_name][dataset_seeds[0]]['lrs'] = {3: [0.001, None], 10: [0.001, None], 30: [0.01, None], 100: [0.1, None, None]}[K]
-                    #     # else:
-                    #     #     # breakpoint()
-                    #     #     results[method_name][dataset_seeds[0]]['lrs'] = [0.1,0.03,0.01]
-                    #     results[method_name][dataset_seeds[0]]['lrs'] = [0.1,0.03,0.01]
-                    # else:
-                results[method_name][dataset_seeds[0]]['lrs'] = {3: [0.001, None], 10: [0.001, None], 30: [0.1, 0.03], 100: [0.1, None]}[K]
+                results[method_name][dataset_seeds[0]]['lrs'] = Ks_lrs[K]
                 lrs = np.array(results[method_name][dataset_seeds[0]]['lrs'])[lr_order[::-1]]
 
                 print(f"{method_name} K: {K}, lr_order: {lr_order} ({lrs})")
