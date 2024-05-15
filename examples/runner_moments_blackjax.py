@@ -145,6 +145,7 @@ def run_experiment(cfg):
 
             sampling_start_time = safe_time(device)
             (state, parameters), _ = warmup.run(warmup_key, init_params, num_tuning_samples)
+            warmup_time = safe_time(device) - sampling_start_time
 
             def inference_loop(rng_key, kernel, initial_state, num_samples):
                 @jax.jit
@@ -165,8 +166,9 @@ def run_experiment(cfg):
             rng_key, warmup_key, sample_key = jax.random.split(rng_key, 3)
             kernel = blackjax.nuts(training_joint_logdensity, **parameters).step
             states, infos = inference_loop(sample_key, kernel, state, num_samples)
-            times['moments'][:, num_run] = np.linspace(0,safe_time(device)-sampling_start_time,num_samples+1)[1:]
+            times['moments'][:, num_run] = np.linspace(warmup_time,safe_time(device)-sampling_start_time,num_samples+1)[1:]
 
+            print(times['moments'][:, num_run])
             states_dict = states.position._asdict()
             
             acceptance_rate = np.mean(infos[0])

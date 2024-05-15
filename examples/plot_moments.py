@@ -186,7 +186,7 @@ for model in models:
     ax[0,models.index(model)].plot(VI_times, VI_diff, label=f'VI', color=colours[2])
     
     #ylim
-    ax[0,models.index(model)].set_ylim([min(QEM_diff), max(QEM_diff)])
+    ax[0,models.index(model)].set_ylim([min(QEM_diff) - 2*np.var(QEM_diff), max(QEM_diff)+2*np.var(QEM_diff)])
 
     
     ax[0,models.index(model)].set_title(model)
