@@ -103,7 +103,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                         County_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                         County_log_sigma = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                         Beta_u = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-                        Beta_basement = Normal(OptParam(0.), OptParam(t.tensor(10.).log(), transformation=t.exp)),
+                        Beta_basement = Normal(OptParam(0.), OptParam(t.tensor(1.).log(), transformation=t.exp)),
                     ),
                     Zips = Plate(
                         obs = Data(),
@@ -127,7 +127,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                         County_mean = Normal(QEMParam(0.), QEMParam(1.)),
                         County_log_sigma = Normal(QEMParam(0.), QEMParam(1.)),
                         Beta_u = Normal(QEMParam(0.), QEMParam(1.)),
-                        Beta_basement = Normal(QEMParam(0.), QEMParam(10.)),
+                        Beta_basement = Normal(QEMParam(0.), QEMParam(1.)),
                     ),
                     Zips = Plate(
                         obs = Data(),
@@ -158,7 +158,7 @@ if __name__ == "__main__":
 
     basic_runner.run('radon',
                      K = 30,
-                     methods=['vi', 'rws', 'qem'],
+                     methods=['qem'],
                      num_runs = 1,
                      num_iters = 20,
                      lrs = {'vi': 0.1, 'rws': 0.3, 'qem': 0.3},
