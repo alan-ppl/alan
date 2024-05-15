@@ -279,7 +279,7 @@ def plot_all_2row(model_names   = ALL_MODEL_NAMES,
                 if inset.model_name == model_name and inset.K == K:
                     row = 0 if inset.metric_name == 'elbos' else 1
 
-                    bbox_to_anchor = (0.60,0.70) if inset.position == 'top' else (0.60,0.35)
+                    bbox_to_anchor = (0.615,0.705) if inset.position == 'top' else (0.60,0.35)
 
                     axins = inset_axes(axs[row,col_counter], 1.5,1, loc='center', bbox_to_anchor=bbox_to_anchor, bbox_transform=axs[row,col_counter].transAxes)
                     
@@ -666,6 +666,7 @@ if __name__ == "__main__":
     ##################### TIME-PER-ITERATION PLOTS #####################
     plot_avg_iter_time_per_K(save_pdf=True)
     plot_avg_iter_time_per_K(save_pdf=True, model_names=sub_model_collections['standard'], filename_end='_standardONLY')
+    plot_avg_iter_time_per_K(save_pdf=True, model_names=sub_model_collections['standard_no_covid'], filename_end='_standard_no_covidONLY')
 
 
     #####################     ELBO/P_LL PLOTS      #####################
@@ -734,8 +735,9 @@ if __name__ == "__main__":
 
     zoomed_insets = [Zoomed_Inset(model_name='movielens_reparam', compare_reparams=True, methods=['qem', 'rws', 'vi'],  K=best_Ks['movielens_reparam'][0], metric_name='elbos', xlims=(None, None), position='bottom', ylims=(-1050,  -985)),  
                      Zoomed_Inset(model_name='movielens_reparam', compare_reparams=True, methods=['qem', 'rws', 'vi'],  K=best_Ks['movielens_reparam'][0], metric_name='p_lls', xlims=(None, None), position='top',    ylims=ylims['p_ll']['movielens']),      
-                     Zoomed_Inset(model_name='radon_reparam',     compare_reparams=True, methods=['qem', 'rws', 'vi'],  K=best_Ks['radon_reparam'][0],     metric_name='elbos', xlims=(None, None), position='top', ylims=ylims['elbo']['radon']),
-                     Zoomed_Inset(model_name='radon_reparam',     compare_reparams=True, methods=['qem', 'rws', 'vi'],  K=best_Ks['radon_reparam'][0],     metric_name='p_lls', xlims=(None, None), position='top',    ylims=ylims['p_ll']['radon'])]
+                     Zoomed_Inset(model_name='radon_reparam',     compare_reparams=True, methods=['qem', 'rws', 'vi'],  K=best_Ks['radon_reparam'][0],     metric_name='elbos', xlims=(None, None), position='top',    ylims=ylims['elbo']['radon']),
+                     Zoomed_Inset(model_name='radon_reparam',     compare_reparams=True, methods=['qem', 'rws', 'vi'],  K=best_Ks['radon_reparam'][0],     metric_name='p_lls', xlims=(None, None), position='top',    ylims=(-790, -525)),
+                    ]
 
     plot_all_2row(model_names=sub_model_collections['reparams'],
                   Ks_to_plot=best_Ks,
