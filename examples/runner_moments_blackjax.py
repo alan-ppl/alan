@@ -202,6 +202,7 @@ def run_experiment(cfg):
                 print("Sampling predictive log likelihood with JAX")
                 p_ll_start_time = safe_time(device)
                 test_data, test_covariates = model.get_test_data_cov_dict(all_data, all_covariates, platesizes)
+                
                 test_joint_logdensity = lambda params: joint_logdensity_pred_ll(params, test_data['true_obs'], test_covariates)
                 pred_ll = get_predll(test_joint_logdensity, states.position, rng_key)
                 print(f"p_ll sampling time: {safe_time(device)-p_ll_start_time}s")

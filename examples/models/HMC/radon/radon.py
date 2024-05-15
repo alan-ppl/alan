@@ -37,7 +37,7 @@ def get_model(data, covariates):
         #Zip level
         
         #obs = pm.Normal('obs', mu=0, sigma=1, observed=true_obs, shape=(Zips, Counties, States))
-        obs = pm.Normal('obs', mu=1000*County_mean + 10*basement*Beta_basement + log_uranium * Beta_u, sigma=County_log_sigma.exp(), observed=true_obs, shape=(Zips, Counties, States))
+        obs = pm.Normal('obs', mu=County_mean + basement*Beta_basement + log_uranium * Beta_u, sigma=County_log_sigma.exp(), observed=true_obs, shape=(Zips, Counties, States))
     
     return model
 

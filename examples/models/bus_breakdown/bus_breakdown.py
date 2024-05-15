@@ -39,6 +39,8 @@ def get_P(platesizes, covariates):
     bus_company_name_dim = covariates['bus_company_name'].shape[-1]
     run_type_dim = covariates['run_type'].shape[-1]
 
+    def fn(alpha, phi, psi, run_type, bus_company_name):
+        return alpha + phi @ bus_company_name + psi @ run_type
     P = Plate(
         psi = Normal(t.zeros((run_type_dim,)), t.ones((run_type_dim,))),
         phi = Normal(t.zeros((bus_company_name_dim,)), t.ones((bus_company_name_dim,))),
@@ -56,7 +58,7 @@ def get_P(platesizes, covariates):
 
                 plate_ID = Plate(
                     alph = Normal(0, 1),
-                    log_delay = Normal(lambda alpha, phi, psi, run_type, bus_company_name: alpha + phi @ bus_company_name + psi @ run_type, 1.),
+                    log_delay = Normal(lambda alpha, phi, psi, run_type, bus_company_name: fn(alpha, phi, psi, run_type, bus_company_name), 1.),
 
                     obs = NegativeBinomial(total_count=lambda alph: alph.exp(), logits = 'log_delay')
                 )
@@ -148,11 +150,17 @@ if __name__ == "__main__":
     sys.path.insert(1, os.path.join(sys.path[0], '..'))
     import basic_runner
 
-    basic_runner.run('bus_breakdown',
-                     methods = ['vi', 'rws', 'qem'],
-                     K = 10,
-                     num_runs = 1,
-                     num_iters = 20,
-                     lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1},
-                     fake_data = False,
-                     device = 'cpu')
+    # basic_runner.run('bus_breakdown',
+    #                  methods = ['qem'],
+    #                  K = 10,
+    #                  num_runs = 1,
+    #                  num_iters = 100,
+    #                  lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.3 },
+    #                  fake_data = False,
+    #                  device = 'cpu')
+    problem, all_data, all_covariates, all_platesizes = _load_and_generate_problem('cpu', 'qem', fake_data=True)
+
+    samples = problem.P.sample(1000)
+    
+    print(samples['log_delay'].mean(-1))
+

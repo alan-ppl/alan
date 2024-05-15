@@ -27,9 +27,9 @@ def get_model(data, covariates):
         
         bird_year_mean = stats.norm.logpdf(params.bird_year_mean, params.bird_mean, 1.).sum()
         
-        z = stats.bernoulli.logpmf(params.z, jax.nn.softmax(params.bird_mean * params.beta * covariates['weather'].transpose(2,0,1))).sum()
+        z = stats.bernoulli.logpmf(params.z, jax.nn.sigmoid(params.bird_mean * params.beta * covariates['weather'].transpose(2,0,1))).sum()
         
-        obs = stats.bernoulli.logpmf(data.transpose(3,2,0,1), jax.nn.softmax(params.alpha * covariates['quality'].transpose(2,0,1) * params.z + (1-params.z)*(-10))).sum()
+        obs = stats.bernoulli.logpmf(data.transpose(3,2,0,1), jax.nn.sigmoid(params.alpha * covariates['quality'].transpose(2,0,1) * params.z + (1-params.z)*(-10))).sum()
         
         return bird_mean_mean + bird_mean_log_var + alpha_mean + alpha_log_var + beta_mean + beta_log_var + bird_mean + alpha + beta + bird_year_mean + z + obs
     

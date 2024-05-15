@@ -20,8 +20,10 @@ def smooth(x, window):
 
     return result
 
-models = ['movielens','movielens_reparam', 'bus_breakdown', 'bus_breakdown_reparam','radon', 'radon_reparam']# 'covid']# 'bus_breakdown']# 'covid']# 'radon', 'chimpanzees']
+#models = ['movielens','movielens_reparam', 'bus_breakdown', 'bus_breakdown_reparam','radon', 'radon_reparam']# 'covid']# 'bus_breakdown']# 'covid']# 'radon', 'chimpanzees']
 
+
+models = ['bus_breakdown']
 paths = {'movielens': ['experiments/moments/movielens/qem_0_30_0.1_moments.pkl', 'experiments/moments/movielens/rws_0_30_0.03_moments.pkl', 'experiments/moments/movielens/vi_0_30_0.03_moments.pkl', 'experiments/results/movielens/blackjax_moments0.pkl', 'experiments/results/movielens/blackjax0.pkl'],
          'bus_breakdown': ['experiments/moments/bus_breakdown/qem_0_30_0.03_moments.pkl', 'experiments/moments/bus_breakdown/rws_0_30_0.1_moments.pkl', 'experiments/moments/bus_breakdown/vi_0_30_0.1_moments.pkl', 'experiments/results/bus_breakdown/blackjax_moments0.pkl', 'experiments/results/bus_breakdown/blackjax0.pkl'],
          'radon': ['experiments/moments/radon/qem_0_30_0.1_moments.pkl', 'experiments/moments/radon/rws_0_30_0.1_moments.pkl', 'experiments/moments/radon/vi_0_30_0.1_moments.pkl', 'experiments/results/radon/blackjax_moments0.pkl', 'experiments/results/radon/blackjax0.pkl'],
@@ -64,6 +66,13 @@ for model in models:
         HMC = pickle.load(f)
 
 
+
+    # if 'bus' in model:
+    #     print(HMC['alpha'].mean(0))
+    #     print(QEM_moments['means']['alpha'])
+    #     HMC['alpha'] = HMC['alpha'].transpose(0,2,1)
+        
+        
     if model == 'movielens_reparam':
         QEM_moments['means']['z'] = QEM_moments['means']['z'] * 100
         RWS_moments['means']['z'] = RWS_moments['means']['z'] * 100
@@ -98,6 +107,8 @@ for model in models:
  
     QEM_diffs = {key: [] for key in QEM_moments['means'].keys()}
     for key in QEM_diffs.keys():
+        print(key)
+        print(((HMC_means[key] - QEM_moments['means'][key])**2).mean(axis=tuple(range(1, QEM_moments['means'][key].ndim))))
         diff = 0
         diff += ((HMC_means[key] - QEM_moments['means'][key])**2).mean(axis=tuple(range(1, QEM_moments['means'][key].ndim)))
         QEM_diffs[key] = diff

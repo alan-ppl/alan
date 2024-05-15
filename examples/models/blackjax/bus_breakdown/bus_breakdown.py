@@ -32,10 +32,13 @@ def get_model(data, covariates):
         
         # ID level
         alph = stats.norm.logpdf(params.sigma_alpha, 0., 1.).sum()
-
-        log_delay = stats.norm.logpdf(params.log_delay, params.alpha[:,:,jnp.newaxis].transpose(1,0,2) + ((covariates['bus_company_name'] @ params.phi.transpose()) + (covariates['run_type'] @ params.psi.transpose())), 1.).sum()
-        #log_delay = alpha.reshape(3,3,1) + ((covariates['bus_company_name'] @ params.phi.transpose()) + (covariates['run_type'] @ params.psi.transpose())) + params.log_delay_non_cent 
-        obs = stats.nbinom.logpmf(data, jnp.exp(params.alph), jax.nn.softmax(params.log_delay)).sum()
+        
+        log_delay = stats.norm.logpdf(params.log_delay, params.alpha[:,:,jnp.newaxis] + ((covariates['bus_company_name'] * params.phi.transpose()).sum(-1) + (covariates['run_type'] * params.psi.transpose()).sum(-1)), 1.).sum()
+        
+        p = 1-jax.nn.sigmoid(params.log_delay)
+        n = jnp.exp(params.alph)
+        
+        obs = stats.nbinom.logpmf(data, n, p).sum()
         
         return psi + phi + sigma_beta + mu_beta + beta + sigma_alpha + alpha + alph + log_delay + obs
 
@@ -59,9 +62,12 @@ def get_model(data, covariates):
         # ID level
         alph = stats.norm.logpdf(params.sigma_alpha, 0., 1.).sum()
 
-        log_delay = stats.norm.logpdf(params.log_delay, params.alpha[:,:,jnp.newaxis] + ((covariates['bus_company_name'] @ params.phi.transpose()) + (covariates['run_type'] @ params.psi.transpose())), 1.).sum()
-        #log_delay = alpha.reshape(3,3,1) + ((covariates['bus_company_name'] @ params.phi.transpose()) + (covariates['run_type'] @ params.psi.transpose())) + params.log_delay_non_cent 
-        obs = stats.nbinom.logpmf(data, jnp.exp(params.alph), jax.nn.softmax(params.log_delay)).sum()
+        log_delay = stats.norm.logpdf(params.log_delay, params.alpha[:,:,jnp.newaxis] + ((covariates['bus_company_name'] * params.phi.transpose()).sum(-1) + (covariates['run_type'] * params.psi.transpose()).sum(-1)), 1.).sum()
+
+        p = 1-jax.nn.sigmoid(params.log_delay)
+        n = jnp.exp(params.alph)
+        
+        obs = stats.nbinom.logpmf(data, n, p).sum()
         
         return obs
     
@@ -77,7 +83,7 @@ def get_model(data, covariates):
             mu_beta=jax.random.normal(key4),
             beta=jax.random.normal(key5, shape=(M,)),
             sigma_alpha=jax.random.normal(key6, shape=(M,)),
-            alpha=jax.random.normal(key7, shape=(J,M)),
+            alpha=jax.random.normal(key7, shape=(M,J)),
             alph=jax.random.exponential(key8, shape=(M,J,I)),
             log_delay=jax.random.normal(key9, shape=(M,J,I)),
         )
@@ -103,6 +109,6 @@ def get_test_data_cov_dict(all_data, all_covariates, platesizes):
 
     test_covariates = all_covariates
     for key in test_covariates:
-        test_covariates[key] = test_covariates[key][:,:,platesizes['plate_ID']:]
+        test_covariates[key] = test_covariates[key][:,:,platesizes['plate_ID']:,...]
 
     return test_data, test_covariates
