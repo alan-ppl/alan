@@ -43,6 +43,7 @@ colours = ['b', 'r', 'g', 'y']
 
 fig, ax = plt.subplots(2, len(models), figsize=(15, 4*len(models)))
 
+pred_ll_fig, pred_ll_ax = plt.subplots(1, len(models), figsize=(15, 4*len(models)))
 # with open(f'movielensexperiments/moments/moments/HMC0.pkl', 'rb') as f:
 #     hmc = pickle.load(f)
     
@@ -144,11 +145,21 @@ for model in models:
         RWS_times = RWS['iter_times'].mean(-1)[0][1]
         VI_times = VI['iter_times'].mean(-1)[0][1]
         HMC_times = HMC['times']['moments'].mean(1)
+        
+        QEM_plls = QEM['p_lls'].mean(-1)[0][1]
+        RWS_plls = RWS['p_lls'].mean(-1)[0][1]
+        VI_plls = VI['p_lls'].mean(-1)[0][1]
+        HMC_plls = HMC['p_lls'].mean(1)
     else:
         QEM_times = QEM['iter_times'].mean(-1)[2][1]
         RWS_times = RWS['iter_times'].mean(-1)[2][1]
         VI_times = VI['iter_times'].mean(-1)[2][1]
         HMC_times = HMC['times']['moments'].mean(1)
+        
+        QEM_plls = QEM['p_lls'].mean(-1)[2][1]
+        RWS_plls = RWS['p_lls'].mean(-1)[2][1]
+        VI_plls = VI['p_lls'].mean(-1)[2][1]
+        HMC_plls = HMC['p_lls'].mean(1)
     
     #Cumulative sums
     QEM_times = np.cumsum(QEM_times)
@@ -200,16 +211,25 @@ for model in models:
     for i, v in enumerate([QEM_times[-1], RWS_times[-1], VI_times[-1], HMC_times[-1]]):
         ax[1,models.index(model)].text(i, v + 0.1, str(round(v, 2)), color='black', ha='center')
     
-    
+    QEM_plls = smooth(QEM_plls, 100)
+    RWS_plls = smooth(RWS_plls, 100)
+    VI_plls = smooth(VI_plls, 100)
+    HMC_plls = smooth(HMC_plls, 100)
+    pred_ll_ax[models.index(model)].plot(QEM_times, QEM_plls, label='QEM', color=colours[0])
+    pred_ll_ax[models.index(model)].plot(RWS_times, RWS_plls, label='RWS', color=colours[1])
+    pred_ll_ax[models.index(model)].plot(VI_times, VI_plls, label='VI', color=colours[2])
+    pred_ll_ax[models.index(model)].plot(HMC_times, HMC_plls, label='HMC', color=colours[3])
     
     
     
 
 #add legend
 ax[0, len(models)-1].legend()
+pred_ll_ax[len(models)-1].legend()
 
-plt.savefig('moments.pdf', dpi=1200)
-plt.savefig('moments.png')
+fig.savefig('moments.pdf', dpi=1200)
+fig.savefig('moments.png')
     
 
-
+pred_ll_fig.savefig('pred_lls.pdf', dpi=1200)
+pred_ll_fig.savefig('pred_lls.png')

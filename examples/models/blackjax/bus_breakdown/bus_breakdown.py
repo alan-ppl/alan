@@ -33,13 +33,38 @@ def get_model(data, covariates):
         # ID level
         alph = stats.norm.logpdf(params.sigma_alpha, 0., 1.).sum()
 
-        log_delay = stats.norm.logpdf(params.log_delay, params.alpha.reshape(3,3,1) + ((covariates['bus_company_name'] @ params.phi.transpose()) + (covariates['run_type'] @ params.psi.transpose())), 1.).sum()
+        log_delay = stats.norm.logpdf(params.log_delay, params.alpha[:,:,jnp.newaxis].transpose(1,0,2) + ((covariates['bus_company_name'] @ params.phi.transpose()) + (covariates['run_type'] @ params.psi.transpose())), 1.).sum()
         #log_delay = alpha.reshape(3,3,1) + ((covariates['bus_company_name'] @ params.phi.transpose()) + (covariates['run_type'] @ params.psi.transpose())) + params.log_delay_non_cent 
         obs = stats.nbinom.logpmf(data, jnp.exp(params.alph), jax.nn.softmax(params.log_delay)).sum()
         
         return psi + phi + sigma_beta + mu_beta + beta + sigma_alpha + alpha + alph + log_delay + obs
 
+    def joint_logdensity_pred_ll(params, data, covariates):
+        #prior
+        
+        psi = stats.norm.logpdf(params.psi, 0., 1.).sum()
+        phi = stats.norm.logpdf(params.phi, 0., 1.).sum()
+        sigma_beta = stats.norm.logpdf(params.sigma_beta, 0., 1.).sum()
+        mu_beta = stats.norm.logpdf(params.mu_beta, 0., 1.).sum()
+        # year level
 
+        beta = stats.norm.logpdf(params.beta, params.mu_beta, jnp.exp(params.sigma_beta)).sum()
+        #beta = params.mu_beta + params.beta_non_cent * jnp.exp(params.sigma_beta)
+        sigma_alpha = stats.norm.logpdf(params.sigma_alpha, 0., 1.).sum()
+        
+        # borough level
+        alpha = stats.norm.logpdf(params.alpha, params.beta, jnp.exp(params.sigma_alpha)).sum()
+        # alpha = beta + params.alpha_non_cent * jnp.exp(params.sigma_alpha)
+        
+        # ID level
+        alph = stats.norm.logpdf(params.sigma_alpha, 0., 1.).sum()
+
+        log_delay = stats.norm.logpdf(params.log_delay, params.alpha[:,:,jnp.newaxis] + ((covariates['bus_company_name'] @ params.phi.transpose()) + (covariates['run_type'] @ params.psi.transpose())), 1.).sum()
+        #log_delay = alpha.reshape(3,3,1) + ((covariates['bus_company_name'] @ params.phi.transpose()) + (covariates['run_type'] @ params.psi.transpose())) + params.log_delay_non_cent 
+        obs = stats.nbinom.logpmf(data, jnp.exp(params.alph), jax.nn.softmax(params.log_delay)).sum()
+        
+        return obs
+    
     def init_param_fn(seed):
         """
         initialize a, b & thetas
@@ -52,7 +77,7 @@ def get_model(data, covariates):
             mu_beta=jax.random.normal(key4),
             beta=jax.random.normal(key5, shape=(M,)),
             sigma_alpha=jax.random.normal(key6, shape=(M,)),
-            alpha=jax.random.normal(key7, shape=(M,J)),
+            alpha=jax.random.normal(key7, shape=(J,M)),
             alph=jax.random.exponential(key8, shape=(M,J,I)),
             log_delay=jax.random.normal(key9, shape=(M,J,I)),
         )
@@ -70,7 +95,7 @@ def get_model(data, covariates):
         # del params['log_delay_non_cent']
         return params
         
-    return joint_logdensity, params, init_param_fn, transform_non_cent_to_cent
+    return joint_logdensity, joint_logdensity_pred_ll, params, init_param_fn, transform_non_cent_to_cent
 
 def get_test_data_cov_dict(all_data, all_covariates, platesizes):
     test_data = all_data

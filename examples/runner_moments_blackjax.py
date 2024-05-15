@@ -134,7 +134,7 @@ def run_experiment(cfg):
 
             print(f"num_run: {num_run}")
             num_run_start_time = safe_time(device)
-            joint_logdensity, params, init_param_fn, transform_non_cent_to_cent = model.get_model(data, covariates)
+            joint_logdensity, joint_logdensity_pred_ll, params, init_param_fn, transform_non_cent_to_cent = model.get_model(data, covariates)
             training_joint_logdensity = lambda params: joint_logdensity(params, data['obs'], covariates)
             
             warmup = blackjax.window_adaptation(blackjax.nuts, training_joint_logdensity)
@@ -164,11 +164,11 @@ def run_experiment(cfg):
             
             
             rng_key, warmup_key, sample_key = jax.random.split(rng_key, 3)
+            
             kernel = blackjax.nuts(training_joint_logdensity, **parameters).step
             states, infos = inference_loop(sample_key, kernel, state, num_samples)
             times['moments'][:, num_run] = np.linspace(warmup_time,safe_time(device)-sampling_start_time,num_samples+1)[1:]
 
-            print(times['moments'][:, num_run])
             states_dict = states.position._asdict()
             
             acceptance_rate = np.mean(infos[0])
@@ -181,7 +181,7 @@ def run_experiment(cfg):
                 print("Sampling predictive log likelihood with JAX")
                 p_ll_start_time = safe_time(device)
                 test_data, test_covariates = model.get_test_data_cov_dict(all_data, all_covariates, platesizes)
-                test_joint_logdensity = lambda params: joint_logdensity(params, test_data['true_obs'], test_covariates)
+                test_joint_logdensity = lambda params: joint_logdensity_pred_ll(params, test_data['true_obs'], test_covariates)
                 pred_ll = get_predll(test_joint_logdensity, states.position, rng_key)
                 print(f"p_ll sampling time: {safe_time(device)-p_ll_start_time}s")
                 p_lls[:, num_run] = pred_ll
