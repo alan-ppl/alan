@@ -42,13 +42,15 @@ def smooth(x, window):
     return result
 
 class Zoomed_Inset:
-    def __init__(self, model_name, methods, K, metric_name, xlims, ylims):
+    def __init__(self, model_name, methods, K, metric_name, xlims, ylims, position='bottom', compare_reparams=False):
         self.model_name = model_name
         self.methods = methods
         self.K = K
         self.metric_name = metric_name
         self.xlims = xlims
         self.ylims = ylims
+        self.position = position
+        self.compare_reparams = compare_reparams
 
 def plot_method_K_lines(ax, 
                         model_results, 
@@ -135,16 +137,39 @@ def plot_all_2row(model_names   = ALL_MODEL_NAMES,
                   colours_dict  = DEFAULT_COLOURS,
                   short_labels  = True,
                   ylims         = {'elbo': {}, 'p_ll': {}},
+                  yscale        = 'linear',
                   zoomed_insets = [],
                   compare_reparams = False,
+                  match_reparam_lrs = False,
                   save_pdf      = False,
                   filename_end  = ""):
     
     results = {model_name: load_results(model_name) for model_name in model_names}
 
     if compare_reparams and all([model_name.endswith('_reparam') for model_name in model_names]):
+        # load results for the original parameterisation
         original_param_model_names = [model_name[:-8] for model_name in model_names]
         original_param_results = {model_name+"_reparam": load_results(model_name) for model_name in original_param_model_names}
+
+        if match_reparam_lrs:
+            # for each model, reorder the reparam results' lr-dimension to match the original param results
+            for model_name in model_names:
+                for method_name in results[model_name].keys():
+                    if method_name != 'HMC':
+                        Ks = list(results[model_name][method_name].keys())
+                        for K in Ks:
+                            original_lrs = original_param_results[model_name][method_name][K]['lrs']
+                            reparam_lrs  = results[model_name][method_name][K]['lrs']
+
+                            reorder_idxs = [reparam_lrs.tolist().index(lr) for lr in original_lrs]
+
+                            for metric_name in ['elbos', 'p_lls']:
+                                results[model_name][method_name][K][metric_name] = results[model_name][method_name][K][metric_name][reorder_idxs, :]
+                                results[model_name][method_name][K][f'{metric_name[:-1]}_stderrs'] = results[model_name][method_name][K][f'{metric_name[:-1]}_stderrs'][reorder_idxs, :]
+                            results[model_name][method_name][K]['iter_times'] = results[model_name][method_name][K]['iter_times'][reorder_idxs, :]
+                            results[model_name][method_name][K]['iter_times_stderrs'] = results[model_name][method_name][K]['iter_times_stderrs'][reorder_idxs, :]
+
+                            results[model_name][method_name][K]['lrs'] = [reparam_lrs[i] for i in reorder_idxs]
 
     if Ks_to_plot == 'largest':
         Ks_to_plot = {model_name: [max(results[model_name]['qem'].keys())] for model_name in model_names}
@@ -212,7 +237,7 @@ def plot_all_2row(model_names   = ALL_MODEL_NAMES,
                                             error_bars = error_bars,
                                             alpha_func = lambda *args: 0.5*alpha_func(*args),
                                             short_labels=short_labels,
-                                            show_labels=True,)
+                                            show_labels=False,)
     
                     if not (method_name == 'HMC' and x_axis_iters):
                         plot_method_K_lines(ax = axs[1,col_counter], 
@@ -229,7 +254,7 @@ def plot_all_2row(model_names   = ALL_MODEL_NAMES,
                                             alpha_func = lambda *args: 0.5*alpha_func(*args),
                                             HMC = method_name == 'HMC',
                                             short_labels=short_labels,
-                                            show_labels=True,)
+                                            show_labels=False,)
                 
 
             if x_axis_iters:
@@ -246,11 +271,17 @@ def plot_all_2row(model_names   = ALL_MODEL_NAMES,
             axs[1,col_counter].set_ylim(*ylim_for_model)
 
 
+            axs[0,col_counter].set_yscale(yscale)
+            axs[1,col_counter].set_yscale(yscale)
+
+
             for inset in zoomed_insets:
                 if inset.model_name == model_name and inset.K == K:
                     row = 0 if inset.metric_name == 'elbos' else 1
 
-                    axins = inset_axes(axs[row,col_counter], 1.5,1, loc='center', bbox_to_anchor=(0.58,0.71), bbox_transform=axs[row,col_counter].transAxes)
+                    bbox_to_anchor = (0.60,0.70) if inset.position == 'top' else (0.60,0.35)
+
+                    axins = inset_axes(axs[row,col_counter], 1.5,1, loc='center', bbox_to_anchor=bbox_to_anchor, bbox_transform=axs[row,col_counter].transAxes)
                     
                     for method_name in inset.methods:
                         colour = colours_dict[method_name]
@@ -266,14 +297,50 @@ def plot_all_2row(model_names   = ALL_MODEL_NAMES,
                                             smoothing_window = smoothing_window,
                                             x_lim_iters=x_lim,
                                             error_bars = error_bars,
-                                            alpha_func = alpha_func)
+                                            alpha_func = alpha_func,
+                                            short_labels=short_labels,
+                                            show_labels=False,),
+
+                        if inset.compare_reparams:
+                            if method_name != 'HMC' and inset.metric_name == 'elbos':
+                                plot_method_K_lines(ax = axins, 
+                                                    model_results = original_param_results[model_name],
+                                                    method = method_name,
+                                                    K = K,
+                                                    metric_name = 'elbos',
+                                                    num_lrs = num_lrs,
+                                                    colour = colour,
+                                                    x_axis_iters = x_axis_iters,
+                                                    smoothing_window = smoothing_window,
+                                                    x_lim_iters=x_lim,
+                                                    error_bars = error_bars,
+                                                    alpha_func = lambda *args: 0.5*alpha_func(*args),
+                                                    short_labels=short_labels,
+                                                    show_labels=False,)
+            
+                            if not (method_name == 'HMC' and x_axis_iters) and inset.metric_name == 'p_lls':
+                                plot_method_K_lines(ax = axins, 
+                                                    model_results = original_param_results[model_name],
+                                                    method = method_name,
+                                                    K = K,
+                                                    metric_name = 'p_lls',
+                                                    num_lrs = num_lrs,
+                                                    colour = colour,
+                                                    x_axis_iters = x_axis_iters,
+                                                    smoothing_window = smoothing_window,
+                                                    x_lim_iters=x_lim,
+                                                    error_bars = error_bars,
+                                                    alpha_func = lambda *args: 0.5*alpha_func(*args),
+                                                    HMC = method_name == 'HMC',
+                                                    short_labels=short_labels,
+                                                    show_labels=False,)
                         
                     # axins.set_xlim(*inset.xlims)
-                    # axins.set_ylim(*inset.ylims)
+                    axins.set_ylim(*inset.ylims)
 
                     # remove y ticks
-                    axins.yaxis.set_tick_params(labelleft=False)
-                    axins.set_yticks([])
+                    # axins.yaxis.set_tick_params(labelleft=False)
+                    # axins.set_yticks([])
 
                     mark_inset(axs[row,col_counter], axins, loc1=1, loc2=3, facecolor="none", edgecolor="none") 
 
@@ -285,13 +352,95 @@ def plot_all_2row(model_names   = ALL_MODEL_NAMES,
             col_counter += 1
 
     if short_labels:
-        axs[1,-1].legend()
+        axs[1,0].legend()
     else:
         for i in range(col_counter):
             axs[1,i].legend()
 
     axs[0,0].set_ylabel('ELBO')
     axs[1,0].set_ylabel('Predictive log-likelihood')
+
+    fig.tight_layout()
+
+    plt.savefig(f'plots/{filename_end}.png')
+    if save_pdf:
+        plt.savefig(f'plots/pdfs/{filename_end}.pdf')
+
+def plot_HMC_vs_QEM_pll(model_names   = ALL_MODEL_NAMES,
+                        Ks_to_plot    = 'largest',
+                        num_lrs       = 1,
+                        x_axis_iters  = True,
+                        x_lim         = 50,
+                        smoothing_window = 1,
+                        error_bars    = False,
+                        alpha_func    = DEFAULT_ALPHA_FUNC,
+                        colours_dict  = DEFAULT_COLOURS,
+                        short_labels  = True,
+                        ylims         = {'p_ll': {}},
+                        yscale        = 'linear',
+                        save_pdf      = False,
+                        filename_end  = ""):
+    
+    results = {model_name: load_results(model_name) for model_name in model_names}
+
+    if Ks_to_plot == 'largest':
+        Ks_to_plot = {model_name: [max(results[model_name]['qem'].keys())] for model_name in model_names}
+    elif Ks_to_plot == 'smallest':
+        Ks_to_plot = {model_name: [min(results[model_name]['qem'].keys())] for model_name in model_names}
+    elif Ks_to_plot == 'all':
+        Ks_to_plot = {model_name: list(results[model_name]['qem'].keys()) for model_name in model_names}
+
+    num_cols = sum([len(Ks_to_plot[model_name]) for model_name in model_names])
+
+    fig, axs = plt.subplots(1, num_cols, figsize=(max(num_cols*3, 12), 7), sharex=x_axis_iters)
+
+    col_counter = 0
+    for i, model_name in enumerate(model_names):
+        for k, K in enumerate(Ks_to_plot[model_name]):
+
+            axs[col_counter].set_title(f'{model_name.upper()}\nK={K}')
+
+            for j, method_name in enumerate(results[model_name].keys()):
+                colour = colours_dict[method_name]
+                
+                plot_method_K_lines(ax = axs[col_counter], 
+                                    model_results = results[model_name],
+                                    method = method_name,
+                                    K = K,
+                                    metric_name = 'p_lls',
+                                    num_lrs = num_lrs,
+                                    colour = colour,
+                                    x_axis_iters = x_axis_iters,
+                                    smoothing_window = smoothing_window,
+                                    x_lim_iters=x_lim,
+                                    error_bars = error_bars,
+                                    alpha_func = alpha_func,
+                                    short_labels=short_labels,
+                                    HMC = method_name == 'HMC')
+
+            if x_axis_iters:
+                axs[col_counter].set_xlim(0, x_lim)
+            # else:
+            #     axs[col_counter].set_xscale('log')
+
+            ylim_for_model = ylims['p_ll'].get(model_name, (None, None))
+            axs[col_counter].set_ylim(*ylim_for_model)
+
+            axs[col_counter].set_yscale(yscale)
+
+            axs[col_counter].set_xlabel('Iterations' if x_axis_iters else 'Time (s)')
+
+            # axs[1,col_counter].legend()
+
+            col_counter += 1
+
+    if short_labels:
+        axs[0].legend()
+    else:
+        for i in range(col_counter):
+            axs[1,i].legend()
+
+    axs[0].set_ylabel('Predictive log-likelihood')
 
     fig.tight_layout()
 
@@ -456,7 +605,7 @@ def plot_avg_iter_time_per_K(model_names  = ALL_MODEL_NAMES,
         axs[i].set_title(f'{model_name.upper()}')
         axs[i].set_xticks(x + width, valid_Ks)
 
-    axs[2].legend()
+    axs[0].legend()
     axs[0].set_ylabel('Average iteration time (s)')
 
     fig.tight_layout()
@@ -482,8 +631,6 @@ if __name__ == "__main__":
 
     plot_HMC = False
     plot_global_QEM = False
-
-    using_new_bus = True
 
     basic_methods = ['qem', 'rws']
     # if plot_global_QEM:
@@ -525,36 +672,30 @@ if __name__ == "__main__":
     best_Ks = {'bus_breakdown': [30], 'bus_breakdown_reparam': [30], 'chimpanzees': [30], 'movielens': [30], 'movielens_reparam': [30],
                'occupancy': [30], 'occupancy_reparam': [30], 'radon': [30], 'radon_reparam': [30], 'covid': [10]}
     smoothing_window = 8
-    short_labels = False
+    short_labels = True
 
     # YLIMS FOCUSING ON END OF TRAINING (WILL OFTEN IGNORE GLOBAL QEM) #
-    ylims = {'elbo': {'bus_breakdown': (-1300,  -1150),
+    ylims = {'elbo': {'bus_breakdown': (-1230,  -1190),
                       'chimpanzees':   (-255,   -244),
-                      'movielens':     (-1060,  -980),
-                      'occupancy':     (-50000, -49000),
-                      'radon':         (-360,-275), #(-494,   -484)},
-                      'bus_breakdown_reparam': (-1300,  -1150),
-                      'movielens_reparam':     (-1060,  -980),
-                      'occupancy_reparam':     (-50000, -49000),
-                      'radon_reparam':         (-360,-275),
+                      'movielens':     (-1060,  -985),
+                      'occupancy':     (-49300, -49050),
+                      'radon':         (-330,-295), #(-494,   -484)},
+                      'bus_breakdown_reparam': (-1300,  -1190),
+                      'movielens_reparam':     (-1060,  -985),
+                      'occupancy_reparam':     (-49300, -49050),
+                      'radon_reparam':         (-330,-295),
                       'covid': (None, None)},
-             'p_ll': {'bus_breakdown': (-1500,  -1150),
+             'p_ll': {'bus_breakdown': (-1400,  -1325),
                       'chimpanzees':   (-45,    -39.5),
                       'movielens':     (-965,  -940),
-                      'occupancy':     (-24800, -24500),
-                      'radon':         (-1000, -500),#(-170,   -120)},
-                      'bus_breakdown_reparam':  (-1500,  -1150),
+                      'occupancy':     (-24600, -24550),
+                      'radon':         (-800, -525),#(-170,   -120)},
+                      'bus_breakdown_reparam':  (-1500,  -1325),
                       'movielens_reparam':     (-965,  -940),
-                      'occupancy_reparam':     (-24800, -24500),
-                      'radon_reparam':         (-1000, -500),
+                      'occupancy_reparam':     (-24600, -24550),
+                      'radon_reparam':         (-800, -525),
                       'covid': (None, None)}
             }
-    
-    # if using_new_bus:
-    #     ylims['elbo']['bus_breakdown'] = (-2600,  -2000)
-    #     ylims['p_ll']['bus_breakdown'] = (-4300,  -3980)
-    #     ylims['elbo']['bus_breakdown_reparam'] = (-3000,  -2000)
-    #     ylims['p_ll']['bus_breakdown_reparam'] = (-5000,  -3980)
 
     for x_axis_iters in [True, False]:
         x_axis_str = 'ITER' if x_axis_iters else 'TIME'
@@ -577,12 +718,73 @@ if __name__ == "__main__":
                           filename_end = f"{name}ONLY_K30_SMOOTH{smoothing_window}_{x_axis_str}",
                           x_axis_iters = x_axis_iters, 
                           x_lim = iteration_x_lim, 
-                          error_bars = name == 'standard', 
+                          error_bars = name != 'reparams', 
                           compare_reparams = name == 'reparams',
                           save_pdf = True, 
                           ylims = ylims,
                           short_labels=short_labels,
                           smoothing_window=smoothing_window)
+            
+    # do a reparam iteration plot with extended extended y-axes (and ZoomedInsets) to show the full range of values
+    # (i.e. show VI and RWS performing terribly)
+    ylims['elbo']['movielens_reparam'] = (-40000, -50)
+    ylims['p_ll']['movielens_reparam'] = (-4000, -750)
+    ylims['elbo']['radon_reparam'] = (-1e8, 5e6)
+    ylims['p_ll']['radon_reparam'] = (-40000, 1000)
+
+    zoomed_insets = [Zoomed_Inset(model_name='movielens_reparam', compare_reparams=True, methods=['qem', 'rws', 'vi'],  K=best_Ks['movielens_reparam'][0], metric_name='elbos', xlims=(None, None), position='bottom', ylims=(-1050,  -985)),  
+                     Zoomed_Inset(model_name='movielens_reparam', compare_reparams=True, methods=['qem', 'rws', 'vi'],  K=best_Ks['movielens_reparam'][0], metric_name='p_lls', xlims=(None, None), position='top',    ylims=ylims['p_ll']['movielens']),      
+                     Zoomed_Inset(model_name='radon_reparam',     compare_reparams=True, methods=['qem', 'rws', 'vi'],  K=best_Ks['radon_reparam'][0],     metric_name='elbos', xlims=(None, None), position='top', ylims=ylims['elbo']['radon']),
+                     Zoomed_Inset(model_name='radon_reparam',     compare_reparams=True, methods=['qem', 'rws', 'vi'],  K=best_Ks['radon_reparam'][0],     metric_name='p_lls', xlims=(None, None), position='top',    ylims=ylims['p_ll']['radon'])]
+
+    plot_all_2row(model_names=sub_model_collections['reparams'],
+                  Ks_to_plot=best_Ks,
+                  num_lrs = 1,
+                  filename_end = f"reparamsONLY_K30_SMOOTH{smoothing_window}_ITER_EXTENDED_y",
+                  x_axis_iters = True, 
+                  x_lim = iteration_x_lim, 
+                  error_bars = False, 
+                  compare_reparams = True,
+                  save_pdf = True, 
+                  ylims = ylims,
+                  yscale = 'linear',
+                  zoomed_insets=zoomed_insets,
+                  short_labels=short_labels,
+                  smoothing_window=smoothing_window)
+
+    #####################  QEM vs. HMC P_LL PLOTS  #####################
+    # for model_name in ALL_MODEL_NAMES:
+    #     model2method[model_name].append('HMC')
+    #     preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=model2method[model_name], ignore_nans=ignore_nans)
+
+    # for x_axis_iters in [True, False]:
+    #     x_axis_str = 'ITER' if x_axis_iters else 'TIME'
+
+    #     plot_HMC_vs_QEM_pll(model_names=ALL_MODEL_NAMES,
+    #                         Ks_to_plot=best_Ks,
+    #                         num_lrs = 2,
+    #                         filename_end = f"HMC_vs_QEM_K30_SMOOTH{smoothing_window}_{x_axis_str}",
+    #                         x_axis_iters = x_axis_iters, 
+    #                         x_lim = iteration_x_lim, 
+    #                         error_bars = True, 
+    #                         save_pdf = True, 
+    #                         ylims = ylims,
+    #                         short_labels=short_labels,
+    #                         smoothing_window=smoothing_window)
+        
+    #     for name, sub_models in sub_model_collections.items():
+    #         if name != 'reparams':
+    #             plot_HMC_vs_QEM_pll(model_names=sub_models,
+    #                                 Ks_to_plot=best_Ks,
+    #                                 num_lrs = 1,
+    #                                 filename_end = f"{name}ONLY_HMC_vs_QEM_K30_SMOOTH{smoothing_window}_{x_axis_str}",
+    #                                 x_axis_iters = x_axis_iters, 
+    #                                 x_lim = iteration_x_lim, 
+    #                                 error_bars = True, 
+    #                                 save_pdf = True, 
+    #                                 ylims = ylims,
+    #                                 short_labels=short_labels,
+    #                                 smoothing_window=smoothing_window)
 
     
     # PLOTS W/ ZOOMED INSETS TO ALWAYS SHOW GLOBAL QEM BUT KEEP DETAIL #
