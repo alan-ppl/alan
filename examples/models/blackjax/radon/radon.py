@@ -29,7 +29,9 @@ def get_model(data, covariates):
         Beta_basement = stats.norm.logpdf(params.Beta_basement, 0., 1.).sum()
         County_log_sigma = stats.norm.logpdf(params.County_log_sigma, 0., 1.).sum()
         #Zip level
-        obs = stats.norm.logpdf(data.reshape(5,7,5), County_mean + covariates['basement'].reshape(5,7,5)*params.Beta_basement + covariates['log_uranium'].reshape(5,7,5) * params.Beta_u, jnp.exp(params.County_log_sigma)).sum()
+
+        obs = stats.norm.logpdf(data.transpose(2,0,1), params.County_mean + covariates['basement'].transpose(2,0,1)*params.Beta_basement + covariates['log_uranium'].transpose(2,0,1) * params.Beta_u, jnp.exp(params.County_log_sigma)).sum()
+
         return global_mean + global_log_sigma + State_mean + State_log_sigma + County_mean + Beta_u + Beta_basement + County_log_sigma + obs
     
     
@@ -48,8 +50,7 @@ def get_model(data, covariates):
         Beta_basement = stats.norm.logpdf(params.Beta_basement, 0., 1.).sum()
         County_log_sigma = stats.norm.logpdf(params.County_log_sigma, 0., 1.).sum()
         #Zip level
-        obs = stats.norm.logpdf(data.reshape(5,7,5), County_mean + covariates['basement'].reshape(5,7,5)*params.Beta_basement + covariates['log_uranium'].reshape(5,7,5) * params.Beta_u, jnp.exp(params.County_log_sigma)).sum()
-        print(obs)
+        obs = stats.norm.logpdf(data.transpose(2,0,1), params.County_mean + covariates['basement'].transpose(2,0,1)*params.Beta_basement + covariates['log_uranium'].transpose(2,0,1) * params.Beta_u, jnp.exp(params.County_log_sigma)).sum()
         return obs
     
     def init_param_fn(seed):

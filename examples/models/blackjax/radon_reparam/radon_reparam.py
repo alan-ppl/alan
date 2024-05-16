@@ -8,7 +8,7 @@ from collections import namedtuple
 States=7
 
 Counties= 5 #10 in total, half held back for testing
-Zips = 5
+Zips = 6
 
 
 def get_model(data, covariates):

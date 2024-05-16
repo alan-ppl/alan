@@ -35,10 +35,10 @@ df['wave'].replace({'  .': '-1'}, inplace=True)
 df['rep'].replace({' .': '-1'}, inplace=True)
 df['zip'].replace({'     ': '-1'}, inplace=True)
 # Compute log(radon + 0.1)
-df["log_radon"] = np.log(df["activity"] + 0.0001)
+df["log_radon"] = np.log(df["activity"] + 0.1)
 
 # Compute log of Uranium
-df["log_u"] = np.log(df["Uppm"]+0.0001)
+df["log_u"] = np.log(df["Uppm"]+0.1)
 
 
 # Let's map floor. 0 -> Basement and 1 -> Floor

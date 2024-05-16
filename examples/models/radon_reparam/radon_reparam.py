@@ -161,7 +161,7 @@ if __name__ == "__main__":
                      K = 30,
                      methods=['qem'],
                      num_runs = 1,
-                     num_iters = 20,
+                     num_iters = 50,
                      lrs = {'vi': 0.1, 'rws': 0.3, 'qem': 0.3},
                      fake_data = False,
                      device = 'cpu')
