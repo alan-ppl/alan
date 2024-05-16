@@ -61,11 +61,11 @@ def get_P(platesizes, covariates):
         #R for each region
         RegionR = Normal(R_prior_mean_mean, R_prior_mean_scale + R_noise_scale),
 
-        InitialSize_log_mean = Normal(math.log(1000), 0.5),
+        InitialSize_log_mean = Normal(math.log(1000)/1000, 0.5/1000),
         log_infected_noise_mean = Normal(math.log(0.01), 0.25),
         nRs = Plate(
             #Initial number of infected in each region
-            InitialSize_log = Normal(lambda InitialSize_log_mean: InitialSize_log_mean, 0.5),
+            InitialSize_log = Normal(lambda InitialSize_log_mean: InitialSize_log_mean * 1000, 0.5),
             log_infected_noise = Normal(lambda log_infected_noise_mean: log_infected_noise_mean, 0.25),
             psi = Normal(0, 1),
             nDs = Plate(
@@ -91,7 +91,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                 Wearing_alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                 Mobility_alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                 RegionR = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-                InitialSize_log_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                InitialSize_log_mean = Normal(OptParam(0.), OptParam(-math.log(1000), transformation=t.exp)),
                 log_infected_noise_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
             ),
             nRs = Plate(
@@ -118,7 +118,7 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                 Wearing_alpha = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                 Mobility_alpha = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                 RegionR = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
-                InitialSize_log_mean = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+                InitialSize_log_mean = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(())/1000)),
                 log_infected_noise_mean = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
             ),
             nRs = Plate(
@@ -150,8 +150,8 @@ if __name__ == "__main__":
     sys.path.insert(1, os.path.join(sys.path[0], '..'))
     import basic_runner
 
-    basic_runner.run('covid',
-                     methods = ['vi', 'rws', 'qem'],
+    basic_runner.run('covid_reparam',
+                     methods = ['vi','rws','qem'],
                      K = 3,
                      num_runs = 1,
                      num_iters = 1,
