@@ -2,7 +2,7 @@ import torch as t
 from alan import Normal, Exponential, NegativeBinomial, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
 
 
-M, J, I = 3, 3, 30
+M, J, I = 3, 3, 100
 
 def load_data_covariates(device, run=0, data_dir='data/', fake_data=False, return_fake_latents=False):
     platesizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
@@ -56,7 +56,7 @@ def get_P(platesizes, covariates):
 
                 plate_ID = Plate(
                     alph = Normal(0, 1),
-                    log_delay = Normal(lambda alpha, phi, psi, run_type, bus_company_name: alpha + phi @ bus_company_name + psi @ run_type, 1.),
+                    log_delay = Normal(lambda alpha, phi, psi, run_type, bus_company_name: (alpha + phi @ bus_company_name + psi @ run_type), 1.),
 
                     obs = NegativeBinomial(total_count=lambda alph: alph.exp(), logits = 'log_delay')
                 )
@@ -153,6 +153,6 @@ if __name__ == "__main__":
                      K = 10,
                      num_runs = 1,
                      num_iters = 100,
-                     lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1 },
+                     lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.3 },
                      fake_data = False,
                      device = 'cpu')

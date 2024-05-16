@@ -149,7 +149,7 @@ for model in models:
         
     # print(HMC['p_lls'])
     # times
-    if model == 'radon_reparam':
+    if model == 'radon_reparam' or model == 'radon' or model == 'bus_breakdown_reparam' or model == 'bus_breakdown':
         QEM_times = QEM['iter_times'].mean(-1)[0][1]
         RWS_times = RWS['iter_times'].mean(-1)[0][1]
         VI_times = VI['iter_times'].mean(-1)[0][1]
@@ -228,6 +228,7 @@ for model in models:
     pred_ll_ax[models.index(model)].plot(RWS_times, RWS_plls, label='RWS', color=colours[1])
     pred_ll_ax[models.index(model)].plot(VI_times, VI_plls, label='VI', color=colours[2])
     pred_ll_ax[models.index(model)].plot(HMC_times, HMC_plls, label='HMC', color=colours[3])
+    print(model, min(QEM_plls), max(QEM_plls))
     pred_ll_ax[models.index(model)].set_ylim([min(QEM_plls) - 50, max(QEM_plls)+50])
     
     

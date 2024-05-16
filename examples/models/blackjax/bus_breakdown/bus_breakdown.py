@@ -6,7 +6,7 @@ import jax.scipy.stats as stats
 import numpy as np 
 
 from collections import namedtuple
-M, J, I = 3, 3, 30
+M, J, I = 3, 3, 100
 
 def get_model(data, covariates):
     bus_company_name_dim = covariates['bus_company_name'].shape[-1]
@@ -68,7 +68,7 @@ def get_model(data, covariates):
         n = jnp.exp(params.alph)
         
         obs = stats.nbinom.logpmf(data, n, p).sum()
-        
+        print(obs)
         return obs
     
     def init_param_fn(seed):

@@ -33,7 +33,7 @@ while i < 5:
 
     M = 3
     J = 3
-    I = 60
+    I = 200
 
 
 
@@ -74,6 +74,7 @@ while i < 5:
         num_ids = len(df_new['Busbreakdown_ID'].unique())
 
         delay = df_new['How_Long_Delayed'].to_numpy()
+        print(delay)
         df_new.drop(columns='How_Long_Delayed', inplace=True)
         run_type = pd.get_dummies(df_new['Run_Type']).to_numpy()
 
@@ -85,6 +86,7 @@ while i < 5:
         bus_company_name = Bus_Company_Name.reshape(M, J, I, -1)
 
         delay = delay.reshape(M, J, I)
+        print(delay)
         t.save(t.from_numpy(run_type)[:,:,:I//2,:], 'data/run_type_train_{}.pt'.format(i))
         t.save(t.from_numpy(bus_company_name)[:,:,:I//2,:], 'data/bus_company_name_train_{}.pt'.format(i))
         t.save(t.from_numpy(delay)[:,:,:I//2], 'data/delay_train_{}.pt'.format(i))

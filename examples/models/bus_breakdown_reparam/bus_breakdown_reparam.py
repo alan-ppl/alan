@@ -2,7 +2,7 @@ import torch as t
 from alan import Normal, Exponential, NegativeBinomial, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
 import math
 
-M, J, I = 3, 3, 30
+M, J, I = 3, 3, 100
 
 def load_data_covariates(device, run=0, data_dir='data/', fake_data=False, return_fake_latents=False):
     platesizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
@@ -47,18 +47,18 @@ def get_P(platesizes, covariates):
         mu_beta = Normal(0, 1),
 
         plate_Year = Plate(
-            beta = Normal('mu_beta', lambda sigma_beta: sigma_beta.exp()),
+            beta = Normal(lambda mu_beta: mu_beta, lambda sigma_beta: sigma_beta.exp()),
 
             sigma_alpha = Normal(0, 1),
 
             plate_Borough = Plate(
-                alpha = Normal('beta', lambda sigma_alpha: sigma_alpha.exp()),
+                alpha = Normal(lambda beta: beta, lambda sigma_alpha: sigma_alpha.exp()),
 
                 plate_ID = Plate(
-                    alph = Normal(0, 1/10),
+                    alph = Normal(0, 1/10.),
                     log_delay = Normal(lambda alpha, phi, psi, run_type, bus_company_name: (alpha + phi @ bus_company_name + psi @ run_type)/1000, 1/1000),
 
-                    obs = NegativeBinomial(total_count=lambda alph: (10*alph).exp(), logits=lambda log_delay: 1000*log_delay)
+                    obs = NegativeBinomial(total_count=lambda alph: (alph*10).exp(), logits = lambda log_delay: log_delay * 1000)
                 )
             )
         )
@@ -149,10 +149,10 @@ if __name__ == "__main__":
     import basic_runner
 
     basic_runner.run('bus_breakdown_reparam',
-                     methods = ['vi', 'qem'],
+                     methods = ['qem'],
                      K = 10,
                      num_runs = 1,
-                     num_iters = 100,
-                     lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1 },
+                     num_iters = 30,
+                     lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1},
                      fake_data = False,
                      device = 'cpu')

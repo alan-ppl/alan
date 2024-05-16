@@ -119,8 +119,7 @@ if __name__ == "__main__":
                      fake_data = False,
                      device = 'cpu')
     
-    # platesizes, all_platesizes, data, all_data, covariates, all_covariates = load_data_covariates('cpu', fake_data=False)
-    
+
     # P = get_P(platesizes, covariates)
     
     # prior_samples = P.sample(1000)
