@@ -14,7 +14,8 @@ def get_data():
     data = data.loc[data['How_Long_Delayed'] != '']
     data['How_Long_Delayed'] = data['How_Long_Delayed'].map(lambda x: float(x))
     # print(len(data['How_Long_Delayed']))
-    data = data.loc[data['How_Long_Delayed'] < 130]
+    data['How_Long_Delayed'] = (data['How_Long_Delayed'] > 30).astype(float)
+    
     # print(len(data['How_Long_Delayed']))
     data = data.dropna().reset_index(drop=True)
     return data
@@ -31,9 +32,9 @@ while i < 5:
 
 
 
-    M = 3
+    M = 2
     J = 3
-    I = 200
+    I = 300
 
 
 
@@ -74,7 +75,7 @@ while i < 5:
         num_ids = len(df_new['Busbreakdown_ID'].unique())
 
         delay = df_new['How_Long_Delayed'].to_numpy()
-        print(delay)
+        
         df_new.drop(columns='How_Long_Delayed', inplace=True)
         run_type = pd.get_dummies(df_new['Run_Type']).to_numpy()
 

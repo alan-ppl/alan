@@ -224,6 +224,7 @@ for model in models:
     RWS_plls = smooth(RWS_plls, 100)
     VI_plls = smooth(VI_plls, 100)
     HMC_plls = smooth(HMC_plls, 100)
+    print(model, HMC_plls)
     pred_ll_ax[models.index(model)].plot(QEM_times, QEM_plls, label='QEM', color=colours[0])
     pred_ll_ax[models.index(model)].plot(RWS_times, RWS_plls, label='RWS', color=colours[1])
     pred_ll_ax[models.index(model)].plot(VI_times, VI_plls, label='VI', color=colours[2])

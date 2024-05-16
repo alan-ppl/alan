@@ -6,13 +6,13 @@ import jax.scipy.stats as stats
 import numpy as np 
 
 from collections import namedtuple
-M, J, I = 3, 3, 100
+M, J, I = 2, 3, 150
 
 def get_model(data, covariates):
     bus_company_name_dim = covariates['bus_company_name'].shape[-1]
     run_type_dim = covariates['run_type'].shape[-1]
 
-    params = namedtuple("model_params", ["psi", "phi", "sigma_beta", "mu_beta", "beta", "sigma_alpha", "alpha", "alph", "log_delay"])
+    params = namedtuple("model_params", ["psi", "phi", "sigma_beta", "mu_beta", "beta", "sigma_alpha", "alpha", "log_delay"])
     def joint_logdensity(params, data, covariates):
         #prior
         
@@ -27,20 +27,18 @@ def get_model(data, covariates):
         sigma_alpha = stats.norm.logpdf(params.sigma_alpha, 0., 1.).sum()
         
         # borough level
-        alpha = stats.norm.logpdf(params.alpha, params.beta, jnp.exp(params.sigma_alpha)).sum()
+        alpha = stats.norm.logpdf(params.alpha.transpose(), params.beta, jnp.exp(params.sigma_alpha)).sum()
         # alpha = beta + params.alpha_non_cent * jnp.exp(params.sigma_alpha)
         
         # ID level
-        alph = stats.norm.logpdf(params.sigma_alpha, 0., 1.).sum()
         
         log_delay = stats.norm.logpdf(params.log_delay, params.alpha[:,:,jnp.newaxis] + ((covariates['bus_company_name'] * params.phi.transpose()).sum(-1) + (covariates['run_type'] * params.psi.transpose()).sum(-1)), 1.).sum()
         
-        p = 1-jax.nn.sigmoid(params.log_delay)
-        n = jnp.exp(params.alph)
+        p = jax.nn.sigmoid(params.log_delay)
         
-        obs = stats.nbinom.logpmf(data, n, p).sum()
-        
-        return psi + phi + sigma_beta + mu_beta + beta + sigma_alpha + alpha + alph + log_delay + obs
+        obs = stats.bernoulli.logpmf(data, p).sum()
+
+        return psi + phi + sigma_beta + mu_beta + beta + sigma_alpha + alpha + log_delay + obs
 
     def joint_logdensity_pred_ll(params, data, covariates):
         #prior
@@ -56,19 +54,17 @@ def get_model(data, covariates):
         sigma_alpha = stats.norm.logpdf(params.sigma_alpha, 0., 1.).sum()
         
         # borough level
-        alpha = stats.norm.logpdf(params.alpha, params.beta, jnp.exp(params.sigma_alpha)).sum()
+        alpha = stats.norm.logpdf(params.alpha.transpose(), params.beta, jnp.exp(params.sigma_alpha)).sum()
         # alpha = beta + params.alpha_non_cent * jnp.exp(params.sigma_alpha)
         
         # ID level
-        alph = stats.norm.logpdf(params.sigma_alpha, 0., 1.).sum()
 
         log_delay = stats.norm.logpdf(params.log_delay, params.alpha[:,:,jnp.newaxis] + ((covariates['bus_company_name'] * params.phi.transpose()).sum(-1) + (covariates['run_type'] * params.psi.transpose()).sum(-1)), 1.).sum()
-
-        p = 1-jax.nn.sigmoid(params.log_delay)
-        n = jnp.exp(params.alph)
         
-        obs = stats.nbinom.logpmf(data, n, p).sum()
-        print(obs)
+        p = jax.nn.sigmoid(params.log_delay)
+        
+        obs = stats.bernoulli.logpmf(data, p).sum()
+        
         return obs
     
     def init_param_fn(seed):
@@ -84,7 +80,6 @@ def get_model(data, covariates):
             beta=jax.random.normal(key5, shape=(M,)),
             sigma_alpha=jax.random.normal(key6, shape=(M,)),
             alpha=jax.random.normal(key7, shape=(M,J)),
-            alph=jax.random.exponential(key8, shape=(M,J,I)),
             log_delay=jax.random.normal(key9, shape=(M,J,I)),
         )
     

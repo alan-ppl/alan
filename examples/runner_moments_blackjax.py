@@ -205,6 +205,7 @@ def run_experiment(cfg):
                 
                 test_joint_logdensity = lambda params: joint_logdensity_pred_ll(params, test_data['true_obs'], test_covariates)
                 pred_ll = get_predll(test_joint_logdensity, states.position, rng_key)
+                print(pred_ll)
                 print(f"p_ll sampling time: {safe_time(device)-p_ll_start_time}s")
                 p_lls[:, num_run] = pred_ll
                 times['p_ll'][:, num_run] = np.linspace(0,safe_time(device)-p_ll_start_time,num_samples+1)[1:] + times['moments'][:, num_run]

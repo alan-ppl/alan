@@ -1,8 +1,8 @@
 import torch as t
-from alan import Normal, Exponential, NegativeBinomial, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
+from alan import Normal, Bernoulli, Plate, BoundPlate, Group, Problem, Data, QEMParam, OptParam
 
 
-M, J, I = 3, 3, 100
+M, J, I = 2, 3, 150
 
 def load_data_covariates(device, run=0, data_dir='data/', fake_data=False, return_fake_latents=False):
     platesizes = {'plate_Year': M, 'plate_Borough':J, 'plate_ID':I}
@@ -55,10 +55,9 @@ def get_P(platesizes, covariates):
                 alpha = Normal('beta', lambda sigma_alpha: sigma_alpha.exp()),
 
                 plate_ID = Plate(
-                    alph = Normal(0, 1),
                     log_delay = Normal(lambda alpha, phi, psi, run_type, bus_company_name: (alpha + phi @ bus_company_name + psi @ run_type), 1.),
 
-                    obs = NegativeBinomial(total_count=lambda alph: alph.exp(), logits = 'log_delay')
+                    obs = Bernoulli(logits = 'log_delay')
                 )
             )
         )
@@ -93,7 +92,6 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                 plate_Borough = Plate(
                     alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                     plate_ID = Plate(
-                        alph = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                         log_delay = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                         obs = Data()
                     )
@@ -123,7 +121,6 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                 plate_Borough = Plate(
                     alpha = Normal(QEMParam(0.), QEMParam(1.)),
                     plate_ID = Plate(
-                        alph = Normal(QEMParam(0.), QEMParam(1.)),
                         log_delay = Normal(QEMParam(0.), QEMParam(1.)),
 
                         obs = Data()
@@ -153,6 +150,6 @@ if __name__ == "__main__":
                      K = 10,
                      num_runs = 1,
                      num_iters = 100,
-                     lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.3 },
+                     lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1 },
                      fake_data = False,
                      device = 'cpu')
