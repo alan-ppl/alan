@@ -756,9 +756,13 @@ def plot_avg_iter_time_per_K(model_names  = ALL_MODEL_NAMES,
             colour = colours_dict[method_name]
 
             avg_iter_times_per_K = [np.nanmean(results[model_name][method_name][K]['iter_times']) for K in valid_Ks]
-         
+
+            # std_errs_per_K = [np.nanstd(results[model_name][method_name][K]['iter_times'])/np.sqrt(np.prod(results[model_name][method_name][K]['iter_times'].shape)) for K in valid_Ks]
+            std_devs_per_K = [np.nanstd(results[model_name][method_name][K]['iter_times']) for K in valid_Ks]
+            
             offset = width * multiplier
-            rects = axs[i].bar(x + offset, avg_iter_times_per_K, width, label=SHORT_LABEL_DICT[method_name], color=colour)
+            
+            rects = axs[i].bar(x + offset, avg_iter_times_per_K, width=width, yerr=std_devs_per_K, label=SHORT_LABEL_DICT[method_name], color=colour)
             # axs[i].bar_label(rects, padding=3)
             multiplier += 1
 
@@ -780,11 +784,11 @@ def plot_avg_iter_time_per_K(model_names  = ALL_MODEL_NAMES,
 if __name__ == "__main__":
 
     # bool to control whether to rerun the preprocessing or not
-    run_preprocessing = False
+    run_preprocessing = True
 
     # bools to control which plots are generated
-    make_time_per_iteration_plots = False
-    make_elbo_p_ll_plots = False
+    make_time_per_iteration_plots = True
+    make_elbo_p_ll_plots = True
     make_reparam_elbo_plots = True
     make_HMC_vs_QEM_pll_plots = False
 
