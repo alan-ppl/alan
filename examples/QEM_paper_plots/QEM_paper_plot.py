@@ -905,10 +905,11 @@ if __name__ == "__main__":
                 
         # do a reparam iteration plot with extended extended y-axes (and ZoomedInsets) to show the full range of values
         # (i.e. show VI and RWS performing terribly)
-        ylims['elbo']['movielens_reparam'] = (-40000, -50)
-        ylims['p_ll']['movielens_reparam'] = (-4000, -750)
-        ylims['elbo']['radon_reparam'] = (-1e8, 5e6)
-        ylims['p_ll']['radon_reparam'] = (-40000, 1000)
+        ylims_extended = {'elbo': {**ylims['elbo']}, 'p_ll': {**ylims['p_ll']}}
+        ylims_extended['elbo']['movielens_reparam'] = (-40000, -50)
+        ylims_extended['p_ll']['movielens_reparam'] = (-4000, -750)
+        ylims_extended['elbo']['radon_reparam'] = (-1e8, 5e6)
+        ylims_extended['p_ll']['radon_reparam'] = (-40000, 1000)
 
         zoomed_insets = [Zoomed_Inset(model_name='movielens_reparam', compare_reparams=True, methods=['qem', 'rws', 'vi'],  K=best_Ks['movielens_reparam'][0], metric_name='elbos', xlims=(None, None), position='bottom', ylims=(-1050,  -985)),  
                         Zoomed_Inset(model_name='movielens_reparam', compare_reparams=True, methods=['qem', 'rws', 'vi'],  K=best_Ks['movielens_reparam'][0], metric_name='p_lls', xlims=(None, None), position='top',    ylims=ylims['p_ll']['movielens']),      
@@ -925,7 +926,7 @@ if __name__ == "__main__":
                     error_bars = False, 
                     compare_reparams = True,
                     save_pdf = True, 
-                    ylims = ylims,
+                    ylims = ylims_extended,
                     yscale = 'linear',
                     zoomed_insets=zoomed_insets,
                     short_labels=short_labels,

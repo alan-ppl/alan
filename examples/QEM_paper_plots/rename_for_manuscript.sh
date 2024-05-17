@@ -1,0 +1,6 @@
+cp plots/pdfs/standardONLY_K30_SMOOTH8_ITER.pdf manuscript_plots/standard_models_summary.pdf
+cp plots/pdfs/standardONLY_K30_SMOOTH8_TIME.pdf manuscript_plots/standard_models_summary_time.pdf
+
+cp plots/pdfs/reparams.pdf manuscript_plots/reparam_iter.pdf
+
+cp plots/pdfs/avg_iter_time_per_K_standardONLY.pdf manuscript_plots/standard_models_time_per_iter.pdf
