@@ -9,7 +9,7 @@ import preprocess
 # ALL_MODEL_NAMES = ['bus_breakdown', 'chimpanzees', 'movielens', 'occupancy', 'radon']
 # ALL_MODEL_NAMES = ['bus_breakdown', 'bus_breakdown_reparam', 'chimpanzees', 'movielens', 'movielens_reparam', 'occupancy', 'radon']
 ALL_MODEL_NAMES = ['bus_breakdown', 'bus_breakdown_reparam', 'movielens', 'movielens_reparam',
-                  'occupancy', 'occupancy_reparam', 'radon', 'radon_reparam', 'covid']
+                  'occupancy', 'radon', 'radon_reparam', 'covid']
 
 SHORT_LABEL_DICT = {'qem': 'QEM', 'rws': 'MP RWS', 'vi': 'MP VI', 'qem_nonmp': 'Global QEM', 'global_rws': 'Global RWS', 'global_vi': 'IWAE', 'HMC': 'HMC'}
 
@@ -661,7 +661,7 @@ if __name__ == "__main__":
     
     sub_model_collections = {'standard': ['bus_breakdown', 'movielens', 'occupancy', 'radon', 'covid'],
                              'standard_no_covid': ['bus_breakdown', 'movielens', 'occupancy', 'radon'],
-                             'reparams': ['bus_breakdown_reparam', 'movielens_reparam', 'occupancy_reparam', 'radon_reparam']}
+                             'reparams': ['bus_breakdown_reparam', 'movielens_reparam', 'radon_reparam']}
     
     ##################### TIME-PER-ITERATION PLOTS #####################
     plot_avg_iter_time_per_K(save_pdf=True)
@@ -675,22 +675,22 @@ if __name__ == "__main__":
     smoothing_window = 8
     short_labels = True
 
-    # YLIMS FOCUSING ON END OF TRAINING (WILL OFTEN IGNORE GLOBAL QEM) #
-    ylims = {'elbo': {'bus_breakdown': (-1230,  -1190),
+    #YLIMS FOCUSING ON END OF TRAINING (WILL OFTEN IGNORE GLOBAL QEM) #
+    ylims = {'elbo': {'bus_breakdown': (-600,  -400),
                       'chimpanzees':   (-255,   -244),
                       'movielens':     (-1060,  -985),
                       'occupancy':     (-49300, -49050),
-                      'radon':         (-330,-295), #(-494,   -484)},
+                      'radon':         (-300,-250), #(-494,   -484)},
                       'bus_breakdown_reparam': (-1300,  -1190),
                       'movielens_reparam':     (-1060,  -985),
                       'occupancy_reparam':     (-49300, -49050),
                       'radon_reparam':         (-330,-295),
-                      'covid': (None, None)},
-             'p_ll': {'bus_breakdown': (-1400,  -1325),
+                      'covid': (-100000, -60000)},
+             'p_ll': {'bus_breakdown': (-600,  -400),
                       'chimpanzees':   (-45,    -39.5),
                       'movielens':     (-965,  -940),
                       'occupancy':     (-24600, -24550),
-                      'radon':         (-800, -525),#(-170,   -120)},
+                      'radon':         (-600, -400),#(-170,   -120)},
                       'bus_breakdown_reparam':  (-1500,  -1325),
                       'movielens_reparam':     (-965,  -940),
                       'occupancy_reparam':     (-24600, -24550),

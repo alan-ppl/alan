@@ -12,7 +12,7 @@ def get_model(data, covariates):
     bus_company_name_dim = covariates['bus_company_name'].shape[-1]
     run_type_dim = covariates['run_type'].shape[-1]
 
-    params = namedtuple("model_params", ["psi", "phi", "sigma_beta", "mu_beta", "beta", "sigma_alpha", "alpha", "log_delay"])
+    params = namedtuple("model_params", ["psi", "phi", "sigma_beta", "mu_beta", "beta", "sigma_alpha", "alpha"])
     def joint_logdensity(params, data, covariates):
         #prior
         
@@ -32,15 +32,15 @@ def get_model(data, covariates):
         
         # ID level
         
-        log_delay = stats.norm.logpdf(params.log_delay, params.alpha[:,:,jnp.newaxis] + ((covariates['bus_company_name'] * params.phi.transpose()).sum(-1) + (covariates['run_type'] * params.psi.transpose()).sum(-1)), 1.).sum()
+        logits = params.alpha[:,:,jnp.newaxis] + (covariates['bus_company_name'] * params.phi).sum(-1) + (covariates['run_type'] * params.psi).sum(-1)
         
-        p = jax.nn.sigmoid(params.log_delay)
+        p = jax.nn.sigmoid(logits)
         
         obs = stats.bernoulli.logpmf(data, p).sum()
 
-        return psi + phi + sigma_beta + mu_beta + beta + sigma_alpha + alpha + log_delay + obs
+        return psi + phi + sigma_beta + mu_beta + beta + sigma_alpha + alpha  + obs
 
-    def joint_logdensity_pred_ll(params, data, covariates):
+    def joint_logdensity_pred_ll(params, test_data, test_covariates):
         #prior
         
         psi = stats.norm.logpdf(params.psi, 0., 1.).sum()
@@ -59,11 +59,11 @@ def get_model(data, covariates):
         
         # ID level
 
-        log_delay = stats.norm.logpdf(params.log_delay, params.alpha[:,:,jnp.newaxis] + ((covariates['bus_company_name'] * params.phi.transpose()).sum(-1) + (covariates['run_type'] * params.psi.transpose()).sum(-1)), 1.).sum()
+        logits = params.alpha[:,:,jnp.newaxis] + ((test_covariates['bus_company_name'] * params.phi).sum(-1) + (test_covariates['run_type'] * params.psi).sum(-1))
         
-        p = jax.nn.sigmoid(params.log_delay)
+        p = jax.nn.sigmoid(logits)
         
-        obs = stats.bernoulli.logpmf(data, p).sum()
+        obs = stats.bernoulli.logpmf(test_data, p).sum()
         
         return obs
     
@@ -71,7 +71,7 @@ def get_model(data, covariates):
         """
         initialize a, b & thetas
         """
-        key1, key2, key3, key4, key5, key6, key7, key8, key9 = jax.random.split(seed, 9)
+        key1, key2, key3, key4, key5, key6, key7, key9 = jax.random.split(seed, 8)
         return params(
             psi = jax.random.normal(key1, shape=(run_type_dim,)),
             phi = jax.random.normal(key2, shape=(bus_company_name_dim,)),
@@ -79,8 +79,7 @@ def get_model(data, covariates):
             mu_beta=jax.random.normal(key4),
             beta=jax.random.normal(key5, shape=(M,)),
             sigma_alpha=jax.random.normal(key6, shape=(M,)),
-            alpha=jax.random.normal(key7, shape=(M,J)),
-            log_delay=jax.random.normal(key9, shape=(M,J,I)),
+            alpha=jax.random.normal(key7, shape=(M,J))
         )
     
     def transform_non_cent_to_cent(params, covariates):
