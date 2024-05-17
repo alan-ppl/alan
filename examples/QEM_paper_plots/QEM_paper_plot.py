@@ -11,6 +11,8 @@ import preprocess
 ALL_MODEL_NAMES = ['bus_breakdown', 'bus_breakdown_reparam', 'movielens', 'movielens_reparam',
                   'occupancy', 'occupancy_reparam', 'radon', 'radon_reparam', 'covid']
 
+REPARAM_MODELS  = ['bus_breakdown_reparam', 'movielens_reparam', 'occupancy_reparam', 'radon_reparam']#, 'covid_reparam']
+
 SHORT_LABEL_DICT = {'qem': 'QEM', 'rws': 'MP RWS', 'vi': 'MP VI', 'qem_nonmp': 'Global QEM', 'global_rws': 'Global RWS', 'global_vi': 'IWAE', 'HMC': 'HMC'}
 
 DEFAULT_ALPHA_FUNC = lambda i, num_lrs: 1 if i == 0 else 1 - 0.5*i/(num_lrs-1)
@@ -67,6 +69,7 @@ def plot_method_K_lines(ax,
                         force_lrs = None,
                         short_labels = True,
                         show_labels = True,
+                        label_transform = lambda x: x,
                         HMC = False):
         
     if not HMC:
@@ -114,6 +117,8 @@ def plot_method_K_lines(ax,
                 label = SHORT_LABEL_DICT[method]
             else:
                 label=f'{method.upper()}: lr={lrs[i]}'
+
+            label = label_transform(label)
 
             ax.plot(xs[:x_lim_iters], smoothed_metric[:x_lim_iters], label=label, color=colour, alpha=alpha_val)
 
@@ -186,7 +191,7 @@ def plot_all_2row(model_names   = ALL_MODEL_NAMES,
     for i, model_name in enumerate(model_names):
         for k, K in enumerate(Ks_to_plot[model_name]):
 
-            axs[0,col_counter].set_title(f'{model_name.upper()}\nK={K}')
+            axs[0,col_counter].set_title(f'{model_name.upper().replace("_", " ")}\nK={K}')
 
             for j, method_name in enumerate(results[model_name].keys()):
                 colour = colours_dict[method_name]
@@ -366,6 +371,160 @@ def plot_all_2row(model_names   = ALL_MODEL_NAMES,
     if save_pdf:
         plt.savefig(f'plots/pdfs/{filename_end}.pdf')
 
+def plot_elbo_only_reparams(model_names   = ALL_MODEL_NAMES,
+            Ks_to_plot    = 'largest',
+            num_lrs       = 1,
+            x_axis_iters  = True,
+            x_lim         = 50,
+            smoothing_window = 1,
+            error_bars    = False,
+            alpha_func    = DEFAULT_ALPHA_FUNC,
+            colours_dict  = DEFAULT_COLOURS,
+            short_labels  = True,
+            ylims         = {'elbo': {}},
+            yscale        = 'linear',
+            match_reparam_lrs = True,
+            shift_legends_y = [],
+            save_pdf      = True,
+            filename_end  = ""):
+    
+    results = {model_name: load_results(model_name) for model_name in model_names}
+
+    # load results for the original parameterisation
+    original_param_model_names = [model_name[:-8] for model_name in model_names]
+    original_param_results = {model_name+"_reparam": load_results(model_name) for model_name in original_param_model_names}
+
+    model_method_Ks_with_altered_lrs = []
+
+    if match_reparam_lrs:
+        # for each model, reorder the reparam results' lr-dimension to match the original param results
+        for model_name in model_names:
+            for method_name in results[model_name].keys():
+                if method_name != 'HMC':
+                    Ks = list(results[model_name][method_name].keys())
+                    for K in Ks:
+                        original_lrs = original_param_results[model_name][method_name][K]['lrs']
+                        reparam_lrs  = results[model_name][method_name][K]['lrs']
+
+                        reorder_idxs = [reparam_lrs.tolist().index(lr) for lr in original_lrs]
+
+                        for metric_name in ['elbos', 'p_lls']:
+                            results[model_name][method_name][K][metric_name] = results[model_name][method_name][K][metric_name][reorder_idxs, :]
+                            results[model_name][method_name][K][f'{metric_name[:-1]}_stderrs'] = results[model_name][method_name][K][f'{metric_name[:-1]}_stderrs'][reorder_idxs, :]
+                        results[model_name][method_name][K]['iter_times'] = results[model_name][method_name][K]['iter_times'][reorder_idxs, :]
+                        results[model_name][method_name][K]['iter_times_stderrs'] = results[model_name][method_name][K]['iter_times_stderrs'][reorder_idxs, :]
+
+                        results[model_name][method_name][K]['lrs'] = [reparam_lrs[i] for i in reorder_idxs]
+
+                        if reorder_idxs[:num_lrs] != list(range(num_lrs)):
+                            model_method_Ks_with_altered_lrs.append((model_name, method_name, K))
+
+    if Ks_to_plot == 'largest':
+        Ks_to_plot = {model_name: [max(results[model_name]['qem'].keys())] for model_name in model_names}
+    elif Ks_to_plot == 'smallest':
+        Ks_to_plot = {model_name: [min(results[model_name]['qem'].keys())] for model_name in model_names}
+    elif Ks_to_plot == 'all':
+        Ks_to_plot = {model_name: list(results[model_name]['qem'].keys()) for model_name in model_names}
+
+    num_cols = sum([len(Ks_to_plot[model_name]) for model_name in model_names])
+
+    fig, axs = plt.subplots(3, num_cols, figsize=(max(num_cols*3, 12), 10), sharex=x_axis_iters)
+
+    col_counter = 0
+    for i, model_name in enumerate(model_names):
+        for k, K in enumerate(Ks_to_plot[model_name]):
+
+            axs[0,col_counter].set_title(f'{model_name.upper().replace("_", " ")}\nK={K}')
+
+            for j, method_name in enumerate(results[model_name].keys()):
+                colour = colours_dict[method_name]
+
+                num_reparam_lrs_to_plot = 1
+                if match_reparam_lrs and (model_name, method_name, K) in model_method_Ks_with_altered_lrs:
+                    num_reparam_lrs_to_plot = 2
+
+                # plot original param results
+                plot_method_K_lines(ax = axs[j,col_counter], 
+                                    model_results = original_param_results[model_name],
+                                    method = method_name,
+                                    K = K,
+                                    metric_name = 'elbos',
+                                    num_lrs = num_lrs,
+                                    colour = 'black',#colour,
+                                    x_axis_iters = x_axis_iters,
+                                    smoothing_window = smoothing_window,
+                                    x_lim_iters=x_lim,
+                                    error_bars = error_bars,
+                                    # alpha_func = lambda i, n: 0.5*alpha_func(i + num_reparam_lrs_to_plot, n + num_reparam_lrs_to_plot),
+                                    alpha_func = lambda *args: 1,
+                                    short_labels=short_labels,
+                                    show_labels=True,
+                                    label_transform=lambda x: f'{x.split(" ")[1]} (original)')
+                
+                # plot reparam results
+                plot_method_K_lines(ax = axs[j,col_counter], 
+                                    model_results = results[model_name],
+                                    method = method_name,
+                                    K = K,
+                                    metric_name = 'elbos',
+                                    num_lrs = num_reparam_lrs_to_plot,
+                                    colour = colour,
+                                    x_axis_iters = x_axis_iters,
+                                    smoothing_window = smoothing_window,
+                                    x_lim_iters=x_lim,
+                                    error_bars = error_bars,
+                                    alpha_func = alpha_func,
+                                    short_labels=short_labels,
+                                    label_transform=lambda x: f'{x.split(" ")[1]}')
+
+                
+                if x_axis_iters:
+                    axs[j,col_counter].set_xlim(0, x_lim)
+                # else:
+                #     axs[0,col_counter].set_xscale('log')
+  
+                ylim_for_model = ylims['elbo'].get(model_name, {}).get(method_name, (None, None))
+                axs[j,col_counter].set_ylim(*ylim_for_model)
+
+                axs[j,col_counter].set_yscale(yscale)
+
+                axs[j, 0].set_ylabel('ELBO')
+
+                # if (model_name, method_name) in shift_legends_y:
+                #     axs[j,col_counter].legend(title=SHORT_LABEL_DICT[method_name], bbox_to_anchor=(1.05, 1))
+                # else:
+                #     axs[j,col_counter].legend(title=SHORT_LABEL_DICT[method_name])#, loc='lower right')
+                leg = axs[j,col_counter].legend(title=SHORT_LABEL_DICT[method_name])#, loc='lower right')
+
+                plt.draw() # Draw the figure so you can find the positon of the legend. 
+
+                if (model_name, method_name) in shift_legends_y:
+                    
+                    # Get the bounding box of the original legend
+                    bb = leg.get_bbox_to_anchor().transformed(axs[j,col_counter].transAxes.inverted())
+
+                    # Change to location of the legend. 
+                    yOffset = 0.22 if model_name == 'radon_reparam' else 0.16
+                    bb.y0 += yOffset
+                    bb.y1 += yOffset
+                    leg.set_bbox_to_anchor(bb, transform = axs[j,col_counter].transAxes)
+
+
+            axs[-1,col_counter].set_xlabel('Iterations' if x_axis_iters else 'Time (s)')
+
+            # axs[1,col_counter].legend()
+
+            col_counter += 1
+
+    # delete occupancy vi axes
+    axs[2,model_names.index("occupancy_reparam")].axis('off')
+
+    fig.tight_layout()
+
+    plt.savefig(f'plots/reparams{filename_end}.png')
+    if save_pdf:
+        plt.savefig(f'plots/pdfs/reparams{filename_end}.pdf')
+
 def plot_HMC_vs_QEM_pll(model_names   = ALL_MODEL_NAMES,
                         Ks_to_plot    = 'largest',
                         num_lrs       = 1,
@@ -398,7 +557,7 @@ def plot_HMC_vs_QEM_pll(model_names   = ALL_MODEL_NAMES,
     for i, model_name in enumerate(model_names):
         for k, K in enumerate(Ks_to_plot[model_name]):
 
-            axs[col_counter].set_title(f'{model_name.upper()}\nK={K}')
+            axs[col_counter].set_title(f'{model_name.upper().replace("_", " ")}\nK={K}')
 
             for j, method_name in enumerate(results[model_name].keys()):
                 colour = colours_dict[method_name]
@@ -490,7 +649,7 @@ def plot_all_2row_plus_global(model_names  = ALL_MODEL_NAMES,
                 else:
                     alpha_func = lambda i, num_lrs: 0.5
 
-                axs[0,col_counter].set_title(f'{model_name.upper()}\nK={K}')
+                axs[0,col_counter].set_title(f'{model_name.upper().replace("_", " ")}\nK={K}')
 
                 if force_lrs_per_model_method is not None:
                     force_lrs = force_lrs_per_model_method.get(model_name, {}).get(method_name, None)
@@ -602,10 +761,10 @@ def plot_avg_iter_time_per_K(model_names  = ALL_MODEL_NAMES,
             multiplier += 1
 
         axs[i].set_xlabel('K')
-        axs[i].set_title(f'{model_name.upper()}')
+        axs[i].set_title(f'{model_name.upper().replace("_", " ")}')
         axs[i].set_xticks(x + width, valid_Ks)
 
-    axs[0].legend()
+    axs[0].legend(loc='lower right')
     axs[0].set_ylabel('Average iteration time (s)')
 
     fig.tight_layout()
@@ -617,6 +776,16 @@ def plot_avg_iter_time_per_K(model_names  = ALL_MODEL_NAMES,
         
 
 if __name__ == "__main__":
+
+    # bool to control whether to rerun the preprocessing or not
+    run_preprocessing = False
+
+    # bools to control which plots are generated
+    make_time_per_iteration_plots = False
+    make_elbo_p_ll_plots = False
+    make_reparam_elbo_plots = True
+    make_HMC_vs_QEM_pll_plots = False
+
     # whether to ignore NaNs in the results or not
     # i.e. if True, then the results are averaged over all runs, even if some runs have NaNs (runs which failed after some number of iterations)
     #      if False, then the results are averaged over all runs until the first NaN is encountered (only reports results up to the first failure of any run)
@@ -655,18 +824,19 @@ if __name__ == "__main__":
         if plot_global_QEM:
             methods.append('qem_nonmp')
             
-
-    for model_name in ALL_MODEL_NAMES:
-        preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=model2method[model_name], ignore_nans=ignore_nans)
+    if run_preprocessing:
+        for model_name in ALL_MODEL_NAMES:
+            preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=model2method[model_name], ignore_nans=ignore_nans)
     
     sub_model_collections = {'standard': ['bus_breakdown', 'movielens', 'occupancy', 'radon', 'covid'],
                              'standard_no_covid': ['bus_breakdown', 'movielens', 'occupancy', 'radon'],
                              'reparams': ['bus_breakdown_reparam', 'movielens_reparam', 'occupancy_reparam', 'radon_reparam']}
     
     ##################### TIME-PER-ITERATION PLOTS #####################
-    plot_avg_iter_time_per_K(save_pdf=True)
-    plot_avg_iter_time_per_K(save_pdf=True, model_names=sub_model_collections['standard'], filename_end='_standardONLY')
-    plot_avg_iter_time_per_K(save_pdf=True, model_names=sub_model_collections['standard_no_covid'], filename_end='_standard_no_covidONLY')
+    if make_time_per_iteration_plots:
+        plot_avg_iter_time_per_K(save_pdf=True)
+        plot_avg_iter_time_per_K(save_pdf=True, model_names=sub_model_collections['standard'], filename_end='_standardONLY')
+        plot_avg_iter_time_per_K(save_pdf=True, model_names=sub_model_collections['standard_no_covid'], filename_end='_standard_no_covidONLY')
 
 
     #####################     ELBO/P_LL PLOTS      #####################
@@ -676,117 +846,151 @@ if __name__ == "__main__":
     short_labels = True
 
     # YLIMS FOCUSING ON END OF TRAINING (WILL OFTEN IGNORE GLOBAL QEM) #
-    ylims = {'elbo': {'bus_breakdown': (-1230,  -1190),
-                      'chimpanzees':   (-255,   -244),
-                      'movielens':     (-1060,  -985),
-                      'occupancy':     (-49300, -49050),
-                      'radon':         (-330,-295), #(-494,   -484)},
-                      'bus_breakdown_reparam': (-1300,  -1190),
-                      'movielens_reparam':     (-1060,  -985),
-                      'occupancy_reparam':     (-49300, -49050),
-                      'radon_reparam':         (-330,-295),
-                      'covid': (None, None)},
-             'p_ll': {'bus_breakdown': (-1400,  -1325),
-                      'chimpanzees':   (-45,    -39.5),
-                      'movielens':     (-965,  -940),
-                      'occupancy':     (-24600, -24550),
-                      'radon':         (-800, -525),#(-170,   -120)},
-                      'bus_breakdown_reparam':  (-1500,  -1325),
-                      'movielens_reparam':     (-965,  -940),
-                      'occupancy_reparam':     (-24600, -24550),
-                      'radon_reparam':         (-800, -525),
-                      'covid': (None, None)}
-            }
+    ylims ={'elbo': {'bus_breakdown': (-500,  -400),
+                     'chimpanzees':   (-255,   -244),
+                     'movielens':     (-1060,  -985),
+                     'occupancy':     (-49300, -49050),
+                     'radon':         (-290,-276),
+                     'bus_breakdown_reparam': (-500,  -400),
+                     'movielens_reparam':     (-1060,  -985),
+                     'occupancy_reparam':     (-49300, -49050),
+                     'radon_reparam':         (-310,-276),
+                     'covid': (-1400000, -500000)},
+            'p_ll': {'bus_breakdown': (-500,  -425),
+                     'chimpanzees':   (-45,    -39.5),
+                     'movielens':     (-965,  -943),
+                     'occupancy':     (-24600, -24550),
+                     'radon':         (-600, -450),
+                     'bus_breakdown_reparam':  (-500,  -425),
+                     'movielens_reparam':     (-965,  -943),
+                     'occupancy_reparam':     (-24590, -24550),
+                     'radon_reparam':         (-600, -450),
+                     'covid': (-30000000, 2000000)}
+           }
 
-    for x_axis_iters in [True, False]:
-        x_axis_str = 'ITER' if x_axis_iters else 'TIME'
-        plot_all_2row(model_names=ALL_MODEL_NAMES,
+    if make_elbo_p_ll_plots:
+        for x_axis_iters in [True, False]:
+            x_axis_str = 'ITER' if x_axis_iters else 'TIME'
+            plot_all_2row(model_names=ALL_MODEL_NAMES,
+                        Ks_to_plot=best_Ks,
+                        num_lrs = 2,
+                        filename_end = f"K30_SMOOTH{smoothing_window}_{x_axis_str}",
+                        x_axis_iters = x_axis_iters, 
+                        x_lim = iteration_x_lim, 
+                        error_bars = True, 
+                        save_pdf = True, 
+                        ylims = ylims,
+                        short_labels=short_labels,
+                        smoothing_window=smoothing_window)
+            
+            for name, sub_models in sub_model_collections.items():
+                plot_all_2row(model_names=sub_models,
+                            Ks_to_plot=best_Ks,
+                            num_lrs = 1,
+                            filename_end = f"{name}ONLY_K30_SMOOTH{smoothing_window}_{x_axis_str}",
+                            x_axis_iters = x_axis_iters, 
+                            x_lim = iteration_x_lim, 
+                            error_bars = name != 'reparams', 
+                            compare_reparams = name == 'reparams',
+                            save_pdf = True, 
+                            ylims = ylims,
+                            short_labels=short_labels,
+                            smoothing_window=smoothing_window)
+                
+        # do a reparam iteration plot with extended extended y-axes (and ZoomedInsets) to show the full range of values
+        # (i.e. show VI and RWS performing terribly)
+        ylims['elbo']['movielens_reparam'] = (-40000, -50)
+        ylims['p_ll']['movielens_reparam'] = (-4000, -750)
+        ylims['elbo']['radon_reparam'] = (-1e8, 5e6)
+        ylims['p_ll']['radon_reparam'] = (-40000, 1000)
+
+        zoomed_insets = [Zoomed_Inset(model_name='movielens_reparam', compare_reparams=True, methods=['qem', 'rws', 'vi'],  K=best_Ks['movielens_reparam'][0], metric_name='elbos', xlims=(None, None), position='bottom', ylims=(-1050,  -985)),  
+                        Zoomed_Inset(model_name='movielens_reparam', compare_reparams=True, methods=['qem', 'rws', 'vi'],  K=best_Ks['movielens_reparam'][0], metric_name='p_lls', xlims=(None, None), position='top',    ylims=ylims['p_ll']['movielens']),      
+                        Zoomed_Inset(model_name='radon_reparam',     compare_reparams=True, methods=['qem', 'rws', 'vi'],  K=best_Ks['radon_reparam'][0],     metric_name='elbos', xlims=(None, None), position='top',    ylims=ylims['elbo']['radon']),
+                        Zoomed_Inset(model_name='radon_reparam',     compare_reparams=True, methods=['qem', 'rws', 'vi'],  K=best_Ks['radon_reparam'][0],     metric_name='p_lls', xlims=(None, None), position='top',    ylims=(-790, -525)),
+                        ]
+
+        plot_all_2row(model_names=sub_model_collections['reparams'],
                     Ks_to_plot=best_Ks,
-                    num_lrs = 2,
-                    filename_end = f"K30_SMOOTH{smoothing_window}_{x_axis_str}",
-                    x_axis_iters = x_axis_iters, 
+                    num_lrs = 1,
+                    filename_end = f"reparamsONLY_K30_SMOOTH{smoothing_window}_ITER_EXTENDED_y",
+                    x_axis_iters = True, 
                     x_lim = iteration_x_lim, 
-                    error_bars = True, 
+                    error_bars = False, 
+                    compare_reparams = True,
                     save_pdf = True, 
                     ylims = ylims,
+                    yscale = 'linear',
+                    zoomed_insets=zoomed_insets,
                     short_labels=short_labels,
                     smoothing_window=smoothing_window)
-        
-        for name, sub_models in sub_model_collections.items():
-            plot_all_2row(model_names=sub_models,
-                          Ks_to_plot=best_Ks,
-                          num_lrs = 1,
-                          filename_end = f"{name}ONLY_K30_SMOOTH{smoothing_window}_{x_axis_str}",
-                          x_axis_iters = x_axis_iters, 
-                          x_lim = iteration_x_lim, 
-                          error_bars = name != 'reparams', 
-                          compare_reparams = name == 'reparams',
-                          save_pdf = True, 
-                          ylims = ylims,
-                          short_labels=short_labels,
-                          smoothing_window=smoothing_window)
-            
-    # do a reparam iteration plot with extended extended y-axes (and ZoomedInsets) to show the full range of values
-    # (i.e. show VI and RWS performing terribly)
-    ylims['elbo']['movielens_reparam'] = (-40000, -50)
-    ylims['p_ll']['movielens_reparam'] = (-4000, -750)
-    ylims['elbo']['radon_reparam'] = (-1e8, 5e6)
-    ylims['p_ll']['radon_reparam'] = (-40000, 1000)
 
-    zoomed_insets = [Zoomed_Inset(model_name='movielens_reparam', compare_reparams=True, methods=['qem', 'rws', 'vi'],  K=best_Ks['movielens_reparam'][0], metric_name='elbos', xlims=(None, None), position='bottom', ylims=(-1050,  -985)),  
-                     Zoomed_Inset(model_name='movielens_reparam', compare_reparams=True, methods=['qem', 'rws', 'vi'],  K=best_Ks['movielens_reparam'][0], metric_name='p_lls', xlims=(None, None), position='top',    ylims=ylims['p_ll']['movielens']),      
-                     Zoomed_Inset(model_name='radon_reparam',     compare_reparams=True, methods=['qem', 'rws', 'vi'],  K=best_Ks['radon_reparam'][0],     metric_name='elbos', xlims=(None, None), position='top',    ylims=ylims['elbo']['radon']),
-                     Zoomed_Inset(model_name='radon_reparam',     compare_reparams=True, methods=['qem', 'rws', 'vi'],  K=best_Ks['radon_reparam'][0],     metric_name='p_lls', xlims=(None, None), position='top',    ylims=(-790, -525)),
-                    ]
+    ###################  3x3 ELBO-ONLY REPARAM PLOT  ####################
+    reparam_ylims = {'elbo': {'bus_breakdown_reparam': {'rws': (-1000, -350),     'vi': (-1000, -400)},
+                              'movielens_reparam':     {'rws': (-20000, 500),    'vi': (-200000, 10000)},
+                              'occupancy_reparam':     {'rws': (-100000, -45000), 'vi': (None, None)},
+                              'radon_reparam':         {'rws': (-10000, 500),       'vi': (-900, -250)}}
+                    }
 
-    plot_all_2row(model_names=sub_model_collections['reparams'],
-                  Ks_to_plot=best_Ks,
-                  num_lrs = 1,
-                  filename_end = f"reparamsONLY_K30_SMOOTH{smoothing_window}_ITER_EXTENDED_y",
-                  x_axis_iters = True, 
-                  x_lim = iteration_x_lim, 
-                  error_bars = False, 
-                  compare_reparams = True,
-                  save_pdf = True, 
-                  ylims = ylims,
-                  yscale = 'linear',
-                  zoomed_insets=zoomed_insets,
-                  short_labels=short_labels,
-                  smoothing_window=smoothing_window)
+    # set all qem ylims to be the same as in the standard plots
+    for model_name in ['bus_breakdown_reparam', 'movielens_reparam', 'occupancy_reparam', 'radon_reparam']:
+        reparam_ylims['elbo'][model_name]['qem'] = ylims['elbo'][model_name]
+    
+    #except radon needs to be a bit higher
+    reparam_ylims['elbo']['radon_reparam']['qem'] = (-285, -275)
+
+    # note which legends to shift up to avoid overlap
+    shift_legends_y = [('movielens_reparam', 'vi'), ('radon_reparam', 'vi'),]
+
+    if make_reparam_elbo_plots:
+        plot_elbo_only_reparams(model_names=REPARAM_MODELS,
+                                Ks_to_plot=best_Ks,
+                                num_lrs = 1,
+                                filename_end = f"",
+                                x_axis_iters = True, 
+                                x_lim = iteration_x_lim, 
+                                error_bars = True, 
+                                match_reparam_lrs=True,
+                                save_pdf = True, 
+                                ylims = reparam_ylims,
+                                short_labels=False,
+                                smoothing_window=smoothing_window,
+                                shift_legends_y=shift_legends_y)
 
     #####################  QEM vs. HMC P_LL PLOTS  #####################
-    # for model_name in ALL_MODEL_NAMES:
-    #     model2method[model_name].append('HMC')
-    #     preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=model2method[model_name], ignore_nans=ignore_nans)
+    # if make_HMC_vs_QEM_pll_plots:
+    #     for model_name in ALL_MODEL_NAMES:
+    #         model2method[model_name].append('HMC')
+    #         preprocess.get_best_results(model_name, validation_iter_number=validation_iter_number, method_names=model2method[model_name], ignore_nans=ignore_nans)
 
-    # for x_axis_iters in [True, False]:
-    #     x_axis_str = 'ITER' if x_axis_iters else 'TIME'
+    #     for x_axis_iters in [True, False]:
+    #         x_axis_str = 'ITER' if x_axis_iters else 'TIME'
 
-    #     plot_HMC_vs_QEM_pll(model_names=ALL_MODEL_NAMES,
-    #                         Ks_to_plot=best_Ks,
-    #                         num_lrs = 2,
-    #                         filename_end = f"HMC_vs_QEM_K30_SMOOTH{smoothing_window}_{x_axis_str}",
-    #                         x_axis_iters = x_axis_iters, 
-    #                         x_lim = iteration_x_lim, 
-    #                         error_bars = True, 
-    #                         save_pdf = True, 
-    #                         ylims = ylims,
-    #                         short_labels=short_labels,
-    #                         smoothing_window=smoothing_window)
-        
-    #     for name, sub_models in sub_model_collections.items():
-    #         if name != 'reparams':
-    #             plot_HMC_vs_QEM_pll(model_names=sub_models,
-    #                                 Ks_to_plot=best_Ks,
-    #                                 num_lrs = 1,
-    #                                 filename_end = f"{name}ONLY_HMC_vs_QEM_K30_SMOOTH{smoothing_window}_{x_axis_str}",
-    #                                 x_axis_iters = x_axis_iters, 
-    #                                 x_lim = iteration_x_lim, 
-    #                                 error_bars = True, 
-    #                                 save_pdf = True, 
-    #                                 ylims = ylims,
-    #                                 short_labels=short_labels,
-    #                                 smoothing_window=smoothing_window)
+    #         plot_HMC_vs_QEM_pll(model_names=ALL_MODEL_NAMES,
+    #                             Ks_to_plot=best_Ks,
+    #                             num_lrs = 2,
+    #                             filename_end = f"HMC_vs_QEM_K30_SMOOTH{smoothing_window}_{x_axis_str}",
+    #                             x_axis_iters = x_axis_iters, 
+    #                             x_lim = iteration_x_lim, 
+    #                             error_bars = True, 
+    #                             save_pdf = True, 
+    #                             ylims = ylims,
+    #                             short_labels=short_labels,
+    #                             smoothing_window=smoothing_window)
+            
+    #         for name, sub_models in sub_model_collections.items():
+    #             if name != 'reparams':
+    #                 plot_HMC_vs_QEM_pll(model_names=sub_models,
+    #                                     Ks_to_plot=best_Ks,
+    #                                     num_lrs = 1,
+    #                                     filename_end = f"{name}ONLY_HMC_vs_QEM_K30_SMOOTH{smoothing_window}_{x_axis_str}",
+    #                                     x_axis_iters = x_axis_iters, 
+    #                                     x_lim = iteration_x_lim, 
+    #                                     error_bars = True, 
+    #                                     save_pdf = True, 
+    #                                     ylims = ylims,
+    #                                     short_labels=short_labels,
+    #                                     smoothing_window=smoothing_window)
 
     
     # PLOTS W/ ZOOMED INSETS TO ALWAYS SHOW GLOBAL QEM BUT KEEP DETAIL #
