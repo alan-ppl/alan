@@ -770,7 +770,7 @@ def plot_avg_iter_time_per_K(model_names  = ALL_MODEL_NAMES,
         axs[i].set_title(f'{model_name.upper().replace("_", " ")}')
         axs[i].set_xticks(x + width, valid_Ks)
 
-    axs[0].legend(loc='lower right')
+    axs[0].legend(loc='upper left')
     axs[0].set_ylabel('Average iteration time (s)')
 
     fig.tight_layout()
