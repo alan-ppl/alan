@@ -4,7 +4,7 @@
   method: ???
   num_runs: 5
   num_iters: 1000
-  Ks_lrs: {10: [0.001, 0.03, 0.1], 30: [0.001, 0.03, 0.1]}
+  Ks_lrs: {3: [0.001]}
   reparam: True
   save_moments: False
   predll:
