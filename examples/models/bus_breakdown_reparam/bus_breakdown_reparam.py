@@ -55,9 +55,7 @@ def get_P(platesizes, covariates):
                 alpha = Normal(lambda beta: beta/1000, lambda sigma_alpha: sigma_alpha.exp()/1000),
 
                 plate_ID = Plate(
-                    log_delay = Normal(lambda alpha, phi, psi, run_type, bus_company_name: (alpha * 1000 + phi @ bus_company_name + psi @ run_type), 1),
-
-                    obs = Bernoulli(logits = lambda log_delay: log_delay)
+                    obs = Bernoulli(logits = lambda alpha, phi, psi, run_type, bus_company_name: (alpha*1000 + phi @ bus_company_name + psi @ run_type))
                 )
             )
         )
@@ -92,7 +90,6 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                 plate_Borough = Plate(
                     alpha = Normal(OptParam(0.), OptParam(-math.log(1000), transformation=t.exp)),
                     plate_ID = Plate(
-                        log_delay = Normal(OptParam(0.), OptParam(0, transformation=t.exp)),
                         obs = Data()
                     )
                 )
@@ -121,7 +118,6 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                 plate_Borough = Plate(
                     alpha = Normal(QEMParam(0.), QEMParam(1/1000)),
                     plate_ID = Plate(
-                        log_delay = Normal(QEMParam(0.), QEMParam(1)),
 
                         obs = Data()
                     )
@@ -146,7 +142,7 @@ if __name__ == "__main__":
     import basic_runner
 
     basic_runner.run('bus_breakdown_reparam',
-                     methods = ['vi', 'qem'],
+                     methods = ['qem'],
                      K = 10,
                      num_runs = 1,
                      num_iters = 30,
