@@ -13,6 +13,8 @@ ALL_MODEL_NAMES = ['bus_breakdown', 'bus_breakdown_reparam', 'movielens', 'movie
 
 REPARAM_MODELS  = ['bus_breakdown_reparam', 'movielens_reparam', 'occupancy_reparam', 'radon_reparam']#, 'covid_reparam']
 
+REPARAM_MODELS  = ['bus_breakdown_reparam', 'movielens_reparam', 'occupancy_reparam', 'radon_reparam']#, 'covid_reparam']
+
 SHORT_LABEL_DICT = {'qem': 'QEM', 'rws': 'MP RWS', 'vi': 'MP VI', 'qem_nonmp': 'Global QEM', 'global_rws': 'Global RWS', 'global_vi': 'IWAE', 'HMC': 'HMC'}
 
 DEFAULT_ALPHA_FUNC = lambda i, num_lrs: 1 if i == 0 else 1 - 0.5*i/(num_lrs-1)
@@ -830,7 +832,7 @@ if __name__ == "__main__":
     
     sub_model_collections = {'standard': ['bus_breakdown', 'movielens', 'occupancy', 'radon', 'covid'],
                              'standard_no_covid': ['bus_breakdown', 'movielens', 'occupancy', 'radon'],
-                             'reparams': ['bus_breakdown_reparam', 'movielens_reparam', 'occupancy_reparam', 'radon_reparam']}
+                             'reparams': ['bus_breakdown_reparam', 'movielens_reparam', 'radon_reparam']}
     
     ##################### TIME-PER-ITERATION PLOTS #####################
     if make_time_per_iteration_plots:

@@ -55,9 +55,7 @@ def get_P(platesizes, covariates):
                 alpha = Normal('beta', lambda sigma_alpha: sigma_alpha.exp()),
 
                 plate_ID = Plate(
-                    log_delay = Normal(lambda alpha, phi, psi, run_type, bus_company_name: (alpha + phi @ bus_company_name + psi @ run_type), 1.),
-
-                    obs = Bernoulli(logits = 'log_delay')
+                    obs = Bernoulli(logits = lambda alpha, phi, psi, run_type, bus_company_name: (alpha + phi @ bus_company_name + psi @ run_type))
                 )
             )
         )
@@ -92,7 +90,6 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                 plate_Borough = Plate(
                     alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                     plate_ID = Plate(
-                        log_delay = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                         obs = Data()
                     )
                 )
@@ -121,7 +118,6 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                 plate_Borough = Plate(
                     alpha = Normal(QEMParam(0.), QEMParam(1.)),
                     plate_ID = Plate(
-                        log_delay = Normal(QEMParam(0.), QEMParam(1.)),
 
                         obs = Data()
                     )

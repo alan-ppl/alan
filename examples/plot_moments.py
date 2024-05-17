@@ -20,16 +20,16 @@ def smooth(x, window):
 
     return result
 
-models = ['movielens','movielens_reparam', 'bus_breakdown', 'bus_breakdown_reparam','radon', 'radon_reparam']# 'occupancy', 'occupancy_reparam']# 'covid']# 'bus_breakdown']# 'covid']# 'radon', 'chimpanzees']
+models = ['movielens', 'bus_breakdown','radon']# 'occupancy', 'occupancy_reparam']# 'covid']# 'bus_breakdown']# 'covid']# 'radon', 'chimpanzees']
 
 
 # models = ['bus_breakdown']
-paths = {'movielens': ['experiments/moments/movielens/qem_0_30_0.1_moments.pkl', 'experiments/moments/movielens/rws_0_30_0.03_moments.pkl', 'experiments/moments/movielens/vi_0_30_0.03_moments.pkl', 'experiments/results/movielens/blackjax_moments0.pkl', 'experiments/results/movielens/blackjax0.pkl'],
-         'bus_breakdown': ['experiments/moments/bus_breakdown/qem_0_30_0.03_moments.pkl', 'experiments/moments/bus_breakdown/rws_0_30_0.1_moments.pkl', 'experiments/moments/bus_breakdown/vi_0_30_0.1_moments.pkl', 'experiments/results/bus_breakdown/blackjax_moments0.pkl', 'experiments/results/bus_breakdown/blackjax0.pkl'],
+paths = {'movielens': ['experiments/moments/movielens/qem_0_30_0.1_moments.pkl', 'experiments/moments/movielens/rws_0_30_0.1_moments.pkl', 'experiments/moments/movielens/vi_0_30_0.1_moments.pkl', 'experiments/results/movielens/blackjax_moments0.pkl', 'experiments/results/movielens/blackjax0.pkl'],
+         'bus_breakdown': ['experiments/moments/bus_breakdown/qem_0_30_0.1_moments.pkl', 'experiments/moments/bus_breakdown/rws_0_30_0.1_moments.pkl', 'experiments/moments/bus_breakdown/vi_0_30_0.1_moments.pkl', 'experiments/results/bus_breakdown/blackjax_moments0.pkl', 'experiments/results/bus_breakdown/blackjax0.pkl'],
          'radon': ['experiments/moments/radon/qem_0_30_0.1_moments.pkl', 'experiments/moments/radon/rws_0_30_0.1_moments.pkl', 'experiments/moments/radon/vi_0_30_0.1_moments.pkl', 'experiments/results/radon/blackjax_moments0.pkl', 'experiments/results/radon/blackjax0.pkl'],
          'chimpanzees': ['experiments/moments/qem_0_30_0.1_moments.pkl', 'experiments/moments/rws_0_30_0.1_moments.pkl', 'experiments/moments/vi_0_30_0.1_moments.pkl', 'experiments/results/moments/blackjax_moments0.pkl', 'experiments/results/moments/blackjax0.pkl'],
          'covid': ['experiments/moments/covid/qem_0_30_0.1_moments.pkl', 'experiments/moments/covid/rws_0_30_0.1_moments.pkl', 'experiments/moments/covid/vi_0_30_0.1_moments.pkl', 'experiments/results/covid/blackjax_moments0.pkl', 'experiments/results/covid/blackjax0.pkl'],
-         'movielens_reparam': ['experiments/moments/movielens_reparam/qem_0_30_0.1_moments.pkl', 'experiments/moments/movielens_reparam/rws_0_30_0.03_moments.pkl', 'experiments/moments/movielens_reparam/vi_0_30_0.03_moments.pkl', 'experiments/results/movielens/blackjax_moments0.pkl', 'experiments/results/movielens/blackjax0.pkl'],
+         'movielens_reparam': ['experiments/moments/movielens_reparam/qem_0_30_0.1_moments.pkl', 'experiments/moments/movielens_reparam/rws_0_30_0.03_moments.pkl', 'experiments/moments/movielens_reparam/vi_0_30_0.1_moments.pkl', 'experiments/results/movielens/blackjax_moments0.pkl', 'experiments/results/movielens/blackjax0.pkl'],
          'bus_breakdown_reparam': ['experiments/moments/bus_breakdown_reparam/qem_0_30_0.03_moments.pkl', 'experiments/moments/bus_breakdown_reparam/rws_0_30_0.1_moments.pkl', 'experiments/moments/bus_breakdown_reparam/vi_0_30_0.1_moments.pkl', 'experiments/results/bus_breakdown/blackjax_moments0.pkl', 'experiments/results/bus_breakdown/blackjax0.pkl'],
          'radon_reparam': ['experiments/moments/radon_reparam/qem_0_30_0.1_moments.pkl', 'experiments/moments/radon_reparam/rws_0_30_0.1_moments.pkl', 'experiments/moments/radon_reparam/vi_0_30_0.1_moments.pkl', 'experiments/results/radon/blackjax_moments0.pkl', 'experiments/results/radon/blackjax0.pkl'],}
 
@@ -43,9 +43,9 @@ paths = {'movielens': ['experiments/moments/movielens/qem_0_30_0.1_moments.pkl',
 # Three colours for each method
 colours = ['b', 'r', 'g', 'orange']
 
-fig, ax = plt.subplots(2, len(models), figsize=(15, 4*len(models)))
+fig, ax = plt.subplots(1, len(models), figsize=(4*len(models), 5))
 
-pred_ll_fig, pred_ll_ax = plt.subplots(1, len(models), figsize=(15, 4*len(models)))
+pred_ll_fig, pred_ll_ax = plt.subplots(1, len(models), figsize=(4*len(models), 5))
 # with open(f'movielensexperiments/moments/moments/HMC0.pkl', 'rb') as f:
 #     hmc = pickle.load(f)
     
@@ -79,13 +79,10 @@ for model in models:
         VI_moments['means']['z'] = VI_moments['means']['z'] * 100
         
     if model == 'bus_breakdown_reparam':
-        QEM_moments['means']['log_delay'] = QEM_moments['means']['log_delay'] * 1000
-        RWS_moments['means']['log_delay'] = RWS_moments['means']['log_delay'] * 1000
-        VI_moments['means']['log_delay'] = VI_moments['means']['log_delay'] * 1000
+        QEM_moments['means']['alpha'] = QEM_moments['means']['alpha'] * 1000
+        RWS_moments['means']['alpha'] = RWS_moments['means']['alpha'] * 1000
+        VI_moments['means']['alpha'] = VI_moments['means']['alpha'] * 1000
         
-        QEM_moments['means']['alph'] = QEM_moments['means']['alph'] * 10
-        RWS_moments['means']['alph'] = RWS_moments['means']['alph'] * 10
-        VI_moments['means']['alph'] = VI_moments['means']['alph'] * 10
     
     if model == 'radon_reparam':
         QEM_moments['means']['County_mean'] = QEM_moments['means']['County_mean'] * 100
@@ -176,11 +173,6 @@ for model in models:
     VI_times = np.cumsum(VI_times)
     HMC_times = HMC_times
     
-    print('QEM', QEM_times[-1])
-    print('RWS', RWS_times[-1])
-    print('VI', VI_times[-1])
-    print('HMC', HMC_times[-1])
-    
     #to lists
     QEM_times = QEM_times.tolist()
     RWS_times = RWS_times.tolist()
@@ -197,51 +189,48 @@ for model in models:
     VI_diff = sum(VI_diffs.values())
     
     #apply some smoothing to the differences
-    QEM_diff = smooth(QEM_diff, 100)
-    RWS_diff = smooth(RWS_diff, 100)
-    VI_diff = smooth(VI_diff, 100)
+    QEM_diff = smooth(QEM_diff, 30)
+    RWS_diff = smooth(RWS_diff, 30)
+    VI_diff = smooth(VI_diff, 30)
     # for key in QEM_diffs.keys():
-    ax[0,models.index(model)].plot(QEM_times, QEM_diff, label=f'QEM', color=colours[0])
-    ax[0,models.index(model)].plot(RWS_times, RWS_diff, label=f'RWS', color=colours[1])
-    ax[0,models.index(model)].plot(VI_times, VI_diff, label=f'VI', color=colours[2])
+    ax[models.index(model)].plot(QEM_times, QEM_diff, label=f'QEM', color=colours[0])
+    ax[models.index(model)].plot(RWS_times, RWS_diff, label=f'RWS', color=colours[1])
+    ax[models.index(model)].plot(VI_times, VI_diff, label=f'VI', color=colours[2])
+    ax[models.index(model)].set_xlabel('Time (s)')
     
     #ylim
-    ax[0,models.index(model)].set_ylim([min(QEM_diff) - 2*np.var(QEM_diff), max(QEM_diff)+2*np.var(QEM_diff)])
+    ax[models.index(model)].set_ylim([min(QEM_diff) - 2*np.var(QEM_diff), max(QEM_diff)+2*np.var(QEM_diff)])
 
     
-    ax[0,models.index(model)].set_title(model)
-    ax[0,0].set_ylabel('Mean squared error')
-    ax[1,models.index(model)].set_xlabel('Time (s)')
-    #plot time bar charts
-    ax[1,models.index(model)].bar(methods, [QEM_times[-1], RWS_times[-1], VI_times[-1], HMC_times[-1]], color=colours)
-    # ax[1,models.index(model)].set_title('Total time')
-    ax[1,0].set_ylabel('Time (s)')
-    #label each bar
-    for i, v in enumerate([QEM_times[-1], RWS_times[-1], VI_times[-1], HMC_times[-1]]):
-        ax[1,models.index(model)].text(i, v + 0.1, str(round(v, 2)), color='black', ha='center')
+    ax[models.index(model)].set_title(model)
+    ax[0].set_ylabel('Mean squared error')
+
     
     QEM_plls = smooth(QEM_plls, 100)
     RWS_plls = smooth(RWS_plls, 100)
     VI_plls = smooth(VI_plls, 100)
     HMC_plls = smooth(HMC_plls, 100)
-    print(model, HMC_plls)
+
     pred_ll_ax[models.index(model)].plot(QEM_times, QEM_plls, label='QEM', color=colours[0])
     pred_ll_ax[models.index(model)].plot(RWS_times, RWS_plls, label='RWS', color=colours[1])
     pred_ll_ax[models.index(model)].plot(VI_times, VI_plls, label='VI', color=colours[2])
     pred_ll_ax[models.index(model)].plot(HMC_times, HMC_plls, label='HMC', color=colours[3])
-    print(model, min(QEM_plls), max(QEM_plls))
     pred_ll_ax[models.index(model)].set_ylim([min(QEM_plls) - 50, max(QEM_plls)+50])
+    pred_ll_ax[models.index(model)].set_title(model)
+    pred_ll_ax[0].set_ylabel('Predictive log likelihood')
+    pred_ll_ax[models.index(model)].set_xlabel('Time (s)')
+    
     
     
     
 
 #add legend
-ax[0, len(models)-1].legend()
+ax[len(models)-1].legend()
 pred_ll_ax[len(models)-1].legend()
 
-fig.savefig('moments.pdf', dpi=1200)
-fig.savefig('moments.png')
+fig.savefig('moments.pdf', dpi=1200, bbox_inches='tight')
+fig.savefig('moments.png', bbox_inches='tight')
     
 
-pred_ll_fig.savefig('pred_lls.pdf', dpi=1200)
-pred_ll_fig.savefig('pred_lls.png')
+pred_ll_fig.savefig('pred_lls.pdf', dpi=1200, bbox_inches='tight')
+pred_ll_fig.savefig('pred_lls.png', bbox_inches='tight')

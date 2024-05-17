@@ -35,7 +35,7 @@ def get_model(data, covariates):
         return global_mean + global_log_sigma + State_mean + State_log_sigma + County_mean + Beta_u + Beta_basement + County_log_sigma + obs
     
     
-    def joint_logdensity_pred_ll(params, data, covariates):
+    def joint_logdensity_pred_ll(params, test_data, test_covariates):
         #Global level
         global_mean = stats.norm.logpdf(params.global_mean, 0., 1.).sum()
         global_log_sigma = stats.norm.logpdf(params.global_log_sigma, 0., 1.).sum()
@@ -50,7 +50,7 @@ def get_model(data, covariates):
         Beta_basement = stats.norm.logpdf(params.Beta_basement, 0., 1.).sum()
         County_log_sigma = stats.norm.logpdf(params.County_log_sigma, 0., 1.).sum()
         #Zip level
-        obs = stats.norm.logpdf(data.transpose(2,0,1), params.County_mean + covariates['basement'].transpose(2,0,1)*params.Beta_basement + covariates['log_uranium'].transpose(2,0,1) * params.Beta_u, jnp.exp(params.County_log_sigma)).sum()
+        obs = stats.norm.logpdf(test_data.transpose(2,0,1), params.County_mean + test_covariates['basement'].transpose(2,0,1)*params.Beta_basement + test_covariates['log_uranium'].transpose(2,0,1) * params.Beta_u, jnp.exp(params.County_log_sigma)).sum()
         return obs
     
     def init_param_fn(seed):
