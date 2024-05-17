@@ -408,7 +408,8 @@ def plot_elbo_only_reparams(model_names   = ALL_MODEL_NAMES,
                         original_lrs = original_param_results[model_name][method_name][K]['lrs']
                         reparam_lrs  = results[model_name][method_name][K]['lrs']
 
-                        reorder_idxs = [reparam_lrs.tolist().index(lr) for lr in original_lrs]
+                        original_lrs_idx_in_reparam_lrs = [reparam_lrs.tolist().index(lr) for lr in original_lrs][:num_lrs]
+                        reorder_idxs = original_lrs_idx_in_reparam_lrs + [i for i in range(len(reparam_lrs)) if i not in original_lrs_idx_in_reparam_lrs]
 
                         for metric_name in ['elbos', 'p_lls']:
                             results[model_name][method_name][K][metric_name] = results[model_name][method_name][K][metric_name][reorder_idxs, :]
@@ -934,9 +935,9 @@ if __name__ == "__main__":
 
     ###################  3x3 ELBO-ONLY REPARAM PLOT  ####################
     reparam_ylims = {'elbo': {'bus_breakdown_reparam': {'rws': (-1000, -350),     'vi': (-1000, -400)},
-                              'movielens_reparam':     {'rws': (-20000, 500),    'vi': (-200000, 10000)},
+                              'movielens_reparam':     {'rws': (-20000, 500),     'vi': (-200000, 10000)},
                               'occupancy_reparam':     {'rws': (-100000, -45000), 'vi': (None, None)},
-                              'radon_reparam':         {'rws': (-10000, 500),       'vi': (-900, -250)}}
+                              'radon_reparam':         {'rws': (-570, -270),      'vi': (-900, -250)}}
                     }
 
     # set all qem ylims to be the same as in the standard plots
@@ -947,7 +948,7 @@ if __name__ == "__main__":
     reparam_ylims['elbo']['radon_reparam']['qem'] = (-285, -275)
 
     # note which legends to shift up to avoid overlap
-    shift_legends_y = [('movielens_reparam', 'vi'), ('radon_reparam', 'vi'),]
+    shift_legends_y = [('movielens_reparam', 'vi'), ('radon_reparam', 'vi'),('radon_reparam', 'rws')]
 
     if make_reparam_elbo_plots:
         plot_elbo_only_reparams(model_names=REPARAM_MODELS,
