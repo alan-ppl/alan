@@ -103,7 +103,7 @@ def get_best_results(model_name, validation_iter_number=200, method_names=['qem'
                                         lr_order[np.isnan(elbos[method_name][k, lr_order, validation_iter_number])]])
 
                 results[method_name][dataset_seeds[0]]['lrs'] = Ks_lrs[K]
-                lrs = np.array(results[method_name][dataset_seeds[0]]['lrs'])[lr_order[::-1]]
+                lrs = np.array(results[method_name][dataset_seeds[0]]['lrs'])[lr_order]
 
                 print(f"{method_name} K: {K}, lr_order: {lr_order} ({lrs})")
 
