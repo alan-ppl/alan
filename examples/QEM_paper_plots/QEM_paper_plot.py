@@ -9,11 +9,11 @@ import preprocess
 # ALL_MODEL_NAMES = ['bus_breakdown', 'chimpanzees', 'movielens', 'occupancy', 'radon']
 # ALL_MODEL_NAMES = ['bus_breakdown', 'bus_breakdown_reparam', 'chimpanzees', 'movielens', 'movielens_reparam', 'occupancy', 'radon']
 ALL_MODEL_NAMES = ['bus_breakdown', 'bus_breakdown_reparam', 'movielens', 'movielens_reparam',
-                  'occupancy', 'occupancy_reparam', 'radon', 'radon_reparam', 'covid']
+                  'occupancy', 'occupancy_reparam', 'radon', 'radon_reparam', 'covid', 'covid_reparam']
 
-REPARAM_MODELS  = ['bus_breakdown_reparam', 'movielens_reparam', 'occupancy_reparam', 'radon_reparam']#, 'covid_reparam']
+REPARAM_MODELS  = ['bus_breakdown_reparam', 'movielens_reparam', 'occupancy_reparam', 'radon_reparam', 'covid_reparam']
 
-REPARAM_MODELS  = ['bus_breakdown_reparam', 'movielens_reparam', 'occupancy_reparam', 'radon_reparam']#, 'covid_reparam']
+REPARAM_MODELS  = ['bus_breakdown_reparam', 'movielens_reparam', 'occupancy_reparam', 'radon_reparam', 'covid_reparam']
 
 SHORT_LABEL_DICT = {'qem': 'QEM', 'rws': 'MP RWS', 'vi': 'MP VI', 'qem_nonmp': 'Global QEM', 'global_rws': 'Global RWS', 'global_vi': 'IWAE', 'HMC': 'HMC'}
 
@@ -837,7 +837,7 @@ if __name__ == "__main__":
     
     sub_model_collections = {'standard': ['bus_breakdown', 'movielens', 'occupancy', 'radon', 'covid'],
                              'standard_no_covid': ['bus_breakdown', 'movielens', 'occupancy', 'radon'],
-                             'reparams': ['bus_breakdown_reparam', 'movielens_reparam', 'radon_reparam']}
+                             'reparams': ['bus_breakdown_reparam', 'movielens_reparam', 'radon_reparam', 'covid_reparam']}
     
     ##################### TIME-PER-ITERATION PLOTS #####################
     if make_time_per_iteration_plots:
@@ -848,7 +848,7 @@ if __name__ == "__main__":
 
     #####################     ELBO/P_LL PLOTS      #####################
     best_Ks = {'bus_breakdown': [30], 'bus_breakdown_reparam': [30], 'chimpanzees': [30], 'movielens': [30], 'movielens_reparam': [30],
-               'occupancy': [30], 'occupancy_reparam': [30], 'radon': [30], 'radon_reparam': [30], 'covid': [10]}
+               'occupancy': [30], 'occupancy_reparam': [30], 'radon': [30], 'radon_reparam': [30], 'covid': [10], 'covid_reparam': [10]}
     smoothing_window = 8
     short_labels = True
 
@@ -862,7 +862,8 @@ if __name__ == "__main__":
                      'movielens_reparam':     (-1060,  -985),
                      'occupancy_reparam':     (-49300, -49050),
                      'radon_reparam':         (-310,-276),
-                     'covid': (-1400000, -500000)},
+                     'covid': (-1400000, -500000),
+                     'covid_reparam': (-1400000, -500000)},
             'p_ll': {'bus_breakdown': (-500,  -425),
                      'chimpanzees':   (-45,    -39.5),
                      'movielens':     (-965,  -943),
@@ -872,7 +873,8 @@ if __name__ == "__main__":
                      'movielens_reparam':     (-965,  -943),
                      'occupancy_reparam':     (-24590, -24550),
                      'radon_reparam':         (-600, -450),
-                     'covid': (-30000000, 2000000)}
+                     'covid': (-30000000, 2000000),
+                     'covid_reparam': (-30000000, 2000000)}
            }
 
     if make_elbo_p_ll_plots:
