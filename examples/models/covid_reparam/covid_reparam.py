@@ -49,23 +49,23 @@ def get_P(platesizes, covariates):
     R_noise_scale=0.4
     
     Expected_Log_Rs = lambda RegionR, CM_alpha, ActiveCMs_NPIs, Wearing_alpha, ActiveCMs_wearing, Mobility_alpha, ActiveCMs_mobility, prev: RegionR + \
-                        CM_alpha@ActiveCMs_NPIs + Wearing_alpha*ActiveCMs_wearing + Mobility_alpha*ActiveCMs_mobility + prev
+                        CM_alpha@ActiveCMs_NPIs + 10000*Wearing_alpha*ActiveCMs_wearing + Mobility_alpha*ActiveCMs_mobility + prev
 
     P = Plate(
         #Effect of NPI
         CM_alpha = Normal(0, cm_prior_scale, sample_shape=[nCMs-2]),
         #Effect of mask wearing
-        Wearing_alpha = Normal(wearing_mean, wearing_sigma),
+        Wearing_alpha = Normal(wearing_mean/10000, wearing_sigma/10000),
         #Effect of mobility restrictions
         Mobility_alpha = Normal(mobility_mean, mobility_sigma),
         #R for each region
         RegionR = Normal(R_prior_mean_mean, R_prior_mean_scale + R_noise_scale),
 
-        InitialSize_log_mean = Normal(math.log(1000)/1000, 0.5/1000),
+        InitialSize_log_mean = Normal(math.log(1000), 0.5),
         log_infected_noise_mean = Normal(math.log(0.01), 0.25),
         nRs = Plate(
             #Initial number of infected in each region
-            InitialSize_log = Normal(lambda InitialSize_log_mean: InitialSize_log_mean * 1000, 0.5),
+            InitialSize_log = Normal(lambda InitialSize_log_mean: InitialSize_log_mean, 0.5),
             log_infected_noise = Normal(lambda log_infected_noise_mean: log_infected_noise_mean, 0.25),
             psi = Normal(0, 1),
             nDs = Plate(
@@ -88,10 +88,10 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
         Q = Plate(
             npis = Group(
                 CM_alpha = Normal(OptParam(t.ones((nCMs-2,))), OptParam(t.ones((nCMs-2,)), transformation=t.exp)),
-                Wearing_alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                Wearing_alpha = Normal(OptParam(0.), OptParam(-math.log(10000), transformation=t.exp)),
                 Mobility_alpha = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                 RegionR = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-                InitialSize_log_mean = Normal(OptParam(0.), OptParam(-math.log(1000), transformation=t.exp)),
+                InitialSize_log_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                 log_infected_noise_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
             ),
             nRs = Plate(
@@ -115,10 +115,10 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
         Q = Plate(
             npis = Group(
                 CM_alpha = Normal(QEMParam(t.zeros((nCMs-2,))), QEMParam(t.ones((nCMs-2,)))),
-                Wearing_alpha = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
-                Mobility_alpha = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
+                Wearing_alpha = Normal(QEMParam(t.zeros(())), QEMParam(1/10000)),
+                Mobility_alpha = Normal(QEMParam(t.zeros(())), QEMParam(1.)),
                 RegionR = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
-                InitialSize_log_mean = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(())/1000)),
+                InitialSize_log_mean = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
                 log_infected_noise_mean = Normal(QEMParam(t.zeros(())), QEMParam(t.ones(()))),
             ),
             nRs = Plate(
@@ -151,11 +151,11 @@ if __name__ == "__main__":
     import basic_runner
 
     basic_runner.run('covid_reparam',
-                     methods = ['vi','rws','qem'],
+                     methods = ['rws','vi'],
                      K = 3,
                      num_runs = 1,
-                     num_iters = 1,
-                     lrs = {'vi': 0.1, 'rws': 0.1, 'qem': 0.1},
+                     num_iters = 5,
+                     lrs = {'vi': 0.03, 'rws': 0.1, 'qem': 0.1},
                      fake_data = False,
                      device = 'cpu',
                      do_predll=True)
