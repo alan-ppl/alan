@@ -244,14 +244,14 @@ def run_experiment(cfg):
                 'num_samples': num_samples, 'num_tuning_samples': num_tuning_samples, 'target_accept': target_accept}
 
 
-    with open(f'experiments/results/{cfg.model}/blackjax{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
+    with open(f'experiments/results/{cfg.model}/blackjax{dataset_seed}{"_FAKE_DATA" if fake_data else ""}{num_tuning_samples}.pkl', 'wb') as f:
         pickle.dump(to_pickle, f)
 
     # average over runs
     for name in moments_collection.keys():
         moments_collection[name] = np.mean(moments_collection[name], axis=1)
         
-    with open(f'experiments/results/{cfg.model}/blackjax_moments{dataset_seed}{"_FAKE_DATA" if fake_data else ""}.pkl', 'wb') as f:
+    with open(f'experiments/results/{cfg.model}/blackjax_moments{dataset_seed}{"_FAKE_DATA" if fake_data else ""}{num_tuning_samples}.pkl', 'wb') as f:
         pickle.dump(moments_collection, f)
         
     print()

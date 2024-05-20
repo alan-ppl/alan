@@ -92,7 +92,11 @@ def get_best_results(model_name, validation_iter_number=200, method_names=['qem'
             # N.B. each of these is now a 3D array of shape (num_Ks, num_lrs, num_iters)
 
             # For each K, order the lr dimensions in order of decreasing elbo at the validation_iter_number
-            for k, K in enumerate(results[method_name][dataset_seeds[0]]['Ks']):
+            
+            Ks = results[method_name][dataset_seeds[0]]['Ks']
+            if model_name == 'covid' or model_name == 'covid_reparam':
+                Ks = [10]
+            for k, K in enumerate(Ks):
                 lr_order = np.argsort(elbos[method_name][k, :, validation_iter_number])[::-1]
 
                 # # remove lr idxs corresponding to NaNs

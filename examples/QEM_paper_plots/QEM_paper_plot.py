@@ -862,9 +862,9 @@ if __name__ == "__main__":
                      'movielens_reparam':     (-1060,  -985),
                      'occupancy_reparam':     (-49300, -49050),
                      'radon_reparam':         (-310,-276),
-                     'covid': (-1400000, -500000),
-                     'covid_reparam': (-1400000, -500000)},
-            'p_ll': {'bus_breakdown': (-500,  -425),
+                     'covid': (-200000, -75000),
+                     'covid_reparam': (-500000, -10000)},
+            'p_ll': {'bus_breakdown': (-480,  -375),
                      'chimpanzees':   (-45,    -39.5),
                      'movielens':     (-965,  -943),
                      'occupancy':     (-24600, -24550),
@@ -873,8 +873,8 @@ if __name__ == "__main__":
                      'movielens_reparam':     (-965,  -943),
                      'occupancy_reparam':     (-24590, -24550),
                      'radon_reparam':         (-600, -450),
-                     'covid': (-30000000, 2000000),
-                     'covid_reparam': (-30000000, 2000000)}
+                     'covid': (-15000000, 100000),
+                     'covid_reparam': (-15000000, 100000)}
            }
 
     if make_elbo_p_ll_plots:
@@ -939,7 +939,8 @@ if __name__ == "__main__":
     reparam_ylims = {'elbo': {'bus_breakdown_reparam': {'rws': (-1000, -350),     'vi': (-1000, -400)},
                               'movielens_reparam':     {'rws': (-20000, 500),     'vi': (-200000, 10000)},
                               'occupancy_reparam':     {'rws': (-100000, -45000), 'vi': (None, None)},
-                              'radon_reparam':         {'rws': (-570, -270),      'vi': (-900, -250)}}
+                              'radon_reparam':         {'rws': (-570, -270),      'vi': (-900, -250)},
+                              'covid_reparam':         {'qem': (-1000000, 0), 'rws': (-1000000, 0),    'vi': (-1000000, 0)}}
                     }
 
     # set all qem ylims to be the same as in the standard plots
