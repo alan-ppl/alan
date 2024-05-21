@@ -35,11 +35,11 @@ paths = {'movielens': ['experiments/moments/movielens/qem_0_30_0.1_moments.pkl',
 #             'covid': ['experiments/moments/covid_reparam/qem_0_30_0.1_moments.pkl', 'experiments/moments/covid_reparam/rws_0_30_0.1_moments.pkl', 'experiments/moments/covid_reparam/vi_0_30_0.1_moments.pkl', 'experiments/results/covid_reparam/blackjax_moments0.pkl']}
          
 # Three colours for each method
-colours = ['b', 'r', 'g', 'orange']
+colours = ['#e7298a', '#1b9e77', '#d95f02', '#000000']
 
-fig, ax = plt.subplots(1, len(models), figsize=(4*len(models), 5))
+fig, ax = plt.subplots(1, len(models), figsize=(4*len(models), 4))
 
-pred_ll_fig, pred_ll_ax = plt.subplots(1, len(models), figsize=(4*len(models), 5))
+pred_ll_fig, pred_ll_ax = plt.subplots(1, len(models), figsize=(4*len(models), 4))
 # with open(f'movielensexperiments/moments/moments/HMC0.pkl', 'rb') as f:
 #     hmc = pickle.load(f)
     
@@ -150,6 +150,24 @@ for model in models:
     RWS_plls = RWS['p_lls'].mean(-1)[0][2]
     VI_plls = VI['p_lls'].mean(-1)[0][2]
     HMC_plls = HMC['p_lls'].mean(1)
+    
+    QEM_stderrs = QEM['p_lls'].std(-1)[0][2] / np.sqrt(QEM['p_lls'].shape[-1])
+    RWS_stderrs = RWS['p_lls'].std(-1)[0][2] / np.sqrt(RWS['p_lls'].shape[-1])
+    VI_stderrs = VI['p_lls'].std(-1)[0][2] / np.sqrt(VI['p_lls'].shape[-1])
+    HMC_stderrs = HMC['p_lls'].std(1)[10:] / np.sqrt(HMC['p_lls'][10:].shape[1])
+    
+    #all to numpy arrays
+    QEM_times = QEM_times.numpy()
+    RWS_times = RWS_times.numpy()
+    VI_times = VI_times.numpy()
+    
+    QEM_plls = QEM_plls.numpy()
+    RWS_plls = RWS_plls.numpy()
+    VI_plls = VI_plls.numpy()
+    
+    QEM_stderrs = QEM_stderrs.numpy()
+    RWS_stderrs = RWS_stderrs.numpy()
+    VI_stderrs = VI_stderrs.numpy()
     # else:
     #     QEM_times = QEM['iter_times'].mean(-1)[2][1]
     #     RWS_times = RWS['iter_times'].mean(-1)[2][1]
@@ -193,7 +211,7 @@ for model in models:
     ax[models.index(model)].set_xlabel('Time (s)')
     
     #ylim
-    ax[models.index(model)].set_ylim([min(QEM_diff) - 2*np.var(QEM_diff), max(QEM_diff)+2*np.var(QEM_diff)])
+    ax[models.index(model)].set_ylim([max(QEM_diff)-np.var(QEM_diff), max(QEM_diff)+np.var(QEM_diff)])
 
     
     ax[models.index(model)].set_title(model_names[model])
@@ -209,6 +227,10 @@ for model in models:
     pred_ll_ax[models.index(model)].plot(RWS_times, RWS_plls, label='RWS', color=colours[1])
     pred_ll_ax[models.index(model)].plot(VI_times, VI_plls, label='VI', color=colours[2])
     pred_ll_ax[models.index(model)].plot(HMC_times, HMC_plls, label='HMC', color=colours[3])
+    # pred_ll_ax[models.index(model)].fill_between(QEM_times, QEM_plls - QEM_stderrs, QEM_plls + QEM_stderrs, alpha=0.3, color=colours[0])
+    # pred_ll_ax[models.index(model)].fill_between(RWS_times, RWS_plls - RWS_stderrs, RWS_plls + RWS_stderrs, alpha=0.3, color=colours[1])
+    # pred_ll_ax[models.index(model)].fill_between(VI_times, VI_plls - VI_stderrs, VI_plls + VI_stderrs, alpha=0.3, color=colours[2])
+    # pred_ll_ax[models.index(model)].fill_between(HMC_times, HMC_plls - HMC_stderrs, HMC_plls + HMC_stderrs, alpha=0.3, color=colours[3])
     pred_ll_ax[models.index(model)].set_ylim([min(QEM_plls) - 50, max(QEM_plls)+50])
     pred_ll_ax[models.index(model)].set_title(model_names[model])
     pred_ll_ax[0].set_ylabel('Predictive log likelihood')
