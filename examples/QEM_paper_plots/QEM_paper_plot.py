@@ -519,8 +519,9 @@ def plot_elbo_only_reparams(model_names   = ALL_MODEL_NAMES,
 
             col_counter += 1
 
-    # delete occupancy vi axes
+    # replace occupancy vi axes with text
     axs[2,model_names.index("occupancy_reparam")].axis('off')
+    axs[2, model_names.index("occupancy_reparam")].text(0.5, 0.5, '(VI not applicable\nbecause occupancy\nmodel has discrete\nlatent variables.)', fontsize='large', horizontalalignment='center', verticalalignment='center', transform=axs[2, model_names.index("occupancy_reparam")].transAxes)
 
     fig.tight_layout()
 
