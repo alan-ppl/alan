@@ -5,15 +5,14 @@ import numpy as np
 
 from collections import namedtuple
 
-States=7
+States=4
 
-Counties= 5 #10 in total, half held back for testing
-Zips = 5
+Zips = 150
 
 
 def get_model(data, covariates):
 
-    params = namedtuple("model_params", ["global_mean", "global_log_sigma", "State_mean", "State_log_sigma", "County_mean", "Beta_u", "Beta_basement", "County_log_sigma"])
+    params = namedtuple("model_params", ["global_mean", "global_log_sigma", "State_mean", "State_log_sigma", "Beta_u", "Beta_basement"])
     def joint_logdensity(params, data, covariates):
         #Global level
         global_mean = stats.norm.logpdf(params.global_mean, 0., 1.).sum()
@@ -22,17 +21,15 @@ def get_model(data, covariates):
         State_mean = stats.norm.logpdf(params.State_mean, params.global_mean,jnp.exp(params.global_log_sigma)).sum()
         #State_mean = params.global_mean + params.State_mean_non_cent * jnp.exp(params.global_log_sigma)
         State_log_sigma = stats.norm.logpdf(params.State_log_sigma, 0., 1.).sum()
-        #County level
-        County_mean = stats.norm.logpdf(params.County_mean, params.State_mean[:,jnp.newaxis], jnp.exp(params.State_log_sigma)[...,jnp.newaxis]).sum()
-        #County_mean = State_mean[:,jnp.newaxis] + params.County_mean_non_cent * jnp.exp(params.State_log_sigma)[...,jnp.newaxis]
+
         Beta_u = stats.norm.logpdf(params.Beta_u, 0., 1.).sum()
         Beta_basement = stats.norm.logpdf(params.Beta_basement, 0., 1.).sum()
-        County_log_sigma = stats.norm.logpdf(params.County_log_sigma, 0., 1.).sum()
         #Zip level
 
-        obs = stats.norm.logpdf(data.transpose(2,0,1), params.County_mean + covariates['basement'].transpose(2,0,1)*params.Beta_basement + covariates['log_uranium'].transpose(2,0,1) * params.Beta_u, jnp.exp(params.County_log_sigma)).sum()
+        
+        obs = stats.norm.logpdf(data, params.State_mean[:,jnp.newaxis] + covariates['basement']*params.Beta_basement[:,jnp.newaxis] + covariates['log_uranium'] * params.Beta_u[:,jnp.newaxis], jnp.exp(params.State_log_sigma[:,jnp.newaxis])).sum()
 
-        return global_mean + global_log_sigma + State_mean + State_log_sigma + County_mean + Beta_u + Beta_basement + County_log_sigma + obs
+        return global_mean + global_log_sigma + State_mean + State_log_sigma  + Beta_u + Beta_basement  + obs
     
     
     def joint_logdensity_pred_ll(params, test_data, test_covariates):
@@ -43,14 +40,10 @@ def get_model(data, covariates):
         State_mean = stats.norm.logpdf(params.State_mean, params.global_mean,jnp.exp(params.global_log_sigma)).sum()
         #State_mean = params.global_mean + params.State_mean_non_cent * jnp.exp(params.global_log_sigma)
         State_log_sigma = stats.norm.logpdf(params.State_log_sigma, 0., 1.).sum()
-        #County level
-        County_mean = stats.norm.logpdf(params.County_mean, params.State_mean[:,jnp.newaxis], jnp.exp(params.State_log_sigma)[...,jnp.newaxis]).sum()
-        #County_mean = State_mean[:,jnp.newaxis] + params.County_mean_non_cent * jnp.exp(params.State_log_sigma)[...,jnp.newaxis]
         Beta_u = stats.norm.logpdf(params.Beta_u, 0., 1.).sum()
         Beta_basement = stats.norm.logpdf(params.Beta_basement, 0., 1.).sum()
-        County_log_sigma = stats.norm.logpdf(params.County_log_sigma, 0., 1.).sum()
         #Zip level
-        obs = stats.norm.logpdf(test_data.transpose(2,0,1), params.County_mean + test_covariates['basement'].transpose(2,0,1)*params.Beta_basement + test_covariates['log_uranium'].transpose(2,0,1) * params.Beta_u, jnp.exp(params.County_log_sigma)).sum()
+        obs = stats.norm.logpdf(test_data, params.State_mean[:,jnp.newaxis] + test_covariates['basement']*params.Beta_basement[:,jnp.newaxis] + test_covariates['log_uranium'] * params.Beta_u[:,jnp.newaxis], jnp.exp(params.State_log_sigma[:,jnp.newaxis])).sum()
         return obs
     
     def init_param_fn(seed):
@@ -63,10 +56,8 @@ def get_model(data, covariates):
             global_log_sigma=jax.random.normal(key2),
             State_mean=jax.random.normal(key3, shape=(States,)),
             State_log_sigma=jax.random.normal(key4, shape=(States,)),
-            County_mean=jax.random.normal(key5, shape=(States,Counties)),
-            Beta_u=jax.random.normal(key6, shape=(States,Counties)),
-            Beta_basement=jax.random.normal(key7, shape=(States,Counties)),
-            County_log_sigma=jax.random.normal(key8, shape=(States,Counties)),
+            Beta_u=jax.random.normal(key6, shape=(States,)),
+            Beta_basement=jax.random.normal(key7, shape=(States,)),
         )
         
     def transform_non_cent_to_cent(params, covariates=None):
@@ -81,10 +72,10 @@ def get_model(data, covariates):
 
 def get_test_data_cov_dict(all_data, all_covariates, platesizes):
     test_data = all_data
-    test_data = {'true_obs': all_data['obs'][:,platesizes['Counties']:]}
+    test_data = {'true_obs': all_data['obs'][:,platesizes['Zips']:]}
 
     test_covariates = all_covariates
-    test_covariates['basement'] = test_covariates['basement'][:,platesizes['Counties']:]
-    test_covariates['log_uranium'] = test_covariates['log_uranium'][:,platesizes['Counties']:]
+    test_covariates['basement'] = test_covariates['basement'][:,platesizes['Zips']:]
+    test_covariates['log_uranium'] = test_covariates['log_uranium'][:,platesizes['Zips']:]
 
     return test_data, test_covariates

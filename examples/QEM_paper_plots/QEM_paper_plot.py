@@ -863,7 +863,7 @@ if __name__ == "__main__":
                      'movielens_reparam':     (-1060,  -985),
                      'occupancy_reparam':     (-49300, -49050),
                      'radon_reparam':         (-310,-276),
-                     'covid': (-200000, -75000),
+                     'covid': (-200000, -70000),
                      'covid_reparam': (-500000, -10000)},
             'p_ll': {'bus_breakdown': (-480,  -375),
                      'chimpanzees':   (-45,    -39.5),

@@ -30,25 +30,25 @@ def load_data_covariates(device, run, data_dir="data", fake_data=False, return_f
     # all_inputs = {'basement': basement.rename('States', 'Counties', 'Zips'),
     #                 'log_uranium': log_uranium.rename('States', 'Counties', 'Zips')}
 
-    platesizes = {'States': log_radon.shape[0], 'Counties': int(log_radon.shape[1]*0.5), 'Zips': log_radon.shape[2]}
-    all_platesizes = {'States': log_radon.shape[0], 'Counties': log_radon.shape[1], 'Zips': log_radon.shape[2]}
+    platesizes = {'States': log_radon.shape[0], 'Zips': log_radon.shape[1] // 2}
+    all_platesizes = {'States': log_radon.shape[0], 'Zips': log_radon.shape[1]}
 
-    train_inputs = {'basement': basement[:, :platesizes['Counties'], :].rename('States', 'Counties', 'Zips'),
-                    'log_uranium': log_uranium[:, :platesizes['Counties'], :].rename('States', 'Counties', 'Zips')}
+    train_inputs = {'basement': basement[:, :platesizes['Zips']].rename('States', 'Zips'),
+                    'log_uranium': log_uranium[:, :platesizes['Zips']].rename('States', 'Zips')}
     
-    all_inputs = {'basement': basement.rename('States', 'Counties', 'Zips'),
-                    'log_uranium': log_uranium.rename('States', 'Counties', 'Zips')}
+    all_inputs = {'basement': basement.rename('States', 'Zips'),
+                    'log_uranium': log_uranium.rename('States', 'Zips')}
     
     if not fake_data:
-        train_log_radon = {'obs': log_radon[:, :platesizes['Counties'], :].rename('States', 'Counties', 'Zips')}
-        all_log_radon = {'obs': log_radon.float().rename('States', 'Counties', 'Zips')}
+        train_log_radon = {'obs': log_radon[:, :platesizes['Zips']].rename('States', 'Zips')}
+        all_log_radon = {'obs': log_radon.float().rename('States', 'Zips')}
 
     else:
         P = get_P(all_platesizes, all_inputs)
         sample = P.sample()
-        all_log_radon = {'obs': sample.pop('obs').align_to('States', 'Counties', 'Zips')}
+        all_log_radon = {'obs': sample.pop('obs').align_to('States', 'Zips')}
 
-        train_log_radon = {'obs': all_log_radon['obs'][:, :platesizes['Counties'], :].rename('States', 'Counties', 'Zips')}
+        train_log_radon = {'obs': all_log_radon['obs'][:, :platesizes['Zips']].rename('States', 'Zips')}
 
         all_latents = sample
         latents = sample
@@ -67,18 +67,15 @@ def get_P(platesizes, covariates):
         States = Plate(
             State_mean = Normal('global_mean', lambda global_log_sigma: global_log_sigma.exp()),
             State_log_sigma = Normal(0., 1.),
-            Counties = Plate(
-                County_mean = Normal('State_mean', lambda State_log_sigma: State_log_sigma.exp()),
-                County_log_sigma = Normal(0., 1.),
-                Beta_u = Normal(0., 1.),
-                Beta_basement = Normal(0., 1.),
-                Zips = Plate( 
-                    obs = Normal(lambda County_mean, basement, log_uranium, Beta_basement, Beta_u: County_mean + basement*Beta_basement + log_uranium * Beta_u, lambda County_log_sigma: County_log_sigma.exp()),
-                ),
+            Beta_u = Normal(0., 1.),
+            Beta_basement = Normal(0., 1.),
+
+            Zips = Plate( 
+                obs = Normal(lambda State_mean, basement, log_uranium, Beta_basement, Beta_u: State_mean + basement*Beta_basement + log_uranium * Beta_u, lambda State_log_sigma: State_log_sigma.exp()),
             ),
         ),
     )
-
+    
     P = BoundPlate(P, platesizes, inputs=covariates)
 
     return P
@@ -94,23 +91,16 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                 global_log_sigma = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
             ),
             States = Plate(
-                state_latents = Group(
                     State_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
                     State_log_sigma = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                    Beta_u = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                    Beta_basement = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
+                Zips = Plate(
+                    obs = Data(),
                 ),
-                Counties = Plate(
-                    county_latents = Group(
-                        County_mean = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-                        County_log_sigma = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-                        Beta_u = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-                        Beta_basement = Normal(OptParam(0.), OptParam(0., transformation=t.exp)),
-                    ),
-                    Zips = Plate(
-                        obs = Data(),
-                    ),
-                ),
-            ),  
-        )
+            ),
+        ) 
+        
     elif Q_param_type == "qem":
         Q_plate = Plate(
             global_latents = Group(
@@ -118,23 +108,15 @@ def generate_problem(device, platesizes, data, covariates, Q_param_type):
                 global_log_sigma = Normal(QEMParam(0.), QEMParam(1.)),
             ),
             States = Plate(
-                state_latents = Group(
-                    State_mean = Normal(QEMParam(0.), QEMParam(1.)),
-                    State_log_sigma = Normal(QEMParam(0.), QEMParam(1.)),
-                ),
-                Counties = Plate(
-                    county_latents = Group(
-                        County_mean = Normal(QEMParam(0.), QEMParam(1.)),
-                        County_log_sigma = Normal(QEMParam(0.), QEMParam(1.)),
-                        Beta_u = Normal(QEMParam(0.), QEMParam(1.)),
-                        Beta_basement = Normal(QEMParam(0.), QEMParam(1.)),
-                    ),
-                    Zips = Plate(
-                        obs = Data(),
-                    ),
-                ),
-            ),  
-        )
+                State_mean = Normal(QEMParam(0.), QEMParam(1.)),
+                State_log_sigma = Normal(QEMParam(0.), QEMParam(1.)),
+                Beta_u = Normal(QEMParam(0.), QEMParam(1.)),
+                Beta_basement = Normal(QEMParam(0.), QEMParam(1.)),
+            Zips = Plate(
+                obs = Data(),
+            ),
+        ),
+    )
      
     Q_bound_plate = BoundPlate(Q_plate, platesizes, inputs=covariates)
 
@@ -157,11 +139,11 @@ if __name__ == "__main__":
     import basic_runner
 
     basic_runner.run('radon',
-                     K = 30,
-                     methods=['qem'],
+                     K = 3,
+                     methods=['vi', 'rws', 'qem'],
                      num_runs = 1,
-                     num_iters = 200,
-                     lrs = {'vi': 0.1, 'rws': 0.3, 'qem': 0.03},
+                     num_iters = 50,
+                     lrs = {'vi': 0.1, 'rws': 0.3, 'qem': 0.1},
                      fake_data = False,
                      device = 'cpu')
     

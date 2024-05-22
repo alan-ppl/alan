@@ -28,7 +28,7 @@ def get_predll(model, samples, rng_key):
     samples = samples._asdict()
     names = list(samples.keys())
     probs = np.zeros(samples[names[0]].shape[0])
-    for i in range(samples[names[0]].shape[0]):
+    for i in range(0,samples[names[0]].shape[0]):
         temp_samples = {}
         for name in names:
             temp_samples[name] = np.array(samples[name][i,...])

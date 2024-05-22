@@ -5,10 +5,11 @@ import torch as t
 from pathlib import Path
 np.random.seed(0)
 
+#states
+S=4
 #Zips
-N=5
-#Counties
-M=10
+N=400
+
 
 
 df_srrs2 = pd.read_csv('srrs2.dat')
@@ -50,39 +51,71 @@ df['cntyfips'] = df['stfips'].map(str) + df['cntyfips'].map(str)
 df['zip'] = df['cntyfips'] + df['zip']
 
 
-df = df.reset_index(drop=True)
 
-df_first_reading = df.groupby(['stfips', 'cntyfips', 'zip'], as_index=False).first()
-
-#Only keep states and counties at least N unique zips
-df_first_reading = df_first_reading.groupby(['stfips', 'cntyfips']).filter(lambda x: len(x['zip'].unique()) >= N)
-#select first N unique zips for each state and county
-df_first_reading = df_first_reading.groupby(['stfips', 'cntyfips']).head(N)
-
-#Only keep states and counties at least M unique zips
-df_first_reading = df_first_reading.groupby(['stfips']).filter(lambda x: len(x['cntyfips'].unique()) >= M)
-#Find the first M unique counties in each state
-unique_counties_for_each_state = (df_first_reading[['stfips', 'cntyfips']].drop_duplicates(subset=['stfips', 'cntyfips']).groupby(['stfips']).head(M))
-#Use this to filter the first readings
-df_first_reading = df_first_reading.merge(unique_counties_for_each_state, on=['stfips', 'cntyfips'])
-df_first_reading = df_first_reading[['stfips', 'cntyfips', 'zip', 'log_u', 'basement', 'log_radon']]
+#Select S states
+states = df['stfips'].unique()
+np.random.shuffle(states)
+states = states[:S]
+df = df[df['stfips'].isin(states)]
 
 
-print(df_first_reading)
-#Number of states
-S = len(df_first_reading['stfips'].unique())
-print(S)
+#Select N zips from each state
+df = df.groupby(['stfips', 'zip'], as_index=False).first()
+df = df.groupby(['stfips']).filter(lambda x: len(x['zip'].unique()) >= N)
+df = df.groupby(['stfips']).head(N)
+
 
 #reshaped pytorch tensors
-basement = t.tensor(df_first_reading['basement'].values).reshape(S,M,N).float()
-log_u = t.tensor(df_first_reading['log_u'].values).reshape(S,M,N).float()
-log_radon = t.tensor(df_first_reading['log_radon'].values).reshape(S,M,N).float()
+basement = t.tensor(df['basement'].values).reshape(S,300).float()
+log_u = t.tensor(df['log_u'].values).reshape(S,300).float()
+log_radon = t.tensor(df['log_radon'].values).reshape(S,300).float()
 
-#Save these
+#save
 Path("data/").mkdir(parents=True, exist_ok=True)
 t.save(basement, 'data/basement.pt')
 t.save(log_u, 'data/log_u.pt')
 t.save(log_radon, 'data/log_radon.pt')
+
+
+
+
+
+
+
+
+# df = df.reset_index(drop=True)
+
+# df_first_reading = df.groupby(['stfips', 'cntyfips', 'zip'], as_index=False).first()
+
+# #Only keep states and counties at least N unique zips
+# df_first_reading = df_first_reading.groupby(['stfips', 'cntyfips']).filter(lambda x: len(x['zip'].unique()) >= N)
+# #select first N unique zips for each state and county
+# df_first_reading = df_first_reading.groupby(['stfips', 'cntyfips']).head(N)
+
+# #Only keep states and counties at least M unique zips
+# df_first_reading = df_first_reading.groupby(['stfips']).filter(lambda x: len(x['cntyfips'].unique()) >= M)
+# #Find the first M unique counties in each state
+# unique_counties_for_each_state = (df_first_reading[['stfips', 'cntyfips']].drop_duplicates(subset=['stfips', 'cntyfips']).groupby(['stfips']).head(M))
+# #Use this to filter the first readings
+# df_first_reading = df_first_reading.merge(unique_counties_for_each_state, on=['stfips', 'cntyfips'])
+# df_first_reading = df_first_reading[['stfips', 'cntyfips', 'zip', 'log_u', 'basement', 'log_radon']]
+
+
+# print(df_first_reading)
+# #Number of states
+# S = len(df_first_reading['stfips'].unique())
+# print(S)
+
+# #reshaped pytorch tensors
+# basement = t.tensor(df_first_reading['basement'].values).reshape(S,M,N).float()
+# log_u = t.tensor(df_first_reading['log_u'].values).reshape(S,M,N).float()
+# log_radon = t.tensor(df_first_reading['log_radon'].values).reshape(S,M,N).float()
+
+# #Save these
+# Path("data/").mkdir(parents=True, exist_ok=True)
+# t.save(basement, 'data/basement.pt')
+# t.save(log_u, 'data/log_u.pt')
+# t.save(log_radon, 'data/log_radon.pt')
 
 
 
