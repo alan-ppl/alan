@@ -142,7 +142,7 @@ if __name__ == "__main__":
                      K = 3,
                      methods=['vi', 'rws', 'qem'],
                      num_runs = 1,
-                     num_iters = 50,
+                     num_iters = 5,
                      lrs = {'vi': 0.1, 'rws': 0.3, 'qem': 0.1},
                      fake_data = False,
                      device = 'cpu')
