@@ -54,6 +54,7 @@ class Plate():
 
         self.grouped_prog = {}
         self.flat_prog = {}
+        self.groups = {}
         for k, v in kwargs.items():
             if isinstance(v, Plate):
                 self.grouped_prog[k] = v
@@ -63,6 +64,7 @@ class Plate():
 
                 if isinstance(v, Group):
                     group = v.prog
+                    self.groups[k] = v
                 else:
                     group = {k: v}
 
